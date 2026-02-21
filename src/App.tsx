@@ -1,35 +1,184 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect, useCallback } from 'react';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Button from '@mui/material/Button';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import AddIcon from '@mui/icons-material/Add';
+import ImportExportIcon from '@mui/icons-material/ImportExport';
+import { SearchBar } from './components/SearchBar';
+import { PlayerCard } from './components/PlayerCard';
+import { AddPlayerModal } from './components/AddPlayerModal';
+import { ImportModal } from './components/ImportModal';
+import {
+  fetchPlayers,
+  createPlayer,
+  updatePlayer,
+  deletePlayer,
+  importPlayers,
+} from './api';
+import type { Player, PlayerCreate, ImportPlayer } from './types';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [selected, setSelected] = useState<Player | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
+
+  const showSuccess = (msg: string) =>
+    setSnackbar({ open: true, message: msg, severity: 'success' });
+  const showError = (msg: string) =>
+    setSnackbar({ open: true, message: msg, severity: 'error' });
+
+  const loadPlayers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchPlayers();
+      setPlayers(data);
+    } catch {
+      showError('Failed to load players');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPlayers();
+  }, [loadPlayers]);
+
+  const handleSelectPlayer = (p: Player) => setSelected(p);
+
+  const handleUpdatePlayer = async (id: string, updates: Partial<Player>) => {
+    try {
+      const updated = await updatePlayer(id, updates);
+      setPlayers((prev) => prev.map((p) => (p._id === id ? updated : p)));
+      if (selected?._id === id) setSelected(updated);
+      showSuccess('Player updated');
+    } catch {
+      showError('Failed to update player');
+      throw new Error('Update failed');
+    }
+  };
+
+  const handleDeletePlayer = async (id: string) => {
+    try {
+      await deletePlayer(id);
+      setPlayers((prev) => prev.filter((p) => p._id !== id));
+      if (selected?._id === id) setSelected(null);
+      showSuccess('Player deleted');
+    } catch {
+      showError('Failed to delete player');
+      throw new Error('Delete failed');
+    }
+  };
+
+  const handleAddPlayer = async (player: PlayerCreate) => {
+    try {
+      const created = await createPlayer(player);
+      setPlayers((prev) => [...prev, created].sort((a, b) => a.username.localeCompare(b.username)));
+      setSelected(created);
+      showSuccess('Player added');
+    } catch {
+      showError('Failed to add player');
+      throw new Error('Add failed');
+    }
+  };
+
+  const handleImport = async (toImport: ImportPlayer[]) => {
+    const result = await importPlayers(toImport);
+    await loadPlayers();
+    showSuccess(`Imported: ${result.created} new, ${result.updated} updated`);
+    return result;
+  };
+
+  const existingUsernames = new Set(players.map((p) => p.username));
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        width: '100%',
+        maxWidth: 420,
+        margin: '0 auto',
+      }}
+    >
+      <Container maxWidth={false} sx={{ py: 2, px: 2, maxWidth: 420 }}>
+        <Box sx={{ mb: 2 }}>
+          <SearchBar
+            players={players}
+            onSelect={handleSelectPlayer}
+            selectedId={selected?._id}
+          />
+          <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setAddOpen(true)}
+            >
+              Add Player
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ImportExportIcon />}
+              onClick={() => setImportOpen(true)}
+            >
+              Import
+            </Button>
+          </Box>
+        </Box>
 
-export default App
+        {loading && !players.length ? (
+          <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+            Loading...
+          </Box>
+        ) : selected ? (
+          <PlayerCard
+            player={selected}
+            onUpdate={handleUpdatePlayer}
+            onDelete={handleDeletePlayer}
+            onClose={() => setSelected(null)}
+          />
+        ) : (
+          <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+            Search for a player or add a new one.
+          </Box>
+        )}
+      </Container>
+
+      <AddPlayerModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSubmit={handleAddPlayer}
+      />
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImport}
+        existingUsernames={existingUsernames}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+}
