@@ -3,36 +3,32 @@ import { Player } from '../models/Player.js';
 
 const router = Router();
 
-// GET /api/players — return all players
+// GET /api/players — return list (username, playerType, stakesSeenAt, _id only)
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const players = await Player.find().sort({ username: 1 });
+    const players = await Player.find()
+      .select('username playerType stakesSeenAt')
+      .sort({ username: 1 })
+      .collation({ locale: 'en', strength: 2 });
     res.json(players);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch players' });
   }
 });
 
-// GET /api/players/:id — return single player
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const player = await Player.findById(req.params.id);
-    if (!player) return res.status(404).json({ error: 'Player not found' });
-    res.json(player);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch player' });
-  }
-});
-
 // POST /api/players/import — bulk import (must be before /:id)
 router.post('/import', async (req: Request, res: Response) => {
   try {
-    const { players: imported } = req.body as { players: Array<{
-      username: string;
-      playerType?: string;
-      stakesSeenAt?: number[];
-      notes: string;
-    }> };
+    const { players: imported } = req.body as {
+      players: Array<{
+        username: string;
+        playerType: string;
+        stakesSeenAt: number[];
+        stakeNotes: Array<{ stake: number | null; text: string }>;
+        exploits: string[];
+        rawNote: string;
+      }>;
+    };
 
     if (!Array.isArray(imported) || imported.length === 0) {
       return res.status(400).json({ error: 'Invalid import data' });
@@ -41,23 +37,40 @@ router.post('/import', async (req: Request, res: Response) => {
     const results = { created: 0, updated: 0 };
 
     for (const p of imported) {
-      const existing = await Player.findOne({ username: p.username });
+      const existing = await Player.findOne({ username: p.username }).collation({
+        locale: 'en',
+        strength: 2,
+      });
+
       if (existing) {
-        const mergedNotes = [existing.notes, p.notes].filter(Boolean).join('\n\n');
+        const mergedStakeNotes = [...(existing.stakeNotes || [])];
+        for (const sn of p.stakeNotes || []) {
+          const idx = mergedStakeNotes.findIndex((m) => m.stake === sn.stake);
+          if (idx >= 0) {
+            mergedStakeNotes[idx].text = [mergedStakeNotes[idx].text, sn.text].filter(Boolean).join('\n');
+          } else {
+            mergedStakeNotes.push(sn);
+          }
+        }
+        const mergedExploits = [...new Set([...(existing.exploits || []), ...(p.exploits || [])])];
+        const mergedRaw = [existing.rawNote, p.rawNote].filter(Boolean).join('\n\n');
+        const mergedStakes = [...new Set([...(existing.stakesSeenAt || []), ...(p.stakesSeenAt || [])])].sort((a, b) => a - b);
+
         await Player.findByIdAndUpdate(existing._id, {
-          notes: mergedNotes,
-          ...(p.playerType && { playerType: p.playerType }),
-          ...(p.stakesSeenAt?.length && {
-            stakesSeenAt: [...new Set([...(existing.stakesSeenAt || []), ...p.stakesSeenAt])],
-          }),
+          stakeNotes: mergedStakeNotes,
+          exploits: mergedExploits,
+          rawNote: mergedRaw,
+          stakesSeenAt: mergedStakes,
         });
         results.updated++;
       } else {
         await new Player({
           username: p.username,
-          playerType: p.playerType || 'Unknown',
+          playerType: p.playerType || 'unknown',
           stakesSeenAt: p.stakesSeenAt || [],
-          notes: p.notes || '',
+          stakeNotes: p.stakeNotes || [],
+          exploits: p.exploits || [],
+          rawNote: p.rawNote || '',
         }).save();
         results.created++;
       }
@@ -66,6 +79,17 @@ router.post('/import', async (req: Request, res: Response) => {
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: 'Import failed' });
+  }
+});
+
+// GET /api/players/:id — return full single player
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const player = await Player.findById(req.params.id);
+    if (!player) return res.status(404).json({ error: 'Player not found' });
+    res.json(player);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch player' });
   }
 });
 

@@ -1,0 +1,41 @@
+# Poker Notes App — Cursor Rules
+
+## Project Overview
+Compact poker player notes app. Frontend: React + Vite + TypeScript (SWC) with MUI dark theme.
+Backend: Node/Express + Mongoose + MongoDB Atlas. Designed to be ~400px wide, used alongside poker tables.
+
+## Code Style
+- Always use TypeScript. No `any` types — define proper interfaces/types in src/types/.
+- Functional components and hooks only. No class components.
+- Keep components small and single-responsibility. If a component exceeds ~150 lines, suggest splitting it.
+- Use MUI components for all UI — do not introduce additional CSS frameworks or component libraries.
+- Use axios for all API calls, centralized in src/api/.
+
+## Architecture Rules
+- The frontend never talks directly to MongoDB. All data goes through the Express API.
+- All Mongoose models live in server/models/. All routes live in server/routes/.
+- Environment variables are never hardcoded. Always reference process.env.* and ensure the variable is in .env.example.
+- The Vite proxy handles /api routing — never hardcode localhost:5000 in frontend code.
+
+## Behavior Rules
+- When modifying an existing file, preserve all existing functionality unless explicitly told to change it.
+- Do not remove error handling or loading states when editing components.
+- When adding a new feature, check if a relevant type already exists in src/types/ before creating a new one.
+- Always handle API errors gracefully with a MUI Snackbar notification.
+
+## Styling Rules
+- Use MUI dark theme throughout. Do not override the theme with inline styles unless absolutely necessary.
+- Lines beginning with ** or * in notes always render in amber/gold color. Do not change this behavior.
+- Player type colors are defined ONLY in src/constants/playerTypes.ts and imported everywhere.
+  Never hardcode player type colors inline in any component.
+
+## Data Rules
+- stakeNotes is an array of { stake, text } objects — never flatten this into a single string.
+- exploits is a separate array of strings — never merge it back into the note body at render time.
+- rawNote is read-only after import — never overwrite it during edits, only on a fresh import of that player.
+- On import, upsert by username using case-insensitive matching.
+
+## Out of Scope (Do Not Build)
+- No shorthand-to-image conversion.
+- No authentication or user accounts.
+- No always-on-top or floating window behavior.

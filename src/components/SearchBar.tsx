@@ -5,15 +5,16 @@ import ListItemButton from '@mui/material/ListItemButton';
 import Paper from '@mui/material/Paper';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
-import type { Player } from '../types';
+import type { PlayerListItem } from '../types';
 
 interface SearchBarProps {
-  players: Player[];
-  onSelect: (player: Player) => void;
+  players: PlayerListItem[];
+  onSelect: (player: PlayerListItem) => void;
+  onNoMatchCreate?: (username: string) => void;
   selectedId?: string | null;
 }
 
-export function SearchBar({ players, onSelect, selectedId }: SearchBarProps) {
+export function SearchBar({ players, onSelect, onNoMatchCreate, selectedId }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
 
@@ -23,7 +24,7 @@ export function SearchBar({ players, onSelect, selectedId }: SearchBarProps) {
     return players.filter((p) => p.username.toLowerCase().includes(q));
   }, [players, query]);
 
-  const handleSelect = (p: Player) => {
+  const handleSelect = (p: PlayerListItem) => {
     onSelect(p);
     setQuery('');
     setOpen(false);
@@ -39,6 +40,19 @@ export function SearchBar({ players, onSelect, selectedId }: SearchBarProps) {
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Tab' || e.key === 'Enter') {
+            if (filtered.length === 1) {
+              e.preventDefault();
+              handleSelect(filtered[0]);
+            } else if (filtered.length === 0 && query.trim() && onNoMatchCreate) {
+              e.preventDefault();
+              onNoMatchCreate(query.trim());
+              setQuery('');
+              setOpen(false);
+            }
+          }
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}

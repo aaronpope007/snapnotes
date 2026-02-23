@@ -1,22 +1,21 @@
 import { useMemo } from 'react';
 import Box from '@mui/material/Box';
 
+const EXPLOIT_COLOR = '#ffb74d';
+
 interface NoteDisplayProps {
-  notes: string;
+  text: string;
 }
 
-function highlightObservations(text: string): React.ReactNode[] {
+function highlightExploitLines(text: string): React.ReactNode[] {
   const lines = text.split('\n');
   return lines.map((line, i) => {
-    if (line.startsWith('**')) {
+    if (line.startsWith('**') || line.startsWith('*')) {
       return (
         <Box
           key={i}
           component="span"
-          sx={{
-            color: '#ffb74d',
-            fontWeight: 600,
-          }}
+          sx={{ color: EXPLOIT_COLOR, fontWeight: 600 }}
         >
           {line}
           {i < lines.length - 1 ? '\n' : ''}
@@ -32,11 +31,8 @@ function highlightObservations(text: string): React.ReactNode[] {
   });
 }
 
-export function NoteDisplay({ notes }: NoteDisplayProps) {
-  const content = useMemo(
-    () => (notes ? highlightObservations(notes) : null),
-    [notes]
-  );
+export function NoteDisplay({ text }: NoteDisplayProps) {
+  const content = useMemo(() => (text ? highlightExploitLines(text) : null), [text]);
 
   return (
     <Box

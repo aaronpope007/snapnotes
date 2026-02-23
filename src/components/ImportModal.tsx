@@ -106,7 +106,8 @@ export function ImportModal({
     setParsed(null);
   };
 
-  const newCount = parsed?.filter((p) => !existingUsernames.has(p.username)).length ?? 0;
+  const normalizedExisting = new Set([...existingUsernames].map((u) => u.toLowerCase()));
+  const newCount = parsed?.filter((p) => !normalizedExisting.has(p.username.toLowerCase())).length ?? 0;
   const existingCount = (parsed?.length ?? 0) - newCount;
 
   return (
@@ -130,8 +131,8 @@ export function ImportModal({
               }}
             >
               {`PlayerName - [stake] [type] - [note text]
-**observation line
-more lines...`}
+**exploit line
+– 400 - multi-stake continuation`}
             </Typography>
             <TextField
               fullWidth
@@ -144,12 +145,7 @@ more lines...`}
             />
             <Button variant="outlined" component="label" disabled={loading}>
               Upload .txt or .docx
-              <input
-                type="file"
-                accept=".txt,.docx"
-                hidden
-                onChange={handleFileUpload}
-              />
+              <input type="file" accept=".txt,.docx" hidden onChange={handleFileUpload} />
             </Button>
           </Box>
         ) : (
@@ -170,7 +166,7 @@ more lines...`}
               {parsed?.map((p, i) => (
                 <Typography key={i} variant="body2" sx={{ mb: 0.5 }}>
                   {p.username}
-                  {existingUsernames.has(p.username) ? (
+                  {normalizedExisting.has(p.username.toLowerCase()) ? (
                     <Typography component="span" variant="caption" color="text.secondary">
                       {' '}
                       (append)

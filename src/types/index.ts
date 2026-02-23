@@ -1,51 +1,47 @@
-export const PLAYER_TYPES = [
-  'Whale',
-  'Calling Station',
-  'Rock',
-  'Maniac',
-  'Weak-Tight Reg',
-  'TAG',
-  'LAG',
-  'GTO Grinder',
-  'Unknown',
-] as const;
+export type { PlayerTypeKey } from '../constants/playerTypes';
+import type { PlayerTypeKey } from '../constants/playerTypes';
 
-export type PlayerType = (typeof PLAYER_TYPES)[number];
+export const STAKE_VALUES = [200, 400, 800, 1000, 2000, 5000] as const;
+export type StakeValue = (typeof STAKE_VALUES)[number];
 
-export const STAKE_VALUES = [25, 50, 100, 200, 400, 800] as const;
-
-export const PLAYER_TYPE_COLORS: Record<PlayerType, string> = {
-  Whale: '#ff9800',
-  'Calling Station': '#009688',
-  Rock: '#9e9e9e',
-  Maniac: '#e91e63',
-  'Weak-Tight Reg': '#ffeb3b',
-  TAG: '#2196f3',
-  LAG: '#f44336',
-  'GTO Grinder': '#9c27b0',
-  Unknown: '#bdbdbd',
-};
+export interface StakeNote {
+  stake: number | null;
+  text: string;
+}
 
 export interface Player {
   _id: string;
   username: string;
-  playerType: PlayerType;
+  playerType: PlayerTypeKey;
   stakesSeenAt: number[];
-  notes: string;
+  stakeNotes: StakeNote[];
+  exploits: string[];
+  rawNote: string;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface PlayerListItem {
+  _id: string;
+  username: string;
+  playerType: PlayerTypeKey;
+  stakesSeenAt: number[];
+}
+
 export interface PlayerCreate {
   username: string;
-  playerType?: PlayerType;
+  playerType?: PlayerTypeKey;
   stakesSeenAt?: number[];
-  notes?: string;
+  stakeNotes?: StakeNote[];
+  exploits?: string[];
+  rawNote?: string;
 }
 
 export interface ImportPlayer {
   username: string;
-  playerType?: string;
-  stakesSeenAt?: number[];
-  notes: string;
+  playerType: PlayerTypeKey;
+  stakesSeenAt: number[];
+  stakeNotes: StakeNote[];
+  exploits: string[];
+  rawNote: string;
 }

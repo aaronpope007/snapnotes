@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -13,36 +14,61 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
+import { parseExploitsFromRawNote } from '../utils/importParser';
 import {
-  STAKE_VALUES,
-  PLAYER_TYPES,
-  PLAYER_TYPE_COLORS,
-  type PlayerType,
-  type PlayerCreate,
-} from '../types';
+  PLAYER_TYPE_KEYS,
+  getPlayerTypeColor,
+  getPlayerTypeLabel,
+} from '../constants/playerTypes';
+import type { PlayerTypeKey, PlayerCreate } from '../types';
+import { STAKE_VALUES } from '../types';
 
 interface AddPlayerModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (player: PlayerCreate) => Promise<void>;
+  initialUsername?: string;
 }
 
-export function AddPlayerModal({ open, onClose, onSubmit }: AddPlayerModalProps) {
+export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: AddPlayerModalProps) {
   const [username, setUsername] = useState('');
-  const [playerType, setPlayerType] = useState<PlayerType>('Unknown');
+  const [playerType, setPlayerType] = useState<PlayerTypeKey>('unknown');
   const [stakesSeenAt, setStakesSeenAt] = useState<number[]>([]);
-  const [notes, setNotes] = useState('');
+  const [rawNote, setRawNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+
+  const initialUsernameValue = initialUsername ?? '';
+  const isDirty =
+    username !== initialUsernameValue ||
+    playerType !== 'unknown' ||
+    stakesSeenAt.length > 0 ||
+    rawNote.trim() !== '';
+
+  useEffect(() => {
+    if (open && initialUsername) {
+      setUsername(initialUsername);
+    }
+  }, [open, initialUsername]);
 
   const reset = () => {
     setUsername('');
-    setPlayerType('Unknown');
+    setPlayerType('unknown');
     setStakesSeenAt([]);
-    setNotes('');
+    setRawNote('');
     setLoading(false);
   };
 
   const handleClose = () => {
+    if (isDirty) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    doClose();
+  };
+
+  const doClose = () => {
+    setConfirmCloseOpen(false);
     reset();
     onClose();
   };
@@ -56,21 +82,24 @@ export function AddPlayerModal({ open, onClose, onSubmit }: AddPlayerModalProps)
   const handleSubmit = async () => {
     const trimmed = username.trim();
     if (!trimmed) return;
+    const note = rawNote.trim();
     setLoading(true);
     try {
       await onSubmit({
         username: trimmed,
         playerType,
         stakesSeenAt: stakesSeenAt.length ? stakesSeenAt : undefined,
-        notes: notes.trim() || undefined,
+        rawNote: note || undefined,
+        exploits: note ? parseExploitsFromRawNote(note) : undefined,
       });
-      handleClose();
+      doClose();
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    <>
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <DialogTitle>Add New Player</DialogTitle>
       <DialogContent>
@@ -87,20 +116,20 @@ export function AddPlayerModal({ open, onClose, onSubmit }: AddPlayerModalProps)
           <Select
             value={playerType}
             label="Player Type"
-            onChange={(e) => setPlayerType(e.target.value as PlayerType)}
+            onChange={(e) => setPlayerType(e.target.value as PlayerTypeKey)}
           >
-            {PLAYER_TYPES.map((t) => (
-              <MenuItem key={t} value={t}>
+            {PLAYER_TYPE_KEYS.map((key) => (
+              <MenuItem key={key} value={key}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box
                     sx={{
                       width: 8,
                       height: 8,
                       borderRadius: 1,
-                      bgcolor: PLAYER_TYPE_COLORS[t],
+                      bgcolor: getPlayerTypeColor(key),
                     }}
                   />
-                  {t}
+                  {getPlayerTypeLabel(key)}
                 </Box>
               </MenuItem>
             ))}
@@ -110,7 +139,7 @@ export function AddPlayerModal({ open, onClose, onSubmit }: AddPlayerModalProps)
           Stakes seen at
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-          {STAKE_VALUES.map((s) => (
+          {STAKE_VALUES.map((s: number) => (
             <FormControlLabel
               key={s}
               control={
@@ -120,7 +149,7 @@ export function AddPlayerModal({ open, onClose, onSubmit }: AddPlayerModalProps)
                   onChange={() => handleStakeToggle(s)}
                 />
               }
-              label={s}
+              label={s as number}
             />
           ))}
         </Box>
@@ -129,8 +158,8 @@ export function AddPlayerModal({ open, onClose, onSubmit }: AddPlayerModalProps)
           label="Initial notes"
           multiline
           minRows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          value={rawNote}
+          onChange={(e) => setRawNote(e.target.value)}
           margin="normal"
         />
       </DialogContent>
@@ -141,5 +170,21 @@ export function AddPlayerModal({ open, onClose, onSubmit }: AddPlayerModalProps)
         </Button>
       </DialogActions>
     </Dialog>
+
+    <Dialog open={confirmCloseOpen} onClose={() => setConfirmCloseOpen(false)}>
+      <DialogTitle>Discard changes?</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          You have unsaved changes. Are you sure you want to close without adding this player?
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setConfirmCloseOpen(false)}>Keep Editing</Button>
+        <Button color="error" variant="contained" onClick={doClose}>
+          Discard
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 }

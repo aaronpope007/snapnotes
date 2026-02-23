@@ -1,28 +1,36 @@
 import mongoose from 'mongoose';
 
-export const PLAYER_TYPES = [
-  'Whale',
-  'Calling Station',
-  'Rock',
-  'Maniac',
-  'Weak-Tight Reg',
-  'TAG',
-  'LAG',
-  'GTO Grinder',
-  'Unknown',
+export const PLAYER_TYPE_KEYS = [
+  'whale',
+  'calling_station',
+  'nit',
+  'maniac',
+  'weak_tight_reg',
+  'tag',
+  'lag',
+  'gto_grinder',
+  'unknown',
 ] as const;
 
-export type PlayerType = (typeof PLAYER_TYPES)[number];
+export const STAKE_VALUES = [200, 400, 800, 1000, 2000, 5000] as const;
 
-export const STAKE_VALUES = [25, 50, 100, 200, 400, 800] as const;
+const stakeNoteSchema = new mongoose.Schema({
+  stake: { type: Number, default: null },
+  text: { type: String, required: true, default: '' },
+});
 
 const playerSchema = new mongoose.Schema(
   {
-    username: { type: String, required: true },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      collation: { locale: 'en', strength: 2 },
+    },
     playerType: {
       type: String,
-      enum: PLAYER_TYPES,
-      default: 'Unknown',
+      enum: PLAYER_TYPE_KEYS,
+      default: 'unknown',
     },
     stakesSeenAt: {
       type: [Number],
@@ -33,9 +41,22 @@ const playerSchema = new mongoose.Schema(
         message: 'Invalid stake value',
       },
     },
-    notes: { type: String, default: '' },
+    stakeNotes: {
+      type: [stakeNoteSchema],
+      default: [],
+    },
+    exploits: {
+      type: [String],
+      default: [],
+    },
+    rawNote: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );
+
+playerSchema.index({ username: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
 
 export const Player = mongoose.model('Player', playerSchema);

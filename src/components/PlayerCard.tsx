@@ -18,14 +18,17 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
+import { parseExploitsFromRawNote } from '../utils/importParser';
+import { ExploitsDisplay } from './ExploitsDisplay';
+import { StakeNotesDisplay } from './StakeNotesDisplay';
 import { NoteEditor } from './NoteEditor';
 import {
-  STAKE_VALUES,
-  PLAYER_TYPES,
-  PLAYER_TYPE_COLORS,
-  type Player,
-  type PlayerType,
-} from '../types';
+  PLAYER_TYPE_KEYS,
+  getPlayerTypeColor,
+  getPlayerTypeLabel,
+} from '../constants/playerTypes';
+import type { Player, PlayerTypeKey } from '../types';
+import { STAKE_VALUES } from '../types';
 
 interface PlayerCardProps {
   player: Player;
@@ -40,7 +43,7 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const accentColor = PLAYER_TYPE_COLORS[player.playerType];
+  const accentColor = getPlayerTypeColor(player.playerType);
 
   const handleSaveName = async () => {
     const trimmed = nameValue.trim();
@@ -58,7 +61,7 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
     }
   };
 
-  const handleTypeChange = async (newType: PlayerType) => {
+  const handleTypeChange = async (newType: PlayerTypeKey) => {
     setSaving(true);
     try {
       await onUpdate(player._id, { playerType: newType });
@@ -80,13 +83,14 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
     }
   };
 
-  const handleSaveNotes = async (notes: string) => {
-    await onUpdate(player._id, { notes });
+  const handleSaveNotes = async (rawNote: string, exploits: string[]) => {
+    await onUpdate(player._id, { rawNote, exploits });
   };
 
   const handleAppendNotes = async (text: string) => {
-    const merged = player.notes ? `${player.notes}\n${text}` : text;
-    await onUpdate(player._id, { notes: merged });
+    const merged = player.rawNote ? `${player.rawNote}\n${text}` : text;
+    const exploits = parseExploitsFromRawNote(merged);
+    await onUpdate(player._id, { rawNote: merged, exploits });
   };
 
   const handleConfirmDelete = async () => {
@@ -135,21 +139,21 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
         <FormControl fullWidth size="small" sx={{ mb: 2 }}>
           <Select
             value={player.playerType}
-            onChange={(e) => handleTypeChange(e.target.value as PlayerType)}
+            onChange={(e) => handleTypeChange(e.target.value as PlayerTypeKey)}
             disabled={saving}
           >
-            {PLAYER_TYPES.map((t) => (
-              <MenuItem key={t} value={t}>
+            {PLAYER_TYPE_KEYS.map((key) => (
+              <MenuItem key={key} value={key}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box
                     sx={{
                       width: 8,
                       height: 8,
                       borderRadius: 1,
-                      bgcolor: PLAYER_TYPE_COLORS[t],
+                      bgcolor: getPlayerTypeColor(key),
                     }}
                   />
-                  {t}
+                  {getPlayerTypeLabel(key)}
                 </Box>
               </MenuItem>
             ))}
@@ -160,7 +164,7 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
           Stakes seen at
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-          {STAKE_VALUES.map((s) => (
+          {STAKE_VALUES.map((s: number) => (
             <FormControlLabel
               key={s}
               control={
@@ -171,16 +175,19 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
                   disabled={saving}
                 />
               }
-              label={s}
+              label={s as number}
             />
           ))}
         </Box>
+
+        <ExploitsDisplay exploits={player.exploits || []} />
+        <StakeNotesDisplay stakeNotes={player.stakeNotes || []} />
 
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
           Notes
         </Typography>
         <NoteEditor
-          notes={player.notes || ''}
+          rawNote={player.rawNote || ''}
           onSave={handleSaveNotes}
           onAppend={handleAppendNotes}
         />

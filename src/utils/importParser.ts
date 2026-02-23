@@ -1,99 +1,163 @@
-import { STAKE_VALUES, PLAYER_TYPES } from '../types';
-import type { ImportPlayer } from '../types';
+import { STAKE_VALUES } from '../types';
+import type { PlayerTypeKey } from '../constants/playerTypes';
+import type { ImportPlayer, StakeNote } from '../types';
+
+const PLAYER_TYPE_HINTS: Array<{ keywords: string[]; key: PlayerTypeKey }> = [
+  { keywords: ['whale'], key: 'whale' },
+  { keywords: ['calling station', 'passive fish'], key: 'calling_station' },
+  { keywords: ['nit', 'rock'], key: 'nit' },
+  { keywords: ['maniac'], key: 'maniac' },
+  { keywords: ['weak tight', 'weak-tight'], key: 'weak_tight_reg' },
+  { keywords: ['tag'], key: 'tag' },
+  { keywords: ['lag'], key: 'lag' },
+  { keywords: ['gto'], key: 'gto_grinder' },
+];
+
+function parsePlayerTypeHint(text: string): PlayerTypeKey {
+  const lower = text.toLowerCase();
+  for (const { keywords, key } of PLAYER_TYPE_HINTS) {
+    if (keywords.some((k) => lower.includes(k))) return key;
+  }
+  return 'unknown';
+}
+
+function extractStake(text: string): number | null {
+  const match = text.match(/\b(200|400|800|1000|2000|5000)\b/);
+  return match ? (parseInt(match[1], 10) as (typeof STAKE_VALUES)[number]) : null;
+}
 
 /**
- * Parses raw text in the format:
- * PlayerName - [stake] [optional player type] - [note text]
- * **observation line
- * [additional lines]
+ * Parses raw import text. New player = line starts with username (no leading dash) followed by " - " or " — ".
+ * Multi-stake continuation = line starts with "–" or "-" + stake + rest.
  */
 export function parseImportText(text: string): ImportPlayer[] {
   const lines = text.split(/\r?\n/);
   const players: ImportPlayer[] = [];
-  let current: ImportPlayer | null = null;
+  let current: {
+    username: string;
+    playerType: PlayerTypeKey;
+    stakesSeenAt: number[];
+    stakeNotes: StakeNote[];
+    exploits: string[];
+    rawLines: string[];
+  } | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const headerMatch = line.match(/^([\w][\w\s]*?)\s+-\s+(.*)$/);
+    const trimmed = line.trim();
 
-    if (headerMatch) {
-      const [, username, rest] = headerMatch;
-      const trimmedName = username.trim();
-      if (!trimmedName) continue;
-
-      // Save previous player if any
-      if (current) {
-        players.push({ ...current, notes: (current.notes || '').trim() });
+    // New player: username (no leading -) followed by " - " or " — "
+    const newPlayerMatch = line.match(/^([^-—][\w\s]*?)\s+[-—]\s+(.*)$/);
+    if (newPlayerMatch) {
+      const username = newPlayerMatch[1].trim();
+      if (username) {
+        if (current) {
+          players.push(buildPlayer(current));
+        }
+        const rest = newPlayerMatch[2];
+        const stake = extractStake(rest);
+        const playerType = parsePlayerTypeHint(rest);
+        const noteMatch = rest.match(/[-—]\s*(.*)$/);
+        const noteText = noteMatch ? noteMatch[1].trim() : rest.trim();
+        current = {
+          username,
+          playerType,
+          stakesSeenAt: stake != null ? [stake] : [],
+          stakeNotes: stake != null ? [{ stake, text: noteText }] : [{ stake: null, text: noteText }],
+          exploits: [],
+          rawLines: [line],
+        };
       }
+      continue;
+    }
 
-      const { stake, playerType, noteLine } = parseHeaderRest(rest);
-      current = {
-        username: trimmedName,
-        playerType: playerType || undefined,
-        stakesSeenAt: stake ? [stake] : [],
-        notes: noteLine || '',
-      };
-    } else if (current && line.trim()) {
-      // Continuation line - append to notes
-      current.notes = (current.notes ? current.notes + '\n' : '') + line;
+    // Multi-stake continuation: leading – or - + stake
+    const multiStakeMatch = line.match(/^[–-]\s*(\d+)?\s*(.*)$/);
+    if (multiStakeMatch && current) {
+      const stakeStr = multiStakeMatch[1];
+      const rest = multiStakeMatch[2].trim();
+      const stake = stakeStr && STAKE_VALUES.includes(parseInt(stakeStr, 10) as (typeof STAKE_VALUES)[number])
+        ? parseInt(stakeStr, 10)
+        : null;
+      const noteMatch = rest.match(/[-—]\s*(.*)$/);
+      const noteText = noteMatch ? noteMatch[1].trim() : rest;
+
+      if (stake != null) {
+        current.stakesSeenAt = [...new Set([...current.stakesSeenAt, stake])].sort((a, b) => a - b);
+        const idx = current.stakeNotes.findIndex((sn) => sn.stake === stake);
+        if (idx >= 0) {
+          current.stakeNotes[idx].text = [current.stakeNotes[idx].text, noteText].filter(Boolean).join('\n');
+        } else {
+          current.stakeNotes.push({ stake, text: noteText });
+        }
+      } else {
+        const last = current.stakeNotes[current.stakeNotes.length - 1];
+        if (last) {
+          last.text = [last.text, noteText].filter(Boolean).join('\n');
+        } else {
+          current.stakeNotes.push({ stake: null, text: noteText });
+        }
+      }
+      current.rawLines.push(line);
+      continue;
+    }
+
+    // Continuation line for current player
+    if (current && trimmed) {
+      if (trimmed.startsWith('**') || trimmed.startsWith('*')) {
+        const exploit = trimmed.replace(/^\*+\s*/, '').trim();
+        if (exploit) current.exploits.push(exploit);
+      } else {
+        const last = current.stakeNotes[current.stakeNotes.length - 1];
+        if (last) {
+          last.text = [last.text, trimmed].filter(Boolean).join('\n');
+        } else {
+          current.stakeNotes.push({ stake: null, text: trimmed });
+        }
+      }
+      current.rawLines.push(line);
     }
   }
 
   if (current) {
-    players.push({ ...current, notes: (current.notes || '').trim() });
+    players.push(buildPlayer(current));
   }
 
   return players;
 }
 
-function parseHeaderRest(rest: string): {
-  stake?: number;
-  playerType?: string;
-  noteLine?: string;
-} {
-  const result: { stake?: number; playerType?: string; noteLine?: string } = {};
-  const parts = rest.split(/\s*-\s*/);
-
-  if (parts.length >= 2) {
-    const first = parts[0].trim();
-    const note = parts.slice(1).join(' - ').trim();
-
-    // Parse first part for stake and optional type
-    const tokens = first.split(/\s+/);
-    for (const t of tokens) {
-      const num = parseInt(t, 10);
-      if (!isNaN(num) && STAKE_VALUES.includes(num as (typeof STAKE_VALUES)[number])) {
-        result.stake = num;
-      } else if (PLAYER_TYPES.some((pt) => pt.toLowerCase().startsWith(t.toLowerCase()))) {
-        const match = PLAYER_TYPES.find((pt) =>
-          pt.toLowerCase().includes(t.toLowerCase())
-        );
-        if (match) result.playerType = match;
-      }
-    }
-    result.noteLine = note;
-  } else if (parts.length === 1) {
-    const first = parts[0].trim();
-    const tokens = first.split(/\s+/);
-    let noteStart = 0;
-    for (let j = 0; j < tokens.length; j++) {
-      const num = parseInt(tokens[j], 10);
-      if (!isNaN(num) && STAKE_VALUES.includes(num as (typeof STAKE_VALUES)[number])) {
-        result.stake = num;
-        noteStart = j + 1;
-        break;
-      }
-      const typeMatch = PLAYER_TYPES.find((pt) =>
-        pt.toLowerCase().includes(tokens[j].toLowerCase())
-      );
-      if (typeMatch) {
-        result.playerType = typeMatch;
-        noteStart = j + 1;
-        break;
-      }
-    }
-    result.noteLine = tokens.slice(noteStart).join(' ').trim() || first;
+function buildPlayer(
+  c: {
+    username: string;
+    playerType: PlayerTypeKey;
+    stakesSeenAt: number[];
+    stakeNotes: StakeNote[];
+    exploits: string[];
+    rawLines: string[];
   }
+): ImportPlayer {
+  return {
+    username: c.username,
+    playerType: c.playerType,
+    stakesSeenAt: [...new Set(c.stakesSeenAt)].sort((a, b) => a - b),
+    stakeNotes: c.stakeNotes,
+    exploits: c.exploits,
+    rawNote: c.rawLines.join('\n'),
+  };
+}
 
-  return result;
+/**
+ * Parse ** and * lines from raw note text into exploits (for manual edit save).
+ */
+export function parseExploitsFromRawNote(rawNote: string): string[] {
+  const lines = rawNote.split(/\r?\n/);
+  const exploits: string[] = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('**') || t.startsWith('*')) {
+      const exploit = t.replace(/^\*+\s*/, '').trim();
+      if (exploit) exploits.push(exploit);
+    }
+  }
+  return exploits;
 }

@@ -12,18 +12,20 @@ import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import {
   fetchPlayers,
+  fetchPlayer,
   createPlayer,
   updatePlayer,
   deletePlayer,
   importPlayers,
-} from './api';
-import type { Player, PlayerCreate, ImportPlayer } from './types';
+} from './api/players';
+import type { Player, PlayerListItem, PlayerCreate, ImportPlayer } from './types';
 
 export default function App() {
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [addInitialUsername, setAddInitialUsername] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -40,8 +42,9 @@ export default function App() {
     setLoading(true);
     try {
       const data = await fetchPlayers();
-      setPlayers(data);
+      setPlayers(Array.isArray(data) ? data : []);
     } catch {
+      setPlayers([]);
       showError('Failed to load players');
     } finally {
       setLoading(false);
@@ -52,12 +55,30 @@ export default function App() {
     loadPlayers();
   }, [loadPlayers]);
 
-  const handleSelectPlayer = (p: Player) => setSelected(p);
+  const handleSelectPlayer = async (p: PlayerListItem) => {
+    try {
+      const full = await fetchPlayer(p._id);
+      setSelected(full);
+    } catch {
+      showError('Failed to load player');
+    }
+  };
 
   const handleUpdatePlayer = async (id: string, updates: Partial<Player>) => {
     try {
       const updated = await updatePlayer(id, updates);
-      setPlayers((prev) => prev.map((p) => (p._id === id ? updated : p)));
+      setPlayers((prev) =>
+        prev.map((p) =>
+          p._id === id
+            ? {
+                ...p,
+                username: updated.username,
+                playerType: updated.playerType,
+                stakesSeenAt: updated.stakesSeenAt,
+              }
+            : p
+        )
+      );
       if (selected?._id === id) setSelected(updated);
       showSuccess('Player updated');
     } catch {
@@ -81,7 +102,11 @@ export default function App() {
   const handleAddPlayer = async (player: PlayerCreate) => {
     try {
       const created = await createPlayer(player);
-      setPlayers((prev) => [...prev, created].sort((a, b) => a.username.localeCompare(b.username)));
+      setPlayers((prev) =>
+        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, stakesSeenAt: created.stakesSeenAt }].sort(
+          (a, b) => a.username.localeCompare(b.username)
+        )
+      );
       setSelected(created);
       showSuccess('Player added');
     } catch {
@@ -97,7 +122,7 @@ export default function App() {
     return result;
   };
 
-  const existingUsernames = new Set(players.map((p) => p.username));
+  const existingUsernames = new Set(players.map((p) => p.username.toLowerCase()));
 
   return (
     <Box
@@ -114,6 +139,10 @@ export default function App() {
           <SearchBar
             players={players}
             onSelect={handleSelectPlayer}
+            onNoMatchCreate={(username) => {
+              setAddInitialUsername(username);
+              setAddOpen(true);
+            }}
             selectedId={selected?._id}
           />
           <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
@@ -156,8 +185,12 @@ export default function App() {
 
       <AddPlayerModal
         open={addOpen}
-        onClose={() => setAddOpen(false)}
+        onClose={() => {
+          setAddOpen(false);
+          setAddInitialUsername('');
+        }}
         onSubmit={handleAddPlayer}
+        initialUsername={addInitialUsername}
       />
       <ImportModal
         open={importOpen}
