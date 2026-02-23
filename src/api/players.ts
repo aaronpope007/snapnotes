@@ -23,7 +23,12 @@ export async function createPlayer(player: PlayerCreate): Promise<Player> {
 
 export async function updatePlayer(
   id: string,
-  updates: Partial<PlayerCreate> & { rawNote?: string; exploits?: string[] }
+  updates: Partial<PlayerCreate> & {
+    rawNote?: string;
+    exploits?: string[];
+    handHistories?: string;
+    exploitHandExamples?: string[];
+  }
 ): Promise<Player> {
   const { data } = await api.put<Player>(`/players/${id}`, updates);
   return data;

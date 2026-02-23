@@ -6,8 +6,10 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import AddIcon from '@mui/icons-material/Add';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
+import { HandHistoryPanel } from './components/HandHistoryPanel';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import {
@@ -130,11 +132,11 @@ export default function App() {
         minHeight: '100vh',
         bgcolor: 'background.default',
         width: '100%',
-        maxWidth: 420,
+        maxWidth: 900,
         margin: '0 auto',
       }}
     >
-      <Container maxWidth={false} sx={{ py: 2, px: 2, maxWidth: 420 }}>
+      <Container maxWidth={false} sx={{ py: 2, px: 2, maxWidth: 900 }}>
         <Box sx={{ mb: 2 }}>
           <SearchBar
             players={players}
@@ -170,12 +172,32 @@ export default function App() {
             Loading...
           </Box>
         ) : selected ? (
-          <PlayerCard
-            player={selected}
-            onUpdate={handleUpdatePlayer}
-            onDelete={handleDeletePlayer}
-            onClose={() => setSelected(null)}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
+            <ErrorBoundary>
+              <Box sx={{ flex: '0 0 400px', maxWidth: 400 }}>
+                <PlayerCard
+                  player={selected}
+                  onUpdate={handleUpdatePlayer}
+                  onDelete={handleDeletePlayer}
+                  onClose={() => setSelected(null)}
+                />
+              </Box>
+            </ErrorBoundary>
+            <HandHistoryPanel
+              handHistories={selected.handHistories ?? ''}
+              exploitHandExamples={selected.exploitHandExamples ?? []}
+              exploits={selected.exploits ?? []}
+              onUpdateHandHistories={async (value) =>
+                handleUpdatePlayer(selected._id, { handHistories: value })
+              }
+              onUpdateExploitHandExample={async (index, value) => {
+                const next = [...(selected.exploitHandExamples ?? [])];
+                while (next.length <= index) next.push('');
+                next[index] = value;
+                await handleUpdatePlayer(selected._id, { exploitHandExamples: next });
+              }}
+            />
+          </Box>
         ) : (
           <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
             Search for a player or add a new one.

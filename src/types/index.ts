@@ -17,6 +17,8 @@ export interface Player {
   stakeNotes: StakeNote[];
   exploits: string[];
   rawNote: string;
+  handHistories: string;
+  exploitHandExamples: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +37,8 @@ export interface PlayerCreate {
   stakeNotes?: StakeNote[];
   exploits?: string[];
   rawNote?: string;
+  handHistories?: string;
+  exploitHandExamples?: string[];
 }
 
 export interface ImportPlayer {

@@ -53,6 +53,14 @@ const playerSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    handHistories: {
+      type: String,
+      default: '',
+    },
+    exploitHandExamples: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );
