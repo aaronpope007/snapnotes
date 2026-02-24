@@ -16,5 +16,26 @@ export const theme = createTheme({
         body: { minHeight: '100vh' },
       },
     },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#161b22',
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          color: 'rgba(255, 255, 255, 0.87)',
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          color: 'rgba(255, 255, 255, 0.87)',
+        },
+      },
+    },
   },
 });

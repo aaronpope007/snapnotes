@@ -6,10 +6,12 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import AddIcon from '@mui/icons-material/Add';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
 import { HandHistoryPanel } from './components/HandHistoryPanel';
+import { HandsToReviewView } from './components/HandsToReviewView';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import {
@@ -29,6 +31,7 @@ export default function App() {
   const [addOpen, setAddOpen] = useState(false);
   const [addInitialUsername, setAddInitialUsername] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
+  const [showHandsToReview, setShowHandsToReview] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -166,10 +169,25 @@ export default function App() {
             >
               Import
             </Button>
+            <Button
+              variant={showHandsToReview ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={<RateReviewIcon />}
+              onClick={() => setShowHandsToReview(!showHandsToReview)}
+            >
+              Hands to Review
+            </Button>
           </Box>
         </Box>
 
-        {loading && !players.length ? (
+        {showHandsToReview ? (
+          <ErrorBoundary>
+            <HandsToReviewView
+              onSuccess={showSuccess}
+              onError={showError}
+            />
+          </ErrorBoundary>
+        ) : loading && !players.length ? (
           <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
             Loading...
           </Box>

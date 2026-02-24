@@ -72,3 +72,30 @@ export interface ImportPlayer {
   exploits: string[];
   importedBy: string;
 }
+
+// Hands to Review
+export type HandToReviewStatus = 'open' | 'archived';
+
+export interface HandToReviewComment {
+  text: string;
+  addedBy: string;
+  addedAt: string;
+}
+
+export interface HandToReview {
+  _id: string;
+  title: string;
+  handText: string;
+  status: HandToReviewStatus;
+  createdBy: string;
+  comments: HandToReviewComment[];
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HandToReviewCreate {
+  title?: string;
+  handText: string;
+  createdBy: string;
+}
