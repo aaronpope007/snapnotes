@@ -9,8 +9,6 @@ import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import Dialog from '@mui/material/Dialog';
@@ -18,17 +16,16 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
-import { parseExploitsFromRawNote } from '../utils/importParser';
 import { ExploitsDisplay } from './ExploitsDisplay';
-import { StakeNotesDisplay } from './StakeNotesDisplay';
-import { NoteEditor } from './NoteEditor';
+import { StakesSection } from './StakesSection';
+import { NotesSection } from './NotesSection';
+import { useUserName } from '../context/UserNameContext';
 import {
   PLAYER_TYPE_KEYS,
   getPlayerTypeColor,
   getPlayerTypeLabel,
 } from '../constants/playerTypes';
-import type { Player, PlayerTypeKey } from '../types';
-import { STAKE_VALUES } from '../types';
+import type { Player, PlayerTypeKey, NoteEntry } from '../types';
 
 interface PlayerCardProps {
   player: Player;
@@ -38,6 +35,7 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardProps) {
+  const userName = useUserName();
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(player.username);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -70,27 +68,80 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
     }
   };
 
-  const handleStakeToggle = async (stake: number) => {
-    const current = player.stakesSeenAt || [];
-    const next = current.includes(stake)
-      ? current.filter((s) => s !== stake)
-      : [...current, stake].sort((a, b) => a - b);
+  const handleUpdateStakes = async (stakesSeenAt: number[]) => {
     setSaving(true);
     try {
-      await onUpdate(player._id, { stakesSeenAt: next });
+      await onUpdate(player._id, { stakesSeenAt });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleSaveNotes = async (rawNote: string, exploits: string[]) => {
-    await onUpdate(player._id, { rawNote, exploits });
+  const handleUpdateFormats = async (formats: string[]) => {
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { formats });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleAppendNotes = async (text: string) => {
-    const merged = player.rawNote ? `${player.rawNote}\n${text}` : text;
-    const exploits = parseExploitsFromRawNote(merged);
-    await onUpdate(player._id, { rawNote: merged, exploits });
+  const handleUpdateOrigin = async (origin: string) => {
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { origin });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAppendNote = async (text: string, addedBy: string) => {
+    const currentNotes = player.notes || [];
+    const newEntry: NoteEntry = {
+      text,
+      addedBy,
+      addedAt: new Date().toISOString(),
+    };
+    const updated = [...currentNotes, newEntry];
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { notes: updated });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddExploit = async (text: string) => {
+    const current = player.exploits || [];
+    const next = [...current, text];
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { exploits: next });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteExploit = async (index: number) => {
+    const current = player.exploits || [];
+    const next = current.filter((_, i) => i !== index);
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { exploits: next });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteNote = async (index: number) => {
+    const current = player.notes || [];
+    const next = current.filter((_, i) => i !== index);
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { notes: next });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -160,36 +211,29 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
           </Select>
         </FormControl>
 
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-          Stakes seen at
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-          {STAKE_VALUES.map((s: number) => (
-            <FormControlLabel
-              key={s}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={(player.stakesSeenAt || []).includes(s)}
-                  onChange={() => handleStakeToggle(s)}
-                  disabled={saving}
-                />
-              }
-              label={s as number}
-            />
-          ))}
-        </Box>
+        <StakesSection
+          stakesSeenAt={player.stakesSeenAt || []}
+          formats={player.formats || []}
+          origin={player.origin || 'WPT Gold'}
+          onUpdateStakes={handleUpdateStakes}
+          onUpdateFormats={handleUpdateFormats}
+          onUpdateOrigin={handleUpdateOrigin}
+          saving={saving}
+        />
 
-        <ExploitsDisplay exploits={player.exploits || []} />
-        <StakeNotesDisplay stakeNotes={player.stakeNotes || []} />
-
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-          Notes
-        </Typography>
-        <NoteEditor
-          rawNote={player.rawNote || ''}
-          onSave={handleSaveNotes}
-          onAppend={handleAppendNotes}
+        <ExploitsDisplay
+          exploits={player.exploits || []}
+          onAddExploit={handleAddExploit}
+          onDeleteExploit={handleDeleteExploit}
+          saving={saving}
+        />
+        <NotesSection
+          key={player._id}
+          notes={player.notes || []}
+          onAppendNote={handleAppendNote}
+          onDeleteNote={handleDeleteNote}
+          userName={userName}
+          saving={saving}
         />
 
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>

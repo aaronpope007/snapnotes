@@ -9,7 +9,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import mammoth from 'mammoth';
 import { parseImportText } from '../utils/importParser';
-import type { ImportPlayer } from '../types';
+import { useUserName } from '../context/UserNameContext';
+import type { ImportPlayer, ParsedImportPlayer } from '../types';
 
 interface ImportModalProps {
   open: boolean;
@@ -18,14 +19,31 @@ interface ImportModalProps {
   existingUsernames: Set<string>;
 }
 
+function toImportPlayer(p: ParsedImportPlayer, importedBy: string): ImportPlayer {
+  const now = new Date().toISOString();
+  return {
+    username: p.username,
+    playerType: p.playerType,
+    stakesSeenAt: p.stakesSeenAt,
+    formats: ['Ring'],
+    origin: 'WPT Gold',
+    exploits: p.exploits,
+    importedBy,
+    notes: p.noteText.trim()
+      ? [{ text: p.noteText, addedBy: importedBy, addedAt: now, source: 'import' as const }]
+      : [],
+  };
+}
+
 export function ImportModal({
   open,
   onClose,
   onImport,
   existingUsernames,
 }: ImportModalProps) {
+  const userName = useUserName();
   const [rawText, setRawText] = useState('');
-  const [parsed, setParsed] = useState<ImportPlayer[] | null>(null);
+  const [parsed, setParsed] = useState<ParsedImportPlayer[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'input' | 'preview'>('input');
 
@@ -91,10 +109,11 @@ export function ImportModal({
   };
 
   const handleConfirmImport = async () => {
-    if (!parsed || parsed.length === 0) return;
+    if (!parsed || parsed.length === 0 || !userName?.trim()) return;
     setLoading(true);
     try {
-      await onImport(parsed);
+      const toImport = parsed.map((p) => toImportPlayer(p, userName.trim()));
+      await onImport(toImport);
       handleClose();
     } finally {
       setLoading(false);
@@ -150,6 +169,11 @@ export function ImportModal({
           </Box>
         ) : (
           <Box>
+            {!userName?.trim() && (
+              <Typography variant="body2" color="warning.main" sx={{ mb: 1 }}>
+                Enter your name first (close this dialog and you&apos;ll be prompted) to attribute imports.
+              </Typography>
+            )}
             <Typography variant="body2" sx={{ mb: 2 }}>
               Found {parsed?.length ?? 0} player(s): {newCount} new, {existingCount} existing (notes
               will be appended).
@@ -191,7 +215,7 @@ export function ImportModal({
             <Button
               variant="contained"
               onClick={handleConfirmImport}
-              disabled={loading || !parsed?.length}
+              disabled={loading || !parsed?.length || !userName?.trim()}
             >
               Import
             </Button>

@@ -1,6 +1,11 @@
 import { STAKE_VALUES } from '../types';
 import type { PlayerTypeKey } from '../constants/playerTypes';
-import type { ImportPlayer, StakeNote } from '../types';
+import type { ParsedImportPlayer } from '../types';
+
+interface StakeNote {
+  stake: number | null;
+  text: string;
+}
 
 const PLAYER_TYPE_HINTS: Array<{ keywords: string[]; key: PlayerTypeKey }> = [
   { keywords: ['whale'], key: 'whale' },
@@ -27,12 +32,12 @@ function extractStake(text: string): number | null {
 }
 
 /**
- * Parses raw import text. New player = line starts with username (no leading dash) followed by " - " or " — ".
- * Multi-stake continuation = line starts with "–" or "-" + stake + rest.
+ * Parses raw import text. Returns ParsedImportPlayer[] with a single combined noteText.
+ * Caller converts to ImportPlayer with notes/importedBy.
  */
-export function parseImportText(text: string): ImportPlayer[] {
+export function parseImportText(text: string): ParsedImportPlayer[] {
   const lines = text.split(/\r?\n/);
-  const players: ImportPlayer[] = [];
+  const players: ParsedImportPlayer[] = [];
   let current: {
     username: string;
     playerType: PlayerTypeKey;
@@ -46,7 +51,6 @@ export function parseImportText(text: string): ImportPlayer[] {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // New player: username (no leading -) followed by " - " or " — "
     const newPlayerMatch = line.match(/^([^-—][\w\s]*?)\s+[-—]\s+(.*)$/);
     if (newPlayerMatch) {
       const username = newPlayerMatch[1].trim();
@@ -71,7 +75,6 @@ export function parseImportText(text: string): ImportPlayer[] {
       continue;
     }
 
-    // Multi-stake continuation: leading – or - + stake
     const multiStakeMatch = line.match(/^[–-]\s*(\d+)?\s*(.*)$/);
     if (multiStakeMatch && current) {
       const stakeStr = multiStakeMatch[1];
@@ -102,7 +105,6 @@ export function parseImportText(text: string): ImportPlayer[] {
       continue;
     }
 
-    // Continuation line for current player
     if (current && trimmed) {
       if (trimmed.startsWith('**') || trimmed.startsWith('*')) {
         const exploit = trimmed.replace(/^\*+\s*/, '').trim();
@@ -135,27 +137,27 @@ function buildPlayer(
     exploits: string[];
     rawLines: string[];
   }
-): ImportPlayer {
+): ParsedImportPlayer {
   return {
     username: c.username,
     playerType: c.playerType,
     stakesSeenAt: [...new Set(c.stakesSeenAt)].sort((a, b) => a - b),
-    stakeNotes: c.stakeNotes,
+    noteText: c.rawLines.join('\n'),
     exploits: c.exploits,
-    rawNote: c.rawLines.join('\n'),
   };
 }
 
 /**
- * Parse ** and * lines from raw note text into exploits (for manual edit save).
+ * Parse ** and * lines from raw note text into exploits.
+ * Supports lines starting with *, **, or ***.
  */
 export function parseExploitsFromRawNote(rawNote: string): string[] {
   const lines = rawNote.split(/\r?\n/);
   const exploits: string[] = [];
   for (const line of lines) {
     const t = line.trim();
-    if (t.startsWith('**') || t.startsWith('*')) {
-      const exploit = t.replace(/^\*+\s*/, '').trim();
+    if (/^\*+/.test(t)) {
+      const exploit = t.replace(/^\*+\s*/, '').replace(/\s*\*+$/, '').trim();
       if (exploit) exploits.push(exploit);
     }
   }

@@ -30,10 +30,10 @@ Backend: Node/Express + Mongoose + MongoDB Atlas. Designed to be ~400px wide, us
   Never hardcode player type colors inline in any component.
 
 ## Data Rules
-- stakeNotes is an array of { stake, text } objects — never flatten this into a single string.
+- notes is an array of { text, addedBy, addedAt, source? } — each entry has attribution (blame).
+- source: 'import' indicates imported content; display as "Imported by {addedBy}".
 - exploits is a separate array of strings — never merge it back into the note body at render time.
-- rawNote is read-only after import — never overwrite it during edits, only on a fresh import of that player.
-- On import, upsert by username using case-insensitive matching.
+- On import, upsert by username using case-insensitive matching. Imported notes use source: 'import'.
 
 ## Out of Scope (Do Not Build)
 - No shorthand-to-image conversion.

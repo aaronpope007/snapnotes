@@ -77,6 +77,8 @@ export default function App() {
                 username: updated.username,
                 playerType: updated.playerType,
                 stakesSeenAt: updated.stakesSeenAt,
+                formats: updated.formats,
+                origin: updated.origin,
               }
             : p
         )
@@ -105,7 +107,7 @@ export default function App() {
     try {
       const created = await createPlayer(player);
       setPlayers((prev) =>
-        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, stakesSeenAt: created.stakesSeenAt }].sort(
+        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold' }].sort(
           (a, b) => a.username.localeCompare(b.username)
         )
       );
@@ -184,18 +186,10 @@ export default function App() {
               </Box>
             </ErrorBoundary>
             <HandHistoryPanel
-              handHistories={selected.handHistories ?? ''}
-              exploitHandExamples={selected.exploitHandExamples ?? []}
-              exploits={selected.exploits ?? []}
-              onUpdateHandHistories={async (value) =>
-                handleUpdatePlayer(selected._id, { handHistories: value })
+              handHistories={selected.handHistories ?? []}
+              onUpdateHandHistories={async (handHistories) =>
+                handleUpdatePlayer(selected._id, { handHistories })
               }
-              onUpdateExploitHandExample={async (index, value) => {
-                const next = [...(selected.exploitHandExamples ?? [])];
-                while (next.length <= index) next.push('');
-                next[index] = value;
-                await handleUpdatePlayer(selected._id, { exploitHandExamples: next });
-              }}
             />
           </Box>
         ) : (

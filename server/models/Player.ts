@@ -14,10 +14,20 @@ export const PLAYER_TYPE_KEYS = [
 
 export const STAKE_VALUES = [200, 400, 800, 1000, 2000, 5000] as const;
 
-const stakeNoteSchema = new mongoose.Schema({
-  stake: { type: Number, default: null },
-  text: { type: String, required: true, default: '' },
-});
+const noteEntrySchema = new mongoose.Schema(
+  {
+    text: { type: String, required: true, default: '' },
+    addedBy: { type: String, required: true },
+    addedAt: { type: Date, required: true, default: Date.now },
+    source: { type: String, enum: ['import'], default: undefined },
+  },
+  { _id: false }
+);
+
+const legacyStakeNoteSchema = new mongoose.Schema(
+  { stake: { type: Number, default: null }, text: { type: String, default: '' } },
+  { _id: false }
+);
 
 const playerSchema = new mongoose.Schema(
   {
@@ -41,21 +51,38 @@ const playerSchema = new mongoose.Schema(
         message: 'Invalid stake value',
       },
     },
-    stakeNotes: {
-      type: [stakeNoteSchema],
+    formats: {
+      type: [String],
       default: [],
+    },
+    origin: {
+      type: String,
+      default: 'WPT Gold',
+    },
+    notes: {
+      type: [noteEntrySchema],
+      default: [],
+    },
+    stakeNotes: {
+      type: [legacyStakeNoteSchema],
+      default: undefined,
+    },
+    rawNote: {
+      type: String,
+      default: undefined,
     },
     exploits: {
       type: [String],
       default: [],
     },
-    rawNote: {
-      type: String,
-      default: '',
-    },
     handHistories: {
-      type: String,
-      default: '',
+      type: [
+        {
+          title: { type: String, default: '' },
+          content: { type: String, default: '' },
+        },
+      ],
+      default: [],
     },
     exploitHandExamples: {
       type: [String],

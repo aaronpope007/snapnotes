@@ -3,75 +3,130 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import Paper from '@mui/material/Paper';
 import { RichNoteRenderer } from './RichNoteRenderer';
+import type { HandHistoryEntry } from '../types';
 
-const EXPLOIT_COLOR = '#ffb74d';
 const PANEL_WIDTH = 340;
 
 interface HandHistoryPanelProps {
-  handHistories: string;
-  exploitHandExamples: string[];
-  exploits: string[];
-  onUpdateHandHistories: (value: string) => Promise<void>;
-  onUpdateExploitHandExample: (index: number, value: string) => Promise<void>;
+  handHistories: HandHistoryEntry[];
+  onUpdateHandHistories: (handHistories: HandHistoryEntry[]) => Promise<void>;
   saving?: boolean;
 }
 
 export function HandHistoryPanel({
   handHistories,
-  exploitHandExamples,
-  exploits,
   onUpdateHandHistories,
-  onUpdateExploitHandExample,
   saving = false,
 }: HandHistoryPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  const [handHistoriesValue, setHandHistoriesValue] = useState(handHistories);
-  const [handExamplesValues, setHandExamplesValues] = useState<string[]>(() =>
-    exploits.map((_, i) => exploitHandExamples[i] ?? '')
+  const [localValues, setLocalValues] = useState<HandHistoryEntry[]>(() =>
+    handHistories?.length ? handHistories : []
   );
+  const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [modalIndex, setModalIndex] = useState<number>(0);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalContent, setModalContent] = useState('');
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
 
   useEffect(() => {
-    setHandHistoriesValue(handHistories);
+    setLocalValues(handHistories?.length ? handHistories : []);
   }, [handHistories]);
 
   useEffect(() => {
-    setHandExamplesValues(exploits.map((_, i) => exploitHandExamples[i] ?? ''));
-  }, [exploits, exploitHandExamples]);
-  const [savingHandHistories, setSavingHandHistories] = useState(false);
-  const [savingExamples, setSavingExamples] = useState<Record<number, boolean>>({});
+    setExpandedItems({});
+  }, [handHistories?.length]);
 
-  const handleHandHistoriesBlur = async () => {
-    if (handHistoriesValue === handHistories) return;
-    setSavingHandHistories(true);
-    try {
-      await onUpdateHandHistories(handHistoriesValue);
-    } finally {
-      setSavingHandHistories(false);
-    }
+  const toggleItem = (i: number) => {
+    setExpandedItems((prev) => ({ ...prev, [i]: !prev[i] }));
   };
 
-  const handleHandExampleBlur = async (index: number) => {
-    const current = handExamplesValues[index] ?? '';
-    const saved = exploitHandExamples[index] ?? '';
-    if (current === saved) return;
-    setSavingExamples((prev) => ({ ...prev, [index]: true }));
-    try {
-      await onUpdateExploitHandExample(index, current);
-    } finally {
-      setSavingExamples((prev) => ({ ...prev, [index]: false }));
-    }
+  const openAddModal = () => {
+    setModalMode('add');
+    setModalTitle('');
+    setModalContent('');
+    setModalOpen(true);
   };
 
-  const handleHandExampleChange = (index: number, value: string) => {
-    setHandExamplesValues((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
+  const openEditModal = (index: number) => {
+    setModalMode('edit');
+    setModalIndex(index);
+    setModalTitle(localValues[index]?.title ?? '');
+    setModalContent(localValues[index]?.content ?? '');
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+  };
+
+  const handleModalSave = async () => {
+    if (modalMode === 'add') {
+      const entry: HandHistoryEntry = {
+        title: modalTitle.trim() || 'Hand',
+        content: modalContent,
+      };
+      const next = [...localValues, entry];
+      setLocalValues(next);
+      setSavingAll(true);
+      try {
+        await onUpdateHandHistories(next);
+      } finally {
+        setSavingAll(false);
+      }
+    } else {
+      const entry: HandHistoryEntry = {
+        title: modalTitle.trim() || 'Hand',
+        content: modalContent,
+      };
+      const next = [...localValues];
+      next[modalIndex] = entry;
+      setLocalValues(next);
+      setSavingIndex(modalIndex);
+      try {
+        await onUpdateHandHistories(next);
+      } finally {
+        setSavingIndex(null);
+      }
+    }
+    closeModal();
+  };
+
+  const handleDelete = async (index: number) => {
+    const next = localValues.filter((_, i) => i !== index);
+    setLocalValues(next);
+    setExpandedItems((prev) => {
+      const out: Record<number, boolean> = {};
+      Object.entries(prev).forEach(([k, v]) => {
+        const i = parseInt(k, 10);
+        if (i < index) out[i] = v;
+        else if (i > index) out[i - 1] = v;
+      });
+      return out;
     });
+    setSavingAll(true);
+    try {
+      await onUpdateHandHistories(next);
+    } finally {
+      setSavingAll(false);
+    }
   };
 
   return (
@@ -114,106 +169,162 @@ export function HandHistoryPanel({
             borderColor: 'divider',
           }}
         >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}
-          >
-            Hand Histories
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            minRows={6}
-            maxRows={12}
-            placeholder="Paste or type hand histories... Use `kd` for cards, e.g. `kdac2s`"
-            value={handHistoriesValue}
-            onChange={(e) => setHandHistoriesValue(e.target.value)}
-            onBlur={handleHandHistoriesBlur}
-            disabled={saving || savingHandHistories}
-            size="small"
-            sx={{
-              mb: 0.5,
-              '& .MuiInputBase-input': { fontSize: '0.8rem', fontFamily: 'monospace' },
-            }}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
-            Preview
-          </Typography>
-          <Box
-            sx={{
-              fontSize: '0.8rem',
-              lineHeight: 1.5,
-              whiteSpace: 'pre-wrap',
-              minHeight: 24,
-              mb: 2,
-              p: 1,
-              borderRadius: 1,
-              bgcolor: 'action.hover',
-            }}
-          >
-            {handHistoriesValue ? <RichNoteRenderer text={handHistoriesValue} /> : null}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontWeight: 600 }}
+            >
+              Hand Histories
+            </Typography>
+            <Button
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={openAddModal}
+              disabled={saving || savingAll}
+            >
+              Add
+            </Button>
           </Box>
 
-          {exploits.length > 0 && (
-            <>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mb: 1, fontWeight: 600 }}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
+            {localValues.map((entry, i) => (
+              <Box
+                key={i}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  overflow: 'hidden',
+                }}
               >
-                Hand Examples (by exploit)
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {exploits.map((exploit, i) => (
-                  <Box key={i}>
-                    <Box
-                      sx={{
-                        color: EXPLOIT_COLOR,
-                        fontWeight: 600,
-                        fontSize: '0.8rem',
-                        mb: 0.5,
-                      }}
-                    >
-                      <RichNoteRenderer text={exploit} />
-                    </Box>
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={2}
-                      maxRows={6}
-                      placeholder="Example hand... Use `kd` for cards"
-                      value={handExamplesValues[i] ?? ''}
-                      onChange={(e) => handleHandExampleChange(i, e.target.value)}
-                      onBlur={() => handleHandExampleBlur(i)}
-                      disabled={saving || savingExamples[i]}
-                      size="small"
-                      sx={{
-                        mb: 0.5,
-                        '& .MuiInputBase-input': { fontSize: '0.75rem', fontFamily: 'monospace' },
-                      }}
-                    />
-                    <Box
-                      sx={{
-                        fontSize: '0.75rem',
-                        lineHeight: 1.5,
-                        whiteSpace: 'pre-wrap',
-                        p: 0.5,
-                        borderRadius: 0.5,
-                        bgcolor: 'action.hover',
-                      }}
-                    >
-                      {handExamplesValues[i] ? (
-                        <RichNoteRenderer text={handExamplesValues[i] ?? ''} />
-                      ) : null}
-                    </Box>
+                <Box
+                  component="button"
+                  onClick={() => toggleItem(i)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    width: '100%',
+                    p: 1,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    bgcolor: expandedItems[i] ? 'action.selected' : 'action.hover',
+                  }}
+                >
+                  <IconButton size="small" sx={{ p: 0 }}>
+                    {expandedItems[i] ? (
+                      <ExpandLessIcon fontSize="small" />
+                    ) : (
+                      <ExpandMoreIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      flex: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontWeight: 500,
+                      color: 'text.primary',
+                    }}
+                  >
+                    {entry.title || `Hand ${i + 1}`}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditModal(i);
+                    }}
+                    disabled={saving || savingAll}
+                    sx={{ p: 0.25 }}
+                    aria-label="Edit"
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(i);
+                    }}
+                    disabled={saving || savingAll}
+                    sx={{ p: 0.25 }}
+                    aria-label="Delete"
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+                <Collapse in={expandedItems[i]}>
+                  <Box
+                    sx={{
+                      fontSize: '0.8rem',
+                      lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
+                      p: 1,
+                      pt: 0,
+                      bgcolor: 'background.default',
+                      borderTop: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    {entry.content ? (
+                      <RichNoteRenderer text={entry.content} />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                        No content
+                      </Typography>
+                    )}
                   </Box>
-                ))}
+                </Collapse>
               </Box>
-            </>
-          )}
+            ))}
+          </Box>
         </Paper>
       )}
+
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth>
+        <DialogTitle>{modalMode === 'add' ? 'Add hand history' : 'Edit hand history'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Title"
+            placeholder="e.g. AK vs 3-bet"
+            value={modalTitle}
+            onChange={(e) => setModalTitle(e.target.value)}
+            margin="normal"
+            size="small"
+          />
+          <TextField
+            fullWidth
+            label="Content"
+            multiline
+            minRows={4}
+            placeholder="Paste hand history... Use `kd` for cards"
+            value={modalContent}
+            onChange={(e) => setModalContent(e.target.value)}
+            margin="normal"
+            size="small"
+            sx={{
+              '& .MuiInputBase-input': { fontSize: '0.85rem', fontFamily: 'monospace' },
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModal}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleModalSave}
+            disabled={saving || savingAll || savingIndex !== null}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

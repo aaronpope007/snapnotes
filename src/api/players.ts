@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Player, PlayerListItem, PlayerCreate, ImportPlayer } from '../types';
+import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry, HandHistoryEntry } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -24,9 +24,12 @@ export async function createPlayer(player: PlayerCreate): Promise<Player> {
 export async function updatePlayer(
   id: string,
   updates: Partial<PlayerCreate> & {
-    rawNote?: string;
+    notes?: NoteEntry[];
     exploits?: string[];
-    handHistories?: string;
+    handHistories?: HandHistoryEntry[];
+    stakesSeenAt?: number[];
+    formats?: string[];
+    origin?: string;
     exploitHandExamples?: string[];
   }
 ): Promise<Player> {

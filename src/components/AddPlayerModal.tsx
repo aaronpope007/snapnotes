@@ -14,14 +14,14 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
-import { parseExploitsFromRawNote } from '../utils/importParser';
+import { useUserName } from '../context/UserNameContext';
 import {
   PLAYER_TYPE_KEYS,
   getPlayerTypeColor,
   getPlayerTypeLabel,
 } from '../constants/playerTypes';
-import type { PlayerTypeKey, PlayerCreate } from '../types';
-import { STAKE_VALUES } from '../types';
+import type { PlayerTypeKey, PlayerCreate, NoteEntry } from '../types';
+import { STAKE_VALUES, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
 
 interface AddPlayerModalProps {
   open: boolean;
@@ -31,9 +31,12 @@ interface AddPlayerModalProps {
 }
 
 export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: AddPlayerModalProps) {
+  const userName = useUserName();
   const [username, setUsername] = useState('');
   const [playerType, setPlayerType] = useState<PlayerTypeKey>('unknown');
   const [stakesSeenAt, setStakesSeenAt] = useState<number[]>([]);
+  const [formats, setFormats] = useState<string[]>([]);
+  const [origin, setOrigin] = useState('WPT Gold');
   const [rawNote, setRawNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
@@ -43,6 +46,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     username !== initialUsernameValue ||
     playerType !== 'unknown' ||
     stakesSeenAt.length > 0 ||
+    formats.length > 0 ||
     rawNote.trim() !== '';
 
   useEffect(() => {
@@ -55,6 +59,8 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     setUsername('');
     setPlayerType('unknown');
     setStakesSeenAt([]);
+    setFormats([]);
+    setOrigin('WPT Gold');
     setRawNote('');
     setLoading(false);
   };
@@ -79,18 +85,35 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     );
   };
 
+  const handleFormatToggle = (format: string) => {
+    setFormats((prev) =>
+      prev.includes(format) ? prev.filter((f) => f !== format) : [...prev, format]
+    );
+  };
+
   const handleSubmit = async () => {
     const trimmed = username.trim();
     if (!trimmed) return;
     const note = rawNote.trim();
     setLoading(true);
     try {
+      const notes: NoteEntry[] | undefined =
+        note && userName
+          ? [
+              {
+                text: note,
+                addedBy: userName,
+                addedAt: new Date().toISOString(),
+              },
+            ]
+          : undefined;
       await onSubmit({
         username: trimmed,
         playerType,
         stakesSeenAt: stakesSeenAt.length ? stakesSeenAt : undefined,
-        rawNote: note || undefined,
-        exploits: note ? parseExploitsFromRawNote(note) : undefined,
+        formats: formats.length ? formats : undefined,
+        origin: origin || 'WPT Gold',
+        notes,
       });
       doClose();
     } finally {
@@ -136,10 +159,10 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
           </Select>
         </FormControl>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Stakes seen at
+          Stakes
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-          {STAKE_VALUES.map((s: number) => (
+          {STAKE_VALUES.map((s) => (
             <FormControlLabel
               key={s}
               control={
@@ -149,10 +172,40 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
                   onChange={() => handleStakeToggle(s)}
                 />
               }
-              label={s as number}
+              label={s}
             />
           ))}
         </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Format
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+          {FORMAT_OPTIONS.map((f) => (
+            <FormControlLabel
+              key={f}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={formats.includes(f)}
+                  onChange={() => handleFormatToggle(f)}
+                />
+              }
+              label={f}
+            />
+          ))}
+        </Box>
+        <FormControl fullWidth size="small" margin="normal">
+          <InputLabel>Origin</InputLabel>
+          <Select
+            value={origin}
+            label="Origin"
+            onChange={(e) => setOrigin(e.target.value)}
+          >
+            {ORIGIN_OPTIONS.map((opt) => (
+              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <TextField
           fullWidth
           label="Initial notes"
