@@ -5,6 +5,7 @@ import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -62,6 +63,7 @@ export default function App() {
 
   const handleSelectPlayer = async (p: PlayerListItem) => {
     try {
+      setShowHandsToReview(false);
       const full = await fetchPlayer(p._id);
       setSelected(full);
     } catch {
@@ -181,12 +183,25 @@ export default function App() {
         </Box>
 
         {showHandsToReview ? (
-          <ErrorBoundary>
-            <HandsToReviewView
-              onSuccess={showSuccess}
-              onError={showError}
-            />
-          </ErrorBoundary>
+          <Box>
+            {selected && (
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => setShowHandsToReview(false)}
+                sx={{ mb: 1 }}
+              >
+                Back to {selected.username}
+              </Button>
+            )}
+            <ErrorBoundary>
+              <HandsToReviewView
+                onSuccess={showSuccess}
+                onError={showError}
+              />
+            </ErrorBoundary>
+          </Box>
         ) : loading && !players.length ? (
           <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
             Loading...
