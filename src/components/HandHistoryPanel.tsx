@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -18,7 +18,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import Paper from '@mui/material/Paper';
 import { RichNoteRenderer } from './RichNoteRenderer';
+import { CardImage } from './CardImage';
 import type { HandHistoryEntry } from '../types';
+
+const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
+const SUITS = ['s', 'h', 'd', 'c'] as const;
+const ALL_CARDS = RANKS.flatMap((r) => SUITS.map((s) => ({ rank: r, suit: s })));
 
 const PANEL_WIDTH = 340;
 
@@ -45,6 +50,8 @@ export function HandHistoryPanel({
   const [modalContent, setModalContent] = useState('');
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [savingAll, setSavingAll] = useState(false);
+  const contentInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const contentSelectionRef = useRef({ start: 0, end: 0 });
 
   useEffect(() => {
     setLocalValues(handHistories?.length ? handHistories : []);
@@ -76,6 +83,24 @@ export function HandHistoryPanel({
   const closeModal = () => {
     setModalOpen(false);
   };
+
+  const insertCardAtCursor = useCallback(
+    (shorthand: string) => {
+      const { start } = contentSelectionRef.current;
+      const before = modalContent.slice(0, start);
+      const after = modalContent.slice(start);
+      const inserted = `\`${shorthand}\``;
+      const next = before + inserted + after;
+      setModalContent(next);
+      const newPos = start + inserted.length;
+      contentSelectionRef.current = { start: newPos, end: newPos };
+      setTimeout(() => {
+        contentInputRef.current?.focus();
+        contentInputRef.current?.setSelectionRange(newPos, newPos);
+      }, 0);
+    },
+    [modalContent]
+  );
 
   const handleModalSave = async () => {
     if (modalMode === 'add') {
@@ -288,7 +313,66 @@ export function HandHistoryPanel({
       )}
 
       <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth>
-        <DialogTitle>{modalMode === 'add' ? 'Add hand history' : 'Edit hand history'}</DialogTitle>
+        <DialogTitle sx={{ pb: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+            <Typography component="span" variant="h6">
+              {modalMode === 'add' ? 'Add hand history' : 'Edit hand history'}
+            </Typography>
+            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+              — click a card to insert at cursor
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.25,
+              mt: 1,
+            }}
+          >
+            {ALL_CARDS.map(({ rank, suit }) => (
+              <Box
+                key={`${rank}${suit}`}
+                component="button"
+                type="button"
+                onClick={() => insertCardAtCursor(`${rank.toLowerCase()}${suit}`)}
+                sx={{
+                  display: 'inline-flex',
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  cursor: 'pointer',
+                  background: 'none',
+                  borderRadius: 0.5,
+                  '&:hover': { bgcolor: 'action.hover' },
+                  '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
+                }}
+                aria-label={`Insert ${rank} of ${suit}`}
+              >
+                <CardImage rank={rank} suit={suit} size="xs" />
+              </Box>
+            ))}
+            <Box
+              component="button"
+              type="button"
+              onClick={() => insertCardAtCursor('x')}
+              sx={{
+                display: 'inline-flex',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                cursor: 'pointer',
+                background: 'none',
+                borderRadius: 0.5,
+                '&:hover': { bgcolor: 'action.hover' },
+                '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
+              }}
+              aria-label="Insert unknown card"
+            >
+              <CardImage rank="?" suit={null} size="xs" />
+            </Box>
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
@@ -304,9 +388,18 @@ export function HandHistoryPanel({
             label="Content"
             multiline
             minRows={4}
-            placeholder="Paste hand history... Use `kd` for cards"
+            placeholder="Paste hand history... Click a card above to insert at cursor"
             value={modalContent}
             onChange={(e) => setModalContent(e.target.value)}
+            onSelect={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
+            }}
+            onBlur={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
+            }}
+            inputRef={contentInputRef}
             margin="normal"
             size="small"
             sx={{

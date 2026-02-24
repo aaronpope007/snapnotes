@@ -7,7 +7,7 @@ interface CardImageProps {
   rank: string;
   suit: string | null;
   backdoor?: boolean;
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
 }
 
 const SUIT_COLORS: Record<string, string> = {
@@ -25,7 +25,9 @@ const SUIT_FACE_COLORS: Record<string, string> = {
   s: 'rgba(200, 200, 200, 0.85)',
 };
 
-const SIZES = { sm: { width: 42, height: 60 }, md: { width: 56, height: 80 } };
+const SIZES = { xs: { width: 25, height: 36 }, sm: { width: 42, height: 60 }, md: { width: 56, height: 80 } };
+const PLACEHOLDER_FONT_SIZE: Record<keyof typeof SIZES, number> = { xs: 17, sm: 28, md: 36 };
+const BACKDOOR_FONT_SIZE: Record<keyof typeof SIZES, number> = { xs: 7, sm: 10, md: 12 };
 
 export function CardImage({
   rank,
@@ -35,6 +37,7 @@ export function CardImage({
 }: CardImageProps) {
   const { width, height } = SIZES[size];
   const heightPx = `${height}px`;
+  const placeholderFontSize = PLACEHOLDER_FONT_SIZE[size];
 
   if (suit === null) {
     return (
@@ -51,7 +54,7 @@ export function CardImage({
           borderRadius: '2px',
           bgcolor: 'grey.800',
           color: 'grey.400',
-          fontSize: '28px',
+          fontSize: `${placeholderFontSize}px`,
           fontWeight: 'bold',
           mx: '1px',
           verticalAlign: 'middle',
@@ -119,7 +122,7 @@ export function CardImage({
             position: 'absolute',
             top: -2,
             right: 2,
-            fontSize: '10px',
+            fontSize: `${BACKDOOR_FONT_SIZE[size]}px`,
             fontWeight: 'bold',
             color: suitColor,
             lineHeight: 1,

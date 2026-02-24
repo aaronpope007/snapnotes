@@ -7,10 +7,16 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Alert from '@mui/material/Alert';
 import mammoth from 'mammoth';
 import { parseImportText } from '../utils/importParser';
+import { parseLooseImport, findFuzzyDuplicates } from '../utils/looseParser';
 import { useUserName } from '../context/UserNameContext';
 import type { ImportPlayer, ParsedImportPlayer } from '../types';
+
+export type ImportMode = 'strict' | 'loose';
 
 interface ImportModalProps {
   open: boolean;
@@ -42,6 +48,7 @@ export function ImportModal({
   existingUsernames,
 }: ImportModalProps) {
   const userName = useUserName();
+  const [importMode, setImportMode] = useState<ImportMode>('strict');
   const [rawText, setRawText] = useState('');
   const [parsed, setParsed] = useState<ParsedImportPlayer[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,7 +110,7 @@ export function ImportModal({
   );
 
   const handleParse = () => {
-    const players = parseImportText(rawText);
+    const players = importMode === 'strict' ? parseImportText(rawText) : parseLooseImport(rawText);
     setParsed(players);
     setStep('preview');
   };
@@ -128,6 +135,7 @@ export function ImportModal({
   const normalizedExisting = new Set([...existingUsernames].map((u) => u.toLowerCase()));
   const newCount = parsed?.filter((p) => !normalizedExisting.has(p.username.toLowerCase())).length ?? 0;
   const existingCount = (parsed?.length ?? 0) - newCount;
+  const fuzzyDuplicates = parsed ? findFuzzyDuplicates(parsed, existingUsernames) : [];
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -135,24 +143,50 @@ export function ImportModal({
       <DialogContent>
         {step === 'input' ? (
           <Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Paste raw text below or upload a .txt or .docx file. Format:
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+              Import mode
             </Typography>
-            <Typography
-              component="pre"
-              variant="caption"
-              sx={{
-                bgcolor: 'action.hover',
-                p: 1,
-                borderRadius: 1,
-                mb: 1,
-                overflow: 'auto',
-              }}
+            <ToggleButtonGroup
+              value={importMode}
+              exclusive
+              onChange={(_, v) => v != null && setImportMode(v)}
+              size="small"
+              sx={{ mb: 1 }}
             >
-              {`PlayerName - [stake] [type] - [note text]
+              <ToggleButton value="strict" aria-label="Strict import">
+                Strict Import
+              </ToggleButton>
+              <ToggleButton value="loose" aria-label="Loose import">
+                Loose Import
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1 }}>
+              {importMode === 'strict'
+                ? "For notes in 'PlayerName - stake - note' format"
+                : 'For notes where player names and notes are on separate lines'}
+            </Typography>
+            {importMode === 'strict' && (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  Format:
+                </Typography>
+                <Typography
+                  component="pre"
+                  variant="caption"
+                  sx={{
+                    bgcolor: 'action.hover',
+                    p: 1,
+                    borderRadius: 1,
+                    mb: 1,
+                    overflow: 'auto',
+                  }}
+                >
+                  {`PlayerName - [stake] [type] - [note text]
 **exploit line
 – 400 - multi-stake continuation`}
-            </Typography>
+                </Typography>
+              </>
+            )}
             <TextField
               fullWidth
               multiline
@@ -174,9 +208,26 @@ export function ImportModal({
                 Enter your name first (close this dialog and you&apos;ll be prompted) to attribute imports.
               </Typography>
             )}
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              Found {parsed?.length ?? 0} player(s): {newCount} new, {existingCount} existing (notes
-              will be appended).
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              {importMode === 'loose' && (
+                <>
+                  Total player blocks detected: {parsed?.length ?? 0}.{' '}
+                </>
+              )}
+              {newCount} new, {existingCount} existing (notes will be appended).
+            </Typography>
+            {fuzzyDuplicates.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 1 }}>
+                {fuzzyDuplicates.map(({ incoming, existing }, i) => (
+                  <Typography key={i} variant="body2" component="span" display="block">
+                    &quot;{incoming}&quot; may match existing player &quot;{existing}&quot; — will be
+                    treated as a new player unless you merge them manually after import.
+                  </Typography>
+                ))}
+              </Alert>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              Detected player names
             </Typography>
             <Box
               sx={{
