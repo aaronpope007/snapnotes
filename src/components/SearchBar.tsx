@@ -43,7 +43,7 @@ export function SearchBar({ players, onSelect, onNoMatchCreate, selectedId }: Se
         }}
         onKeyDown={(e) => {
           if (e.key === 'Tab' || e.key === 'Enter') {
-            if (filtered.length === 1) {
+            if (filtered.length >= 1) {
               e.preventDefault();
               handleSelect(filtered[0]);
             } else if (filtered.length === 0 && query.trim() && onNoMatchCreate) {

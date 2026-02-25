@@ -21,7 +21,7 @@ import {
   getPlayerTypeLabel,
 } from '../constants/playerTypes';
 import type { PlayerTypeKey, PlayerCreate, NoteEntry } from '../types';
-import { STAKE_VALUES, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
+import { STAKE_VALUES, GAME_TYPE_OPTIONS, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
 
 interface AddPlayerModalProps {
   open: boolean;
@@ -34,6 +34,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
   const userName = useUserName();
   const [username, setUsername] = useState('');
   const [playerType, setPlayerType] = useState<PlayerTypeKey>('unknown');
+  const [gameTypes, setGameTypes] = useState<string[]>([]);
   const [stakesSeenAt, setStakesSeenAt] = useState<number[]>([]);
   const [formats, setFormats] = useState<string[]>([]);
   const [origin, setOrigin] = useState('WPT Gold');
@@ -45,6 +46,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
   const isDirty =
     username !== initialUsernameValue ||
     playerType !== 'unknown' ||
+    gameTypes.length > 0 ||
     stakesSeenAt.length > 0 ||
     formats.length > 0 ||
     rawNote.trim() !== '';
@@ -58,6 +60,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
   const reset = () => {
     setUsername('');
     setPlayerType('unknown');
+    setGameTypes([]);
     setStakesSeenAt([]);
     setFormats([]);
     setOrigin('WPT Gold');
@@ -91,6 +94,12 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     );
   };
 
+  const handleGameTypeToggle = (gameType: string) => {
+    setGameTypes((prev) =>
+      prev.includes(gameType) ? prev.filter((g) => g !== gameType) : [...prev, gameType]
+    );
+  };
+
   const handleSubmit = async () => {
     const trimmed = username.trim();
     if (!trimmed) return;
@@ -110,6 +119,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
       await onSubmit({
         username: trimmed,
         playerType,
+        gameTypes: gameTypes.length ? gameTypes : undefined,
         stakesSeenAt: stakesSeenAt.length ? stakesSeenAt : undefined,
         formats: formats.length ? formats : undefined,
         origin: origin || 'WPT Gold',
@@ -132,6 +142,12 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
           label="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (username.trim() && !loading) handleSubmit();
+            }
+          }}
           margin="normal"
         />
         <FormControl fullWidth margin="normal" size="small">
@@ -159,20 +175,20 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
           </Select>
         </FormControl>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Stakes
+          Games
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-          {STAKE_VALUES.map((s) => (
+          {GAME_TYPE_OPTIONS.map((g) => (
             <FormControlLabel
-              key={s}
+              key={g}
               control={
                 <Checkbox
                   size="small"
-                  checked={stakesSeenAt.includes(s)}
-                  onChange={() => handleStakeToggle(s)}
+                  checked={gameTypes.includes(g)}
+                  onChange={() => handleGameTypeToggle(g)}
                 />
               }
-              label={s}
+              label={g}
             />
           ))}
         </Box>
@@ -194,11 +210,29 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
             />
           ))}
         </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Stakes seen at
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+          {STAKE_VALUES.map((s) => (
+            <FormControlLabel
+              key={s}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={stakesSeenAt.includes(s)}
+                  onChange={() => handleStakeToggle(s)}
+                />
+              }
+              label={s}
+            />
+          ))}
+        </Box>
         <FormControl fullWidth size="small" margin="normal">
-          <InputLabel>Origin</InputLabel>
+          <InputLabel>Site</InputLabel>
           <Select
             value={origin}
-            label="Origin"
+            label="Site"
             onChange={(e) => setOrigin(e.target.value)}
           >
             {ORIGIN_OPTIONS.map((opt) => (
