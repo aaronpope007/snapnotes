@@ -7,27 +7,32 @@ interface CardImageProps {
   rank: string;
   suit: string | null;
   backdoor?: boolean;
-  size?: 'xs' | 'sm' | 'md';
+  size?: 'xxs' | 'xs' | 'sm' | 'md';
 }
 
 const SUIT_COLORS: Record<string, string> = {
-  h: '#e53935',
-  d: '#1e88e5',
-  c: '#43a047',
+  h: '#e91e1e',
+  d: '#2196f3',
+  c: '#4caf50',
   s: '#757575',
 };
 
 // Overlay colors to tint the card face (white/beige -> suit color) via multiply blend
 const SUIT_FACE_COLORS: Record<string, string> = {
-  h: 'rgba(255, 215, 215, 0.9)',
-  d: 'rgba(215, 230, 255, 0.9)',
-  c: 'rgba(215, 255, 215, 0.9)',
+  h: 'rgba(255, 195, 195, 0.92)',
+  d: 'rgba(195, 220, 255, 0.92)',
+  c: 'rgba(195, 255, 195, 0.92)',
   s: 'rgba(200, 200, 200, 0.85)',
 };
 
-const SIZES = { xs: { width: 25, height: 36 }, sm: { width: 42, height: 60 }, md: { width: 56, height: 80 } };
-const PLACEHOLDER_FONT_SIZE: Record<keyof typeof SIZES, number> = { xs: 17, sm: 28, md: 36 };
-const BACKDOOR_FONT_SIZE: Record<keyof typeof SIZES, number> = { xs: 7, sm: 10, md: 12 };
+const SIZES = {
+  xxs: { width: 20, height: 29 },
+  xs: { width: 25, height: 36 },
+  sm: { width: 42, height: 60 },
+  md: { width: 56, height: 80 },
+};
+const PLACEHOLDER_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 14, xs: 17, sm: 28, md: 36 };
+const BACKDOOR_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 6, xs: 7, sm: 10, md: 12 };
 
 export function CardImage({
   rank,

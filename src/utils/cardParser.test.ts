@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNoteTokens } from './cardParser';
+import { parseNoteTokens, getUsedCardShorthands } from './cardParser';
 
 describe('parseNoteTokens', () => {
   it('parses `kd` as single card (backtick syntax)', () => {
@@ -55,5 +55,28 @@ describe('parseNoteTokens', () => {
   it('handles unclosed backtick as plain text', () => {
     const tokens = parseNoteTokens('flop `Kd');
     expect(tokens.map((t) => (t.type === 'text' ? t.value : '')).join('')).toBe('flop `Kd');
+  });
+});
+
+describe('getUsedCardShorthands', () => {
+  it('returns shorthands for all cards in backticks', () => {
+    const used = getUsedCardShorthands('hero has `8s` `6h` flop `8d` `2c` `9h`');
+    expect(used.has('8s')).toBe(true);
+    expect(used.has('6h')).toBe(true);
+    expect(used.has('8d')).toBe(true);
+    expect(used.has('2c')).toBe(true);
+    expect(used.has('9h')).toBe(true);
+    expect(used.size).toBe(5);
+  });
+
+  it('includes x for unknown cards', () => {
+    const used = getUsedCardShorthands('turn `x`');
+    expect(used.has('x')).toBe(true);
+    expect(used.size).toBe(1);
+  });
+
+  it('ignores text outside backticks', () => {
+    const used = getUsedCardShorthands('Kd without backticks');
+    expect(used.size).toBe(0);
   });
 });

@@ -19,6 +19,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import Paper from '@mui/material/Paper';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryCardPicker } from './HandHistoryCardPicker';
+import { getUsedCardShorthands } from '../utils/cardParser';
 import type { HandHistoryEntry } from '../types';
 
 const PANEL_WIDTH = 340;
@@ -335,43 +336,54 @@ export function HandHistoryPanel({
               — click a card to insert at cursor
             </Typography>
           </Box>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 1,
+            alignItems: 'flex-start',
+          }}
+        >
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <TextField
+              fullWidth
+              label="Title"
+              placeholder="e.g. AK vs 3-bet"
+              value={modalTitle}
+              onChange={(e) => setModalTitle(e.target.value)}
+              margin="normal"
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="Content"
+              multiline
+              minRows={4}
+              placeholder="Paste hand history... Click a card on the right to insert at cursor"
+              value={modalContent}
+              onChange={(e) => setModalContent(e.target.value)}
+              onSelect={(e) => {
+                const t = e.target as HTMLTextAreaElement;
+                contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
+              }}
+              onBlur={(e) => {
+                const t = e.target as HTMLTextAreaElement;
+                contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
+              }}
+              inputRef={contentInputRef}
+              margin="normal"
+              size="small"
+              sx={{
+                flex: 1,
+                '& .MuiInputBase-input': { fontSize: '0.85rem', fontFamily: 'monospace' },
+              }}
+            />
+          </Box>
           <HandHistoryCardPicker
             onInsertCard={insertCardAtCursor}
             onInsertText={insertTextAtCursor}
-          />
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Title"
-            placeholder="e.g. AK vs 3-bet"
-            value={modalTitle}
-            onChange={(e) => setModalTitle(e.target.value)}
-            margin="normal"
-            size="small"
-          />
-          <TextField
-            fullWidth
-            label="Content"
-            multiline
-            minRows={4}
-            placeholder="Paste hand history... Click a card above to insert at cursor"
-            value={modalContent}
-            onChange={(e) => setModalContent(e.target.value)}
-            onSelect={(e) => {
-              const t = e.target as HTMLTextAreaElement;
-              contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
-            }}
-            onBlur={(e) => {
-              const t = e.target as HTMLTextAreaElement;
-              contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
-            }}
-            inputRef={contentInputRef}
-            margin="normal"
-            size="small"
-            sx={{
-              '& .MuiInputBase-input': { fontSize: '0.85rem', fontFamily: 'monospace' },
-            }}
+            usedShorthands={getUsedCardShorthands(modalContent)}
           />
         </DialogContent>
         <DialogActions>

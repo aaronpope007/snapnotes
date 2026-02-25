@@ -6,67 +6,99 @@ import { CardImage } from './CardImage';
 
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
 const SUITS = ['s', 'h', 'd', 'c'] as const;
-const ALL_CARDS = RANKS.flatMap((r) => SUITS.map((s) => ({ rank: r, suit: s })));
-const PSB_PERCENTS = [10, 25, 33, 50, 70, 75, 100, 120] as const;
+const PSB_PERCENTS = [25, 50, 75, 100] as const;
+
+function CardButton({
+  rank,
+  suit,
+  used,
+  onInsert,
+  ariaLabel,
+}: {
+  rank: string;
+  suit: string | null;
+  used: boolean;
+  onInsert: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      disabled={used}
+      onClick={() => !used && onInsert()}
+      sx={{
+        display: 'inline-flex',
+        border: 'none',
+        padding: 0,
+        margin: 0,
+        cursor: used ? 'default' : 'pointer',
+        background: 'none',
+        borderRadius: 0.5,
+        opacity: used ? 0.4 : 1,
+        '&:hover': used ? {} : { bgcolor: 'action.hover' },
+        '&:focus-visible': used ? {} : { outline: '2px solid', outlineColor: 'primary.main' },
+      }}
+      aria-label={ariaLabel}
+    >
+      <CardImage rank={rank} suit={suit} size="xxs" />
+    </Box>
+  );
+}
 
 export interface HandHistoryCardPickerProps {
   onInsertCard: (shorthand: string) => void;
   onInsertText: (text: string) => void;
+  /** Card shorthands already used in the content (e.g. from backticks). These will be greyed out and not selectable. */
+  usedShorthands?: Set<string>;
 }
 
-export function HandHistoryCardPicker({ onInsertCard, onInsertText }: HandHistoryCardPickerProps) {
+export function HandHistoryCardPicker({
+  onInsertCard,
+  onInsertText,
+  usedShorthands,
+}: HandHistoryCardPickerProps) {
   const [customPsbPercent, setCustomPsbPercent] = useState<string>('');
 
   return (
-    <>
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 0.25,
-          mt: 1,
-        }}
-      >
-        {ALL_CARDS.map(({ rank, suit }) => (
-          <Box
-            key={`${rank}${suit}`}
-            component="button"
-            type="button"
-            onClick={() => onInsertCard(`${rank.toLowerCase()}${suit}`)}
-            sx={{
-              display: 'inline-flex',
-              border: 'none',
-              padding: 0,
-              margin: 0,
-              cursor: 'pointer',
-              background: 'none',
-              borderRadius: 0.5,
-              '&:hover': { bgcolor: 'action.hover' },
-              '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
-            }}
-            aria-label={`Insert ${rank} of ${suit}`}
-          >
-            <CardImage rank={rank} suit={suit} size="xs" />
+    <Box
+      sx={{
+        flexShrink: 0,
+        width: 220,
+        maxHeight: '60vh',
+        overflowY: 'auto',
+        pl: 1,
+        borderLeft: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        {RANKS.map((rank) => (
+          <Box key={rank} sx={{ display: 'flex', flexWrap: 'nowrap', gap: 0.25 }}>
+            {SUITS.map((suit) => {
+              const shorthand = `${rank.toLowerCase()}${suit}`;
+              const used = usedShorthands?.has(shorthand) ?? false;
+              return (
+                <CardButton
+                  key={shorthand}
+                  rank={rank}
+                  suit={suit}
+                  used={used}
+                  onInsert={() => onInsertCard(shorthand)}
+                  ariaLabel={used ? `${rank} of ${suit} (already used)` : `Insert ${rank} of ${suit}`}
+                />
+              );
+            })}
           </Box>
         ))}
-        <Box
-          component="button"
-          type="button"
-          onClick={() => onInsertCard('x')}
-          sx={{
-            display: 'inline-flex',
-            border: 'none',
-            padding: 0,
-            margin: 0,
-            cursor: 'pointer',
-            background: 'none',
-            borderRadius: 0.5,
-            '&:hover': { bgcolor: 'action.hover' },
-            '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
-          }}
-          aria-label="Insert unknown card"
-        >
-          <CardImage rank="?" suit={null} size="xs" />
+        <Box sx={{ display: 'flex', gap: 0.25 }}>
+          <CardButton
+            rank="?"
+            suit={null}
+            used={usedShorthands?.has('x') ?? false}
+            onInsert={() => onInsertCard('x')}
+            ariaLabel={usedShorthands?.has('x') ? 'Unknown card (already used)' : 'Insert unknown card'}
+          />
         </Box>
       </Box>
       <Box
@@ -90,6 +122,15 @@ export function HandHistoryCardPicker({ onInsertCard, onInsertText }: HandHistor
             b{pct}
           </Button>
         ))}
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => onInsertText('overbet')}
+          sx={{ minWidth: 0, px: 1 }}
+          aria-label="Insert overbet"
+        >
+          overbet
+        </Button>
         <TextField
           size="small"
           placeholder="%"
@@ -126,6 +167,6 @@ export function HandHistoryCardPicker({ onInsertCard, onInsertText }: HandHistor
           bx
         </Button>
       </Box>
-    </>
+    </Box>
   );
 }
