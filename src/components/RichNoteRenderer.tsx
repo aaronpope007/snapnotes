@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, Fragment } from 'react';
 import Box from '@mui/material/Box';
 import { parseNoteTokens } from '../utils/cardParser';
 import { CardImage } from './CardImage';
@@ -13,18 +13,28 @@ function renderLine(line: string, isExploit: boolean): React.ReactNode {
   const tokens = parseNoteTokens(line);
 
   const content = tokens.map((token, i) => {
+    const prevIsCard =
+      i > 0 &&
+      (tokens[i - 1].type === 'card' || tokens[i - 1].type === 'unknown_card');
+    const cardGap = prevIsCard ? { ml: 0.5 } : {};
+
     if (token.type === 'card') {
       return (
-        <CardImage
-          key={i}
-          rank={token.rank}
-          suit={token.suit}
-          backdoor={token.backdoor}
-        />
+        <Box key={i} component="span" sx={{ display: 'inline-flex', ...cardGap }}>
+          <CardImage
+            rank={token.rank}
+            suit={token.suit}
+            backdoor={token.backdoor}
+          />
+        </Box>
       );
     }
     if (token.type === 'unknown_card') {
-      return <CardImage key={i} rank="?" suit={null} />;
+      return (
+        <Box key={i} component="span" sx={{ display: 'inline-flex', ...cardGap }}>
+          <CardImage rank="?" suit={null} />
+        </Box>
+      );
     }
     return <span key={i}>{token.value}</span>;
   });
@@ -49,10 +59,20 @@ export function RichNoteRenderer({ text }: RichNoteRendererProps) {
 
     const lines = text.split('\n');
     return lines.map((line, i) => (
-      <span key={i}>
-        {renderLine(line, line.startsWith('**') || line.startsWith('*'))}
-        {i < lines.length - 1 ? '\n' : ''}
-      </span>
+      <Fragment key={i}>
+        <Box component="span" sx={{ display: 'block' }}>
+          {renderLine(line, line.startsWith('**') || line.startsWith('*'))}
+        </Box>
+        {i < lines.length - 1 && (
+          <Box
+            sx={{
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              my: 0.75,
+            }}
+          />
+        )}
+      </Fragment>
     ));
   }, [text]);
 

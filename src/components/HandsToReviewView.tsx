@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -21,6 +21,7 @@ import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { RichNoteRenderer } from './RichNoteRenderer';
+import { HandHistoryCardPicker } from './HandHistoryCardPicker';
 import { useUserName } from '../context/UserNameContext';
 import {
   fetchHandsToReview,
@@ -57,6 +58,45 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     handId: string;
     commentIndex: number;
   } | null>(null);
+
+  const addHandTextInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const addHandTextSelectionRef = useRef({ start: 0, end: 0 });
+  const editHandTextInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const editHandTextSelectionRef = useRef({ start: 0, end: 0 });
+
+  const insertAddHandAtCursor = useCallback(
+    (inserted: string) => {
+      const { start } = addHandTextSelectionRef.current;
+      const before = addHandText.slice(0, start);
+      const after = addHandText.slice(start);
+      const next = before + inserted + after;
+      setAddHandText(next);
+      const newPos = start + inserted.length;
+      addHandTextSelectionRef.current = { start: newPos, end: newPos };
+      setTimeout(() => {
+        addHandTextInputRef.current?.focus();
+        addHandTextInputRef.current?.setSelectionRange(newPos, newPos);
+      }, 0);
+    },
+    [addHandText]
+  );
+
+  const insertEditHandAtCursor = useCallback(
+    (inserted: string) => {
+      const { start } = editHandTextSelectionRef.current;
+      const before = editHandText.slice(0, start);
+      const after = editHandText.slice(start);
+      const next = before + inserted + after;
+      setEditHandText(next);
+      const newPos = start + inserted.length;
+      editHandTextSelectionRef.current = { start: newPos, end: newPos };
+      setTimeout(() => {
+        editHandTextInputRef.current?.focus();
+        editHandTextInputRef.current?.setSelectionRange(newPos, newPos);
+      }, 0);
+    },
+    [editHandText]
+  );
 
   const loadHands = useCallback(async () => {
     setLoading(true);
@@ -451,7 +491,18 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       )}
 
       <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add hand for review</DialogTitle>
+        <DialogTitle sx={{ pb: 0 }}>
+          <Typography component="span" variant="h6">
+            Add hand for review
+          </Typography>
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+            — click a card to insert at cursor
+          </Typography>
+          <HandHistoryCardPicker
+            onInsertCard={(shorthand) => insertAddHandAtCursor(`\`${shorthand}\``)}
+            onInsertText={insertAddHandAtCursor}
+          />
+        </DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
@@ -467,9 +518,24 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             label="Hand text"
             multiline
             minRows={6}
-            placeholder="Paste hand history... Use `kd` for cards"
+            placeholder="Paste hand history... Click a card above to insert at cursor"
             value={addHandText}
             onChange={(e) => setAddHandText(e.target.value)}
+            onSelect={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              addHandTextSelectionRef.current = {
+                start: t.selectionStart ?? 0,
+                end: t.selectionEnd ?? 0,
+              };
+            }}
+            onBlur={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              addHandTextSelectionRef.current = {
+                start: t.selectionStart ?? 0,
+                end: t.selectionEnd ?? 0,
+              };
+            }}
+            inputRef={addHandTextInputRef}
             margin="normal"
             size="small"
             required
@@ -496,7 +562,18 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Edit hand</DialogTitle>
+        <DialogTitle sx={{ pb: 0 }}>
+          <Typography component="span" variant="h6">
+            Edit hand
+          </Typography>
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+            — click a card to insert at cursor
+          </Typography>
+          <HandHistoryCardPicker
+            onInsertCard={(shorthand) => insertEditHandAtCursor(`\`${shorthand}\``)}
+            onInsertText={insertEditHandAtCursor}
+          />
+        </DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
@@ -512,9 +589,24 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             label="Hand text"
             multiline
             minRows={6}
-            placeholder="Paste hand history... Use `kd` for cards"
+            placeholder="Paste hand history... Click a card above to insert at cursor"
             value={editHandText}
             onChange={(e) => setEditHandText(e.target.value)}
+            onSelect={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              editHandTextSelectionRef.current = {
+                start: t.selectionStart ?? 0,
+                end: t.selectionEnd ?? 0,
+              };
+            }}
+            onBlur={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              editHandTextSelectionRef.current = {
+                start: t.selectionStart ?? 0,
+                end: t.selectionEnd ?? 0,
+              };
+            }}
+            inputRef={editHandTextInputRef}
             margin="normal"
             size="small"
             required

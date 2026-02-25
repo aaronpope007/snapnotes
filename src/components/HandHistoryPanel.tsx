@@ -18,12 +18,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import Paper from '@mui/material/Paper';
 import { RichNoteRenderer } from './RichNoteRenderer';
-import { CardImage } from './CardImage';
+import { HandHistoryCardPicker } from './HandHistoryCardPicker';
 import type { HandHistoryEntry } from '../types';
-
-const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
-const SUITS = ['s', 'h', 'd', 'c'] as const;
-const ALL_CARDS = RANKS.flatMap((r) => SUITS.map((s) => ({ rank: r, suit: s })));
 
 const PANEL_WIDTH = 340;
 
@@ -93,6 +89,23 @@ export function HandHistoryPanel({
       const next = before + inserted + after;
       setModalContent(next);
       const newPos = start + inserted.length;
+      contentSelectionRef.current = { start: newPos, end: newPos };
+      setTimeout(() => {
+        contentInputRef.current?.focus();
+        contentInputRef.current?.setSelectionRange(newPos, newPos);
+      }, 0);
+    },
+    [modalContent]
+  );
+
+  const insertTextAtCursor = useCallback(
+    (text: string) => {
+      const { start } = contentSelectionRef.current;
+      const before = modalContent.slice(0, start);
+      const after = modalContent.slice(start);
+      const next = before + text + after;
+      setModalContent(next);
+      const newPos = start + text.length;
       contentSelectionRef.current = { start: newPos, end: newPos };
       setTimeout(() => {
         contentInputRef.current?.focus();
@@ -322,56 +335,10 @@ export function HandHistoryPanel({
               — click a card to insert at cursor
             </Typography>
           </Box>
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 0.25,
-              mt: 1,
-            }}
-          >
-            {ALL_CARDS.map(({ rank, suit }) => (
-              <Box
-                key={`${rank}${suit}`}
-                component="button"
-                type="button"
-                onClick={() => insertCardAtCursor(`${rank.toLowerCase()}${suit}`)}
-                sx={{
-                  display: 'inline-flex',
-                  border: 'none',
-                  padding: 0,
-                  margin: 0,
-                  cursor: 'pointer',
-                  background: 'none',
-                  borderRadius: 0.5,
-                  '&:hover': { bgcolor: 'action.hover' },
-                  '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
-                }}
-                aria-label={`Insert ${rank} of ${suit}`}
-              >
-                <CardImage rank={rank} suit={suit} size="xs" />
-              </Box>
-            ))}
-            <Box
-              component="button"
-              type="button"
-              onClick={() => insertCardAtCursor('x')}
-              sx={{
-                display: 'inline-flex',
-                border: 'none',
-                padding: 0,
-                margin: 0,
-                cursor: 'pointer',
-                background: 'none',
-                borderRadius: 0.5,
-                '&:hover': { bgcolor: 'action.hover' },
-                '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
-              }}
-              aria-label="Insert unknown card"
-            >
-              <CardImage rank="?" suit={null} size="xs" />
-            </Box>
-          </Box>
+          <HandHistoryCardPicker
+            onInsertCard={insertCardAtCursor}
+            onInsertText={insertTextAtCursor}
+          />
         </DialogTitle>
         <DialogContent>
           <TextField
