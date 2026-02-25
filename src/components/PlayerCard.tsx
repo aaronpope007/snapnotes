@@ -11,6 +11,7 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -163,7 +164,8 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
       }}
     >
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
           {editingName ? (
             <>
               <TextField
@@ -185,6 +187,15 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
               </IconButton>
             </>
           )}
+          </Box>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            aria-label="Close player card"
+            sx={{ ml: 0.5, flexShrink: 0 }}
+          >
+            <ChevronLeftIcon />
+          </IconButton>
         </Box>
 
         <FormControl fullWidth size="small" sx={{ mb: 2 }}>
