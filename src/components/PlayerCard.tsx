@@ -112,6 +112,23 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
     }
   };
 
+  const handleEditNote = async (index: number, text: string, editedBy: string) => {
+    const currentNotes = player.notes || [];
+    const entry = currentNotes[index];
+    if (!entry) return;
+    const updated = currentNotes.map((e, i) =>
+      i === index
+        ? { ...e, text, editedBy, editedAt: new Date().toISOString() }
+        : e
+    );
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { notes: updated });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleAddExploit = async (text: string) => {
     const current = player.exploits || [];
     const next = [...current, text];
@@ -242,6 +259,7 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
           key={player._id}
           notes={player.notes || []}
           onAppendNote={handleAppendNote}
+          onEditNote={handleEditNote}
           onDeleteNote={handleDeleteNote}
           userName={userName}
           saving={saving}

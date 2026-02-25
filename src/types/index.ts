@@ -11,6 +11,8 @@ export interface NoteEntry {
   addedBy: string;
   addedAt: string;
   source?: 'import';
+  editedBy?: string;
+  editedAt?: string;
 }
 
 export interface HandHistoryEntry {
