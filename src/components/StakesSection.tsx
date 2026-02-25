@@ -69,7 +69,7 @@ export function StakesSection({
   const gameTypesSummary = (gameTypes?.length ?? 0) > 0 ? gameTypes.join(', ') : 'None';
   const stakesSummary = (stakesSeenAt?.length ?? 0) > 0 ? stakesSeenAt.join(', ') : 'None';
   const formatsSummary = (formats?.length ?? 0) > 0 ? formats.join(', ') : 'None';
-  const summary = `Games: ${gameTypesSummary} · Format: ${formatsSummary} · Stakes: ${stakesSummary} · ${origin || 'WPT Gold'}`;
+  const summary = [gameTypesSummary, stakesSummary, formatsSummary, origin || 'WPT Gold'].join(' · ');
 
   return (
     <Box sx={{ mb: 2 }}>
