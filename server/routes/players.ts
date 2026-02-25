@@ -65,16 +65,17 @@ function normalizeStakesAndFormats(doc: Record<string, unknown>): { stakesSeenAt
 router.get('/', async (_req: Request, res: Response) => {
   try {
     const players = await Player.find()
-      .select('username playerType stakesSeenAt stakesWithFormat formats origin')
+      .select('username playerType gameTypes stakesSeenAt stakesWithFormat formats origin')
       .sort({ username: 1 })
       .collation({ locale: 'en', strength: 2 })
       .lean();
     const normalized = (players as Record<string, unknown>[]).map((p) => {
       const { stakesSeenAt, formats } = normalizeStakesAndFormats(p);
       const origin = typeof p.origin === 'string' ? p.origin : 'WPT Gold';
+      const gameTypes = Array.isArray(p.gameTypes) ? (p.gameTypes as string[]) : [];
       const { stakesWithFormat, ...rest } = p;
       void stakesWithFormat;
-      return { ...rest, stakesSeenAt, formats, origin };
+      return { ...rest, gameTypes, stakesSeenAt, formats, origin };
     });
     res.json(normalized);
   } catch (err) {
@@ -89,6 +90,7 @@ router.post('/import', async (req: Request, res: Response) => {
       players: Array<{
         username: string;
         playerType: string;
+        gameTypes?: string[];
         stakesSeenAt?: number[];
         formats?: string[];
         notes: Array<{ text: string; addedBy: string; addedAt: string; source?: string }>;
@@ -116,6 +118,7 @@ router.post('/import', async (req: Request, res: Response) => {
         source: n.source || undefined,
       }));
 
+      const importGameTypes = p.gameTypes || [];
       const importStakes = p.stakesSeenAt || [];
       const importFormats = p.formats || ['Ring'];
 
@@ -124,6 +127,8 @@ router.post('/import', async (req: Request, res: Response) => {
         const migratedNotes = migrateLegacyNotes(existingDoc);
         const mergedNotes = [...migratedNotes, ...importNotes];
         const mergedExploits = [...new Set([...(existing.exploits || []), ...(p.exploits || [])])];
+        const existingGameTypes = Array.isArray(existingDoc.gameTypes) ? (existingDoc.gameTypes as string[]) : [];
+        const mergedGameTypes = [...new Set([...existingGameTypes, ...importGameTypes])];
         const { stakesSeenAt: existingStakes, formats: existingFormats } = normalizeStakesAndFormats(existingDoc);
         const mergedStakes = [...new Set([...existingStakes, ...importStakes])].sort((a, b) => a - b);
         const mergedFormats = [...new Set([...existingFormats, ...importFormats])];
@@ -131,6 +136,7 @@ router.post('/import', async (req: Request, res: Response) => {
         await Player.findByIdAndUpdate(existing._id, {
           notes: mergedNotes,
           exploits: mergedExploits,
+          gameTypes: mergedGameTypes,
           stakesSeenAt: mergedStakes,
           formats: mergedFormats,
           $unset: { stakeNotes: 1, rawNote: 1, stakesWithFormat: 1 },
@@ -140,6 +146,7 @@ router.post('/import', async (req: Request, res: Response) => {
         await new Player({
           username: p.username,
           playerType: p.playerType || 'unknown',
+          gameTypes: importGameTypes,
           stakesSeenAt: importStakes,
           formats: importFormats,
           notes: importNotes,
@@ -205,6 +212,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     const { stakesSeenAt, formats } = normalizeStakesAndFormats(obj);
     const needsStakesMigration = obj.stakesWithFormat !== undefined;
     const origin = typeof obj.origin === 'string' ? obj.origin : 'WPT Gold';
+    const gameTypes = Array.isArray(obj.gameTypes) ? (obj.gameTypes as string[]) : [];
 
     const update: Record<string, unknown> = { $set: {} };
     if (needsHandHistoriesMigration) (update.$set as Record<string, unknown>).handHistories = handHistories;
@@ -223,7 +231,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     void stakeNotes;
     void rawNote;
     void stakesWithFormat;
-    res.json({ ...rest, handHistories, stakesSeenAt, formats, origin } as object);
+    res.json({ ...rest, handHistories, gameTypes, stakesSeenAt, formats, origin } as object);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch player' });
   }

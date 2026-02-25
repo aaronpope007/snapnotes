@@ -81,6 +81,7 @@ export default function App() {
                 ...p,
                 username: updated.username,
                 playerType: updated.playerType,
+                gameTypes: updated.gameTypes ?? p.gameTypes,
                 stakesSeenAt: updated.stakesSeenAt,
                 formats: updated.formats,
                 origin: updated.origin,
@@ -112,7 +113,7 @@ export default function App() {
     try {
       const created = await createPlayer(player);
       setPlayers((prev) =>
-        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold' }].sort(
+        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, gameTypes: created.gameTypes ?? [], stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold' }].sort(
           (a, b) => a.username.localeCompare(b.username)
         )
       );

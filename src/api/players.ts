@@ -27,6 +27,7 @@ export async function updatePlayer(
     notes?: NoteEntry[];
     exploits?: string[];
     handHistories?: HandHistoryEntry[];
+    gameTypes?: string[];
     stakesSeenAt?: number[];
     formats?: string[];
     origin?: string;

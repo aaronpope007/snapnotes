@@ -4,7 +4,7 @@ import type { PlayerTypeKey } from '../constants/playerTypes';
 export const STAKE_VALUES = [200, 400, 800, 1000, 2000, 5000] as const;
 export type StakeValue = (typeof STAKE_VALUES)[number];
 
-export { FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../constants/stakes';
+export { GAME_TYPE_OPTIONS, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../constants/stakes';
 
 export interface NoteEntry {
   text: string;
@@ -24,6 +24,7 @@ export interface Player {
   _id: string;
   username: string;
   playerType: PlayerTypeKey;
+  gameTypes: string[];
   stakesSeenAt: number[];
   formats: string[];
   origin: string;
@@ -39,6 +40,7 @@ export interface PlayerListItem {
   _id: string;
   username: string;
   playerType: PlayerTypeKey;
+  gameTypes: string[];
   stakesSeenAt: number[];
   formats: string[];
   origin: string;
@@ -47,6 +49,7 @@ export interface PlayerListItem {
 export interface PlayerCreate {
   username: string;
   playerType?: PlayerTypeKey;
+  gameTypes?: string[];
   stakesSeenAt?: number[];
   formats?: string[];
   origin?: string;
@@ -67,6 +70,7 @@ export interface ParsedImportPlayer {
 export interface ImportPlayer {
   username: string;
   playerType: PlayerTypeKey;
+  gameTypes: string[];
   stakesSeenAt: number[];
   formats: string[];
   origin: string;

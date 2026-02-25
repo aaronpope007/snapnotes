@@ -11,12 +11,14 @@ import Checkbox from '@mui/material/Checkbox';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import InputLabel from '@mui/material/InputLabel';
-import { STAKE_VALUES, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
+import { STAKE_VALUES, GAME_TYPE_OPTIONS, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
 
 interface StakesSectionProps {
+  gameTypes: string[];
   stakesSeenAt: number[];
   formats: string[];
   origin: string;
+  onUpdateGameTypes: (gameTypes: string[]) => Promise<void>;
   onUpdateStakes: (stakesSeenAt: number[]) => Promise<void>;
   onUpdateFormats: (formats: string[]) => Promise<void>;
   onUpdateOrigin: (origin: string) => Promise<void>;
@@ -24,15 +26,25 @@ interface StakesSectionProps {
 }
 
 export function StakesSection({
+  gameTypes,
   stakesSeenAt,
   formats,
   origin,
+  onUpdateGameTypes,
   onUpdateStakes,
   onUpdateFormats,
   onUpdateOrigin,
   saving = false,
 }: StakesSectionProps) {
   const [expanded, setExpanded] = useState(false);
+
+  const handleGameTypeToggle = async (gameType: string) => {
+    const current = gameTypes || [];
+    const next = current.includes(gameType)
+      ? current.filter((g) => g !== gameType)
+      : [...current, gameType];
+    await onUpdateGameTypes(next);
+  };
 
   const handleStakeToggle = async (stake: number) => {
     const current = stakesSeenAt || [];
@@ -54,9 +66,10 @@ export function StakesSection({
     await onUpdateOrigin(value);
   };
 
+  const gameTypesSummary = (gameTypes?.length ?? 0) > 0 ? gameTypes.join(', ') : 'None';
   const stakesSummary = (stakesSeenAt?.length ?? 0) > 0 ? stakesSeenAt.join(', ') : 'None';
   const formatsSummary = (formats?.length ?? 0) > 0 ? formats.join(', ') : 'None';
-  const summary = `Stakes: ${stakesSummary} · Format: ${formatsSummary} · ${origin || 'WPT Gold'}`;
+  const summary = `Games: ${gameTypesSummary} · Format: ${formatsSummary} · Stakes: ${stakesSummary} · ${origin || 'WPT Gold'}`;
 
   return (
     <Box sx={{ mb: 2 }}>
@@ -77,7 +90,7 @@ export function StakesSection({
         }}
       >
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-          Stakes & format
+          Games, format & stakes
         </Typography>
         <IconButton size="small" sx={{ p: 0, ml: -0.5 }}>
           {expanded ? (
@@ -90,21 +103,21 @@ export function StakesSection({
       <Collapse in={expanded}>
         <Box sx={{ pl: 0.5 }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-            Stakes
+            Games
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-            {STAKE_VALUES.map((s) => (
+            {GAME_TYPE_OPTIONS.map((g) => (
               <FormControlLabel
-                key={s}
+                key={g}
                 control={
                   <Checkbox
                     size="small"
-                    checked={(stakesSeenAt || []).includes(s)}
-                    onChange={() => handleStakeToggle(s)}
+                    checked={(gameTypes || []).includes(g)}
+                    onChange={() => handleGameTypeToggle(g)}
                     disabled={saving}
                   />
                 }
-                label={s}
+                label={g}
               />
             ))}
           </Box>
@@ -127,11 +140,30 @@ export function StakesSection({
               />
             ))}
           </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            Stakes seen at
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
+            {STAKE_VALUES.map((s) => (
+              <FormControlLabel
+                key={s}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={(stakesSeenAt || []).includes(s)}
+                    onChange={() => handleStakeToggle(s)}
+                    disabled={saving}
+                  />
+                }
+                label={s}
+              />
+            ))}
+          </Box>
           <FormControl fullWidth size="small">
-            <InputLabel>Origin</InputLabel>
+            <InputLabel>Site</InputLabel>
             <Select
               value={origin || 'WPT Gold'}
-              label="Origin"
+              label="Site"
               onChange={(e) => handleOriginChange(e.target.value)}
               disabled={saving}
             >

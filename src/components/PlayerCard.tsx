@@ -87,6 +87,15 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
     }
   };
 
+  const handleUpdateGameTypes = async (gameTypes: string[]) => {
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { gameTypes });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleUpdateOrigin = async (origin: string) => {
     setSaving(true);
     try {
@@ -240,9 +249,11 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
         </FormControl>
 
         <StakesSection
+          gameTypes={player.gameTypes || []}
           stakesSeenAt={player.stakesSeenAt || []}
           formats={player.formats || []}
           origin={player.origin || 'WPT Gold'}
+          onUpdateGameTypes={handleUpdateGameTypes}
           onUpdateStakes={handleUpdateStakes}
           onUpdateFormats={handleUpdateFormats}
           onUpdateOrigin={handleUpdateOrigin}

@@ -30,6 +30,7 @@ function toImportPlayer(p: ParsedImportPlayer, importedBy: string): ImportPlayer
   return {
     username: p.username,
     playerType: p.playerType,
+    gameTypes: [],
     stakesSeenAt: p.stakesSeenAt,
     formats: ['Ring'],
     origin: 'WPT Gold',

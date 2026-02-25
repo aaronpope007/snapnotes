@@ -42,6 +42,10 @@ const playerSchema = new mongoose.Schema(
       enum: PLAYER_TYPE_KEYS,
       default: 'unknown',
     },
+    gameTypes: {
+      type: [String],
+      default: [],
+    },
     stakesSeenAt: {
       type: [Number],
       default: [],
