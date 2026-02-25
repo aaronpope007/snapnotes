@@ -18,6 +18,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import Paper from '@mui/material/Paper';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryFormContent } from './HandHistoryFormContent';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 import type { HandHistoryEntry } from '../types';
 
 const PANEL_WIDTH = 340;
@@ -45,6 +47,13 @@ export function HandHistoryPanel({
   const [modalContent, setModalContent] = useState('');
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [savingAll, setSavingAll] = useState(false);
+  const {
+    confirmOpen: discardConfirmOpen,
+    openConfirm: openDiscardConfirm,
+    closeConfirm: closeDiscardConfirm,
+    handleConfirm: handleDiscardConfirm,
+    confirmOptions: discardConfirmOptions,
+  } = useConfirm();
 
   useEffect(() => {
     setLocalValues(handHistories?.length ? handHistories : []);
@@ -75,6 +84,22 @@ export function HandHistoryPanel({
 
   const closeModal = () => {
     setModalOpen(false);
+  };
+
+  const isModalDirty = () => {
+    if (modalMode === 'add') {
+      return modalTitle.trim() !== '' || modalContent.trim() !== '';
+    }
+    const original = localValues[modalIndex];
+    return (
+      modalTitle !== (original?.title ?? '') ||
+      modalContent !== (original?.content ?? '')
+    );
+  };
+
+  const handleRequestClose = () => {
+    if (isModalDirty()) openDiscardConfirm(closeModal);
+    else closeModal();
   };
 
   const handleModalSave = async () => {
@@ -287,7 +312,7 @@ export function HandHistoryPanel({
         </Paper>
       )}
 
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth>
+      <Dialog open={modalOpen} onClose={handleRequestClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pb: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
             <Typography component="span" variant="h6">
@@ -310,7 +335,7 @@ export function HandHistoryPanel({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeModal}>Cancel</Button>
+          <Button onClick={handleRequestClose}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleModalSave}
@@ -320,6 +345,13 @@ export function HandHistoryPanel({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        onClose={closeDiscardConfirm}
+        onConfirm={handleDiscardConfirm}
+        {...discardConfirmOptions}
+      />
     </Box>
   );
 }

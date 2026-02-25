@@ -22,6 +22,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryFormContent } from './HandHistoryFormContent';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 import { useUserName } from '../context/UserNameContext';
 import {
   fetchHandsToReview,
@@ -58,6 +60,13 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     handId: string;
     commentIndex: number;
   } | null>(null);
+  const {
+    confirmOpen: discardConfirmOpen,
+    openConfirm: openDiscardConfirm,
+    closeConfirm: closeDiscardConfirm,
+    handleConfirm: handleDiscardConfirm,
+    confirmOptions: discardConfirmOptions,
+  } = useConfirm();
 
   const loadHands = useCallback(async () => {
     setLoading(true);
@@ -76,6 +85,36 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   useEffect(() => {
     loadHands();
   }, [loadHands]);
+
+  const isAddModalDirty = () =>
+    addTitle.trim() !== '' || addHandText.trim() !== '';
+
+  const isEditModalDirty = () =>
+    editHand !== null &&
+    (editTitle !== (editHand.title ?? '') ||
+      editHandText !== (editHand.handText ?? ''));
+
+  const closeAddModal = () => {
+    if (isAddModalDirty()) {
+      openDiscardConfirm(() => {
+        setAddModalOpen(false);
+        setAddTitle('');
+        setAddHandText('');
+      });
+    } else {
+      setAddModalOpen(false);
+      setAddTitle('');
+      setAddHandText('');
+    }
+  };
+
+  const closeEditModal = () => {
+    if (isEditModalDirty()) {
+      openDiscardConfirm(() => setEditHand(null));
+    } else {
+      setEditHand(null);
+    }
+  };
 
   const handleAddHand = async () => {
     if (!addHandText.trim()) return;
@@ -451,7 +490,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         </Box>
       )}
 
-      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={addModalOpen} onClose={closeAddModal} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pb: 0 }}>
           <Typography component="span" variant="h6">
             Add hand for review
@@ -473,7 +512,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddModalOpen(false)}>Cancel</Button>
+          <Button onClick={closeAddModal}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleAddHand}
@@ -486,7 +525,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
 
       <Dialog
         open={editHand !== null}
-        onClose={() => setEditHand(null)}
+        onClose={closeEditModal}
         maxWidth="sm"
         fullWidth
       >
@@ -511,7 +550,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditHand(null)}>Cancel</Button>
+          <Button onClick={closeEditModal}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleEditSave}
@@ -546,6 +585,13 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        onClose={closeDiscardConfirm}
+        onConfirm={handleDiscardConfirm}
+        {...discardConfirmOptions}
+      />
     </Box>
   );
 }

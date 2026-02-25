@@ -1,7 +1,4 @@
 import Box from '@mui/material/Box';
-import FcBModule from '@heruka_urgyen/react-playing-cards/lib/FcB';
-// ESM/CommonJS interop: package may export { default } instead of component directly
-const Card = (typeof FcBModule === 'function' ? FcBModule : (FcBModule as { default?: unknown }).default ?? FcBModule) as React.ComponentType<{ card: string; height?: string; front?: boolean; style?: React.CSSProperties }>;
 
 interface CardImageProps {
   rank: string;
@@ -17,12 +14,11 @@ const SUIT_COLORS: Record<string, string> = {
   s: '#757575',
 };
 
-// Overlay colors to tint the card face (white/beige -> suit color) via multiply blend
-const SUIT_FACE_COLORS: Record<string, string> = {
-  h: 'rgba(255, 195, 195, 0.92)',
-  d: 'rgba(195, 220, 255, 0.92)',
-  c: 'rgba(195, 255, 195, 0.92)',
-  s: 'rgba(200, 200, 200, 0.85)',
+const SUIT_SYMBOLS: Record<string, string> = {
+  h: '♥',
+  d: '♦',
+  c: '♣',
+  s: '♠',
 };
 
 const SIZES = {
@@ -31,8 +27,14 @@ const SIZES = {
   sm: { width: 42, height: 60 },
   md: { width: 56, height: 80 },
 };
+const RANK_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 12, xs: 14, sm: 22, md: 30 };
 const PLACEHOLDER_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 14, xs: 17, sm: 28, md: 36 };
 const BACKDOOR_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 6, xs: 7, sm: 10, md: 12 };
+
+/** Display rank as single character: A, K, Q, J, T, 9-2 (normalized from parser uppercase). */
+function displayRank(rank: string): string {
+  return rank.toUpperCase();
+}
 
 export function CardImage({
   rank,
@@ -41,8 +43,8 @@ export function CardImage({
   size = 'sm',
 }: CardImageProps) {
   const { width, height } = SIZES[size];
-  const heightPx = `${height}px`;
   const placeholderFontSize = PLACEHOLDER_FONT_SIZE[size];
+  const rankFontSize = RANK_FONT_SIZE[size];
 
   if (suit === null) {
     return (
@@ -70,43 +72,33 @@ export function CardImage({
     );
   }
 
-  const cardStr = `${rank}${suit}`;
   const suitColor = SUIT_COLORS[suit] ?? '#bdbdbd';
-  const faceColor = SUIT_FACE_COLORS[suit] ?? 'rgba(189, 189, 189, 0.4)';
+  const suitSymbol = SUIT_SYMBOLS[suit] ?? '';
 
   const cardEl = (
     <Box
       component="span"
       sx={{
-        position: 'relative',
         display: 'inline-flex',
-        verticalAlign: 'middle',
-        overflow: 'hidden',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width,
+        height,
+        border: '1px solid',
+        borderColor: 'grey.800',
+        borderRadius: '4px',
+        bgcolor: suitColor,
+        color: '#000',
+        fontSize: `${rankFontSize}px`,
+        fontWeight: 'bold',
+        lineHeight: 1.1,
         mx: '2px',
+        verticalAlign: 'middle',
       }}
     >
-      <Card
-        card={cardStr}
-        height={heightPx}
-        front
-        style={{
-          width: 'auto',
-          height: heightPx,
-          display: 'inline-block',
-          verticalAlign: 'middle',
-        }}
-      />
-      <Box
-        component="span"
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          backgroundColor: faceColor,
-          mixBlendMode: 'multiply',
-          pointerEvents: 'none',
-        }}
-        aria-hidden
-      />
+      <span>{displayRank(rank)}</span>
+      <span style={{ fontSize: rankFontSize * 0.7 }}>{suitSymbol}</span>
     </Box>
   );
 
@@ -129,7 +121,7 @@ export function CardImage({
             right: 2,
             fontSize: `${BACKDOOR_FONT_SIZE[size]}px`,
             fontWeight: 'bold',
-            color: suitColor,
+            color: '#000',
             lineHeight: 1,
           }}
         >

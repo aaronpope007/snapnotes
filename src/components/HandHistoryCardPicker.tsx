@@ -164,6 +164,15 @@ export function HandHistoryCardPicker({
           onChange={(e) =>
             setCustomPsbPercent(e.target.value.replace(/\D/g, '').slice(0, 3))
           }
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const num = customPsbPercent.trim();
+              if (num) {
+                e.preventDefault();
+                onInsertText(`${num}% PSB`);
+              }
+            }
+          }}
           inputProps={{ min: 0, max: 999, 'aria-label': 'Custom PSB percentage' }}
           sx={{
             width: 56,
