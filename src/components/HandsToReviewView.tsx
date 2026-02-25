@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -21,8 +21,7 @@ import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { RichNoteRenderer } from './RichNoteRenderer';
-import { HandHistoryCardPicker } from './HandHistoryCardPicker';
-import { getUsedCardShorthands } from '../utils/cardParser';
+import { HandHistoryFormContent } from './HandHistoryFormContent';
 import { useUserName } from '../context/UserNameContext';
 import {
   fetchHandsToReview,
@@ -59,45 +58,6 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     handId: string;
     commentIndex: number;
   } | null>(null);
-
-  const addHandTextInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const addHandTextSelectionRef = useRef({ start: 0, end: 0 });
-  const editHandTextInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const editHandTextSelectionRef = useRef({ start: 0, end: 0 });
-
-  const insertAddHandAtCursor = useCallback(
-    (inserted: string) => {
-      const { start } = addHandTextSelectionRef.current;
-      const before = addHandText.slice(0, start);
-      const after = addHandText.slice(start);
-      const next = before + inserted + after;
-      setAddHandText(next);
-      const newPos = start + inserted.length;
-      addHandTextSelectionRef.current = { start: newPos, end: newPos };
-      setTimeout(() => {
-        addHandTextInputRef.current?.focus();
-        addHandTextInputRef.current?.setSelectionRange(newPos, newPos);
-      }, 0);
-    },
-    [addHandText]
-  );
-
-  const insertEditHandAtCursor = useCallback(
-    (inserted: string) => {
-      const { start } = editHandTextSelectionRef.current;
-      const before = editHandText.slice(0, start);
-      const after = editHandText.slice(start);
-      const next = before + inserted + after;
-      setEditHandText(next);
-      const newPos = start + inserted.length;
-      editHandTextSelectionRef.current = { start: newPos, end: newPos };
-      setTimeout(() => {
-        editHandTextInputRef.current?.focus();
-        editHandTextInputRef.current?.setSelectionRange(newPos, newPos);
-      }, 0);
-    },
-    [editHandText]
-  );
 
   const loadHands = useCallback(async () => {
     setLoading(true);
@@ -500,60 +460,16 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             — click a card to insert at cursor
           </Typography>
         </DialogTitle>
-        <DialogContent
-          sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: 1,
-            alignItems: 'flex-start',
-          }}
-        >
-          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <TextField
-              fullWidth
-              label="Title"
-              placeholder="e.g. AK vs 3-bet"
-              value={addTitle}
-              onChange={(e) => setAddTitle(e.target.value)}
-              margin="normal"
-              size="small"
-            />
-            <TextField
-              fullWidth
-              label="Hand text"
-              multiline
-              minRows={6}
-              placeholder="Paste hand history... Click a card on the right to insert at cursor"
-              value={addHandText}
-              onChange={(e) => setAddHandText(e.target.value)}
-              onSelect={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                addHandTextSelectionRef.current = {
-                  start: t.selectionStart ?? 0,
-                  end: t.selectionEnd ?? 0,
-                };
-              }}
-              onBlur={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                addHandTextSelectionRef.current = {
-                  start: t.selectionStart ?? 0,
-                  end: t.selectionEnd ?? 0,
-                };
-              }}
-              inputRef={addHandTextInputRef}
-              margin="normal"
-              size="small"
-              required
-              sx={{
-                flex: 1,
-                '& .MuiInputBase-input': { fontSize: '0.85rem', fontFamily: 'monospace' },
-              }}
-            />
-          </Box>
-          <HandHistoryCardPicker
-            onInsertCard={(shorthand) => insertAddHandAtCursor(`\`${shorthand}\``)}
-            onInsertText={insertAddHandAtCursor}
-            usedShorthands={getUsedCardShorthands(addHandText)}
+        <DialogContent>
+          <HandHistoryFormContent
+            title={addTitle}
+            onTitleChange={setAddTitle}
+            content={addHandText}
+            onContentChange={setAddHandText}
+            contentLabel="Hand text"
+            placeholder="Paste hand history... Click a card on the right to insert at cursor"
+            contentRequired
+            cardSize="xs"
           />
         </DialogContent>
         <DialogActions>
@@ -582,60 +498,16 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             — click a card to insert at cursor
           </Typography>
         </DialogTitle>
-        <DialogContent
-          sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: 1,
-            alignItems: 'flex-start',
-          }}
-        >
-          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <TextField
-              fullWidth
-              label="Title"
-              placeholder="e.g. AK vs 3-bet"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              margin="normal"
-              size="small"
-            />
-            <TextField
-              fullWidth
-              label="Hand text"
-              multiline
-              minRows={6}
-              placeholder="Paste hand history... Click a card on the right to insert at cursor"
-              value={editHandText}
-              onChange={(e) => setEditHandText(e.target.value)}
-              onSelect={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                editHandTextSelectionRef.current = {
-                  start: t.selectionStart ?? 0,
-                  end: t.selectionEnd ?? 0,
-                };
-              }}
-              onBlur={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                editHandTextSelectionRef.current = {
-                  start: t.selectionStart ?? 0,
-                  end: t.selectionEnd ?? 0,
-                };
-              }}
-              inputRef={editHandTextInputRef}
-              margin="normal"
-              size="small"
-              required
-              sx={{
-                flex: 1,
-                '& .MuiInputBase-input': { fontSize: '0.85rem', fontFamily: 'monospace' },
-              }}
-            />
-          </Box>
-          <HandHistoryCardPicker
-            onInsertCard={(shorthand) => insertEditHandAtCursor(`\`${shorthand}\``)}
-            onInsertText={insertEditHandAtCursor}
-            usedShorthands={getUsedCardShorthands(editHandText)}
+        <DialogContent>
+          <HandHistoryFormContent
+            title={editTitle}
+            onTitleChange={setEditTitle}
+            content={editHandText}
+            onContentChange={setEditHandText}
+            contentLabel="Hand text"
+            placeholder="Paste hand history... Click a card on the right to insert at cursor"
+            contentRequired
+            cardSize="xs"
           />
         </DialogContent>
         <DialogActions>

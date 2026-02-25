@@ -13,31 +13,38 @@ function CardButton({
   suit,
   used,
   onInsert,
+  onRemove,
   ariaLabel,
 }: {
   rank: string;
   suit: string | null;
   used: boolean;
   onInsert: () => void;
+  onRemove?: () => void;
   ariaLabel: string;
 }) {
+  const canRemove = used && onRemove !== undefined;
+  const handleClick = () => {
+    if (canRemove) onRemove!();
+    else if (!used) onInsert();
+  };
   return (
     <Box
       component="button"
       type="button"
-      disabled={used}
-      onClick={() => !used && onInsert()}
+      disabled={used && !canRemove}
+      onClick={handleClick}
       sx={{
         display: 'inline-flex',
         border: 'none',
         padding: 0,
         margin: 0,
-        cursor: used ? 'default' : 'pointer',
+        cursor: canRemove ? 'pointer' : used ? 'default' : 'pointer',
         background: 'none',
         borderRadius: 0.5,
         opacity: used ? 0.4 : 1,
-        '&:hover': used ? {} : { bgcolor: 'action.hover' },
-        '&:focus-visible': used ? {} : { outline: '2px solid', outlineColor: 'primary.main' },
+        '&:hover': canRemove ? { bgcolor: 'action.hover' } : used ? {} : { bgcolor: 'action.hover' },
+        '&:focus-visible': used && !canRemove ? {} : { outline: '2px solid', outlineColor: 'primary.main' },
       }}
       aria-label={ariaLabel}
     >
@@ -49,14 +56,17 @@ function CardButton({
 export interface HandHistoryCardPickerProps {
   onInsertCard: (shorthand: string) => void;
   onInsertText: (text: string) => void;
-  /** Card shorthands already used in the content (e.g. from backticks). These will be greyed out and not selectable. */
+  /** Card shorthands already used in the content (e.g. from backticks). Clicking a used card removes one instance. */
   usedShorthands?: Set<string>;
+  /** When provided, clicking a used card removes one instance from content instead of being disabled. */
+  onRemoveCard?: (shorthand: string) => void;
 }
 
 export function HandHistoryCardPicker({
   onInsertCard,
   onInsertText,
   usedShorthands,
+  onRemoveCard,
 }: HandHistoryCardPickerProps) {
   const [customPsbPercent, setCustomPsbPercent] = useState<string>('');
 
@@ -78,6 +88,7 @@ export function HandHistoryCardPicker({
             {SUITS.map((suit) => {
               const shorthand = `${rank.toLowerCase()}${suit}`;
               const used = usedShorthands?.has(shorthand) ?? false;
+              const suitName = suit === 's' ? 'spades' : suit === 'h' ? 'hearts' : suit === 'd' ? 'diamonds' : 'clubs';
               return (
                 <CardButton
                   key={shorthand}
@@ -85,7 +96,14 @@ export function HandHistoryCardPicker({
                   suit={suit}
                   used={used}
                   onInsert={() => onInsertCard(shorthand)}
-                  ariaLabel={used ? `${rank} of ${suit} (already used)` : `Insert ${rank} of ${suit}`}
+                  onRemove={onRemoveCard ? () => onRemoveCard(shorthand) : undefined}
+                  ariaLabel={
+                    used
+                      ? onRemoveCard
+                        ? `Remove ${rank} of ${suitName} from content`
+                        : `${rank} of ${suitName} (already used)`
+                      : `Insert ${rank} of ${suitName}`
+                  }
                 />
               );
             })}
@@ -97,7 +115,14 @@ export function HandHistoryCardPicker({
             suit={null}
             used={usedShorthands?.has('x') ?? false}
             onInsert={() => onInsertCard('x')}
-            ariaLabel={usedShorthands?.has('x') ? 'Unknown card (already used)' : 'Insert unknown card'}
+            onRemove={onRemoveCard ? () => onRemoveCard('x') : undefined}
+            ariaLabel={
+              usedShorthands?.has('x')
+                ? onRemoveCard
+                  ? 'Remove unknown card from content'
+                  : 'Unknown card (already used)'
+                : 'Insert unknown card'
+            }
           />
         </Box>
       </Box>
@@ -125,9 +150,9 @@ export function HandHistoryCardPicker({
         <Button
           size="small"
           variant="outlined"
-          onClick={() => onInsertText('overbet')}
+          onClick={() => onInsertText('overbet pot')}
           sx={{ minWidth: 0, px: 1 }}
-          aria-label="Insert overbet"
+          aria-label="Insert overbet pot"
         >
           overbet
         </Button>

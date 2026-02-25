@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
@@ -18,8 +17,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import Paper from '@mui/material/Paper';
 import { RichNoteRenderer } from './RichNoteRenderer';
-import { HandHistoryCardPicker } from './HandHistoryCardPicker';
-import { getUsedCardShorthands } from '../utils/cardParser';
+import { HandHistoryFormContent } from './HandHistoryFormContent';
 import type { HandHistoryEntry } from '../types';
 
 const PANEL_WIDTH = 340;
@@ -47,8 +45,6 @@ export function HandHistoryPanel({
   const [modalContent, setModalContent] = useState('');
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [savingAll, setSavingAll] = useState(false);
-  const contentInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const contentSelectionRef = useRef({ start: 0, end: 0 });
 
   useEffect(() => {
     setLocalValues(handHistories?.length ? handHistories : []);
@@ -80,41 +76,6 @@ export function HandHistoryPanel({
   const closeModal = () => {
     setModalOpen(false);
   };
-
-  const insertCardAtCursor = useCallback(
-    (shorthand: string) => {
-      const { start } = contentSelectionRef.current;
-      const before = modalContent.slice(0, start);
-      const after = modalContent.slice(start);
-      const inserted = `\`${shorthand}\``;
-      const next = before + inserted + after;
-      setModalContent(next);
-      const newPos = start + inserted.length;
-      contentSelectionRef.current = { start: newPos, end: newPos };
-      setTimeout(() => {
-        contentInputRef.current?.focus();
-        contentInputRef.current?.setSelectionRange(newPos, newPos);
-      }, 0);
-    },
-    [modalContent]
-  );
-
-  const insertTextAtCursor = useCallback(
-    (text: string) => {
-      const { start } = contentSelectionRef.current;
-      const before = modalContent.slice(0, start);
-      const after = modalContent.slice(start);
-      const next = before + text + after;
-      setModalContent(next);
-      const newPos = start + text.length;
-      contentSelectionRef.current = { start: newPos, end: newPos };
-      setTimeout(() => {
-        contentInputRef.current?.focus();
-        contentInputRef.current?.setSelectionRange(newPos, newPos);
-      }, 0);
-    },
-    [modalContent]
-  );
 
   const handleModalSave = async () => {
     if (modalMode === 'add') {
@@ -337,53 +298,15 @@ export function HandHistoryPanel({
             </Typography>
           </Box>
         </DialogTitle>
-        <DialogContent
-          sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: 1,
-            alignItems: 'flex-start',
-          }}
-        >
-          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <TextField
-              fullWidth
-              label="Title"
-              placeholder="e.g. AK vs 3-bet"
-              value={modalTitle}
-              onChange={(e) => setModalTitle(e.target.value)}
-              margin="normal"
-              size="small"
-            />
-            <TextField
-              fullWidth
-              label="Content"
-              multiline
-              minRows={4}
-              placeholder="Paste hand history... Click a card on the right to insert at cursor"
-              value={modalContent}
-              onChange={(e) => setModalContent(e.target.value)}
-              onSelect={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
-              }}
-              onBlur={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
-              }}
-              inputRef={contentInputRef}
-              margin="normal"
-              size="small"
-              sx={{
-                flex: 1,
-                '& .MuiInputBase-input': { fontSize: '0.85rem', fontFamily: 'monospace' },
-              }}
-            />
-          </Box>
-          <HandHistoryCardPicker
-            onInsertCard={insertCardAtCursor}
-            onInsertText={insertTextAtCursor}
-            usedShorthands={getUsedCardShorthands(modalContent)}
+        <DialogContent>
+          <HandHistoryFormContent
+            title={modalTitle}
+            onTitleChange={setModalTitle}
+            content={modalContent}
+            onContentChange={setModalContent}
+            contentLabel="Content"
+            placeholder="Paste hand history… Click a card on the right to insert at cursor"
+            cardSize="xs"
           />
         </DialogContent>
         <DialogActions>

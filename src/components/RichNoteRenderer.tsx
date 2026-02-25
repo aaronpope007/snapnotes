@@ -5,11 +5,14 @@ import { CardImage } from './CardImage';
 
 const EXPLOIT_COLOR = '#ffb74d';
 
+type CardSize = 'xxs' | 'xs' | 'sm' | 'md';
+
 interface RichNoteRendererProps {
   text: string;
+  cardSize?: CardSize;
 }
 
-function renderLine(line: string, isExploit: boolean): React.ReactNode {
+function renderLine(line: string, isExploit: boolean, cardSize: CardSize): React.ReactNode {
   const tokens = parseNoteTokens(line);
 
   const content = tokens.map((token, i) => {
@@ -25,6 +28,7 @@ function renderLine(line: string, isExploit: boolean): React.ReactNode {
             rank={token.rank}
             suit={token.suit}
             backdoor={token.backdoor}
+            size={cardSize}
           />
         </Box>
       );
@@ -32,7 +36,7 @@ function renderLine(line: string, isExploit: boolean): React.ReactNode {
     if (token.type === 'unknown_card') {
       return (
         <Box key={i} component="span" sx={{ display: 'inline-flex', ...cardGap }}>
-          <CardImage rank="?" suit={null} />
+          <CardImage rank="?" suit={null} size={cardSize} />
         </Box>
       );
     }
@@ -53,7 +57,7 @@ function renderLine(line: string, isExploit: boolean): React.ReactNode {
   return <span>{content}</span>;
 }
 
-export function RichNoteRenderer({ text }: RichNoteRendererProps) {
+export function RichNoteRenderer({ text, cardSize = 'sm' }: RichNoteRendererProps) {
   const content = useMemo(() => {
     if (!text) return null;
 
@@ -61,7 +65,7 @@ export function RichNoteRenderer({ text }: RichNoteRendererProps) {
     return lines.map((line, i) => (
       <Fragment key={i}>
         <Box component="span" sx={{ display: 'block' }}>
-          {renderLine(line, line.startsWith('**') || line.startsWith('*'))}
+          {renderLine(line, line.startsWith('**') || line.startsWith('*'), cardSize)}
         </Box>
         {i < lines.length - 1 && (
           <Box
@@ -74,7 +78,7 @@ export function RichNoteRenderer({ text }: RichNoteRendererProps) {
         )}
       </Fragment>
     ));
-  }, [text]);
+  }, [text, cardSize]);
 
   return (
     <Box
