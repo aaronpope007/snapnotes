@@ -48,6 +48,16 @@ export async function addHandComment(
   return data;
 }
 
+export async function deleteHandComment(
+  id: string,
+  commentIndex: number
+): Promise<HandToReview> {
+  const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
+    deleteCommentIndex: commentIndex,
+  });
+  return data;
+}
+
 export async function deleteHandToReview(id: string): Promise<void> {
   await api.delete(`/hands-to-review/${id}`);
 }

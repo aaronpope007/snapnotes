@@ -59,6 +59,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       handText?: string;
       status?: 'open' | 'archived';
       addComment?: { text: string; addedBy: string };
+      deleteCommentIndex?: number;
     };
     const hand = await HandToReview.findById(req.params.id);
     if (!hand) return res.status(404).json({ error: 'Hand not found' });
@@ -84,6 +85,16 @@ router.put('/:id', async (req: Request, res: Response) => {
         addedAt: new Date(),
       };
       hand.comments.push(comment);
+      await hand.save();
+      return res.json(hand);
+    }
+
+    if (
+      typeof body.deleteCommentIndex === 'number' &&
+      body.deleteCommentIndex >= 0 &&
+      body.deleteCommentIndex < (hand.comments?.length ?? 0)
+    ) {
+      hand.comments.splice(body.deleteCommentIndex, 1);
       await hand.save();
       return res.json(hand);
     }

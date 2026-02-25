@@ -11,6 +11,7 @@ import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -26,6 +27,7 @@ import {
   createHandToReview,
   updateHandToReview,
   addHandComment,
+  deleteHandComment,
   deleteHandToReview,
 } from '../api/handsToReview';
 import type { HandToReview, HandToReviewStatus } from '../types';
@@ -51,6 +53,10 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const [editSaving, setEditSaving] = useState(false);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [commentSaving, setCommentSaving] = useState<string | null>(null);
+  const [deleteCommentTarget, setDeleteCommentTarget] = useState<{
+    handId: string;
+    commentIndex: number;
+  } | null>(null);
 
   const loadHands = useCallback(async () => {
     setLoading(true);
@@ -156,6 +162,24 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       onSuccess?.('Comment added');
     } catch {
       onError?.('Failed to add comment');
+    } finally {
+      setCommentSaving(null);
+    }
+  };
+
+  const handleConfirmDeleteComment = async () => {
+    if (!deleteCommentTarget) return;
+    const { handId, commentIndex } = deleteCommentTarget;
+    setCommentSaving(handId);
+    try {
+      const updated = await deleteHandComment(handId, commentIndex);
+      setHands((prev) =>
+        prev.map((h) => (h._id === handId ? updated : h))
+      );
+      setDeleteCommentTarget(null);
+      onSuccess?.('Comment deleted');
+    } catch {
+      onError?.('Failed to delete comment');
     } finally {
       setCommentSaving(null);
     }
@@ -349,14 +373,39 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                             borderRadius: 0.5,
                             border: '1px solid',
                             borderColor: 'divider',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 0.5,
+                            '&:hover .comment-delete-btn': {
+                              opacity: 1,
+                            },
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">
-                            {c.addedBy} • {new Date(c.addedAt).toLocaleString()}
-                          </Typography>
-                          <Box sx={{ mt: 0.25 }}>
-                            <RichNoteRenderer text={c.text} />
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {c.addedBy} • {new Date(c.addedAt).toLocaleString()}
+                            </Typography>
+                            <Box sx={{ mt: 0.25 }}>
+                              <RichNoteRenderer text={c.text} />
+                            </Box>
                           </Box>
+                          <IconButton
+                            size="small"
+                            className="comment-delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteCommentTarget({ handId: hand._id, commentIndex: i });
+                            }}
+                            sx={{
+                              p: 0.25,
+                              opacity: 0,
+                              transition: 'opacity 0.2s',
+                              flexShrink: 0,
+                            }}
+                            aria-label="Delete comment"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
                         </Box>
                       ))}
                     </Box>
@@ -482,6 +531,31 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             disabled={editSaving || !editHandText.trim()}
           >
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={deleteCommentTarget !== null}
+        onClose={() => setDeleteCommentTarget(null)}
+      >
+        <DialogTitle>Delete comment?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this comment? This cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteCommentTarget(null)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDeleteComment}
+            disabled={
+              commentSaving === (deleteCommentTarget?.handId ?? null)
+            }
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
