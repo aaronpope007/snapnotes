@@ -7,6 +7,10 @@ import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -60,6 +64,8 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const userName = useUserName();
   const [hands, setHands] = useState<HandToReview[]>([]);
   const [filter, setFilter] = useState<'all' | HandToReviewStatus>('open');
+  const [sortBy, setSortBy] = useState<'star' | 'spicy'>('star');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -268,7 +274,22 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     }
   };
 
-  const displayHands = hands;
+  const displayHands =
+    filter === 'all'
+      ? [...hands].sort((a, b) => {
+          const aVal =
+            sortBy === 'star'
+              ? avgRating(a.starRatings)
+              : avgRating(a.spicyRatings);
+          const bVal =
+            sortBy === 'star'
+              ? avgRating(b.starRatings)
+              : avgRating(b.spicyRatings);
+          const aNum = aVal ?? -Infinity;
+          const bNum = bVal ?? -Infinity;
+          return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
+        })
+      : hands;
 
   return (
     <Box sx={{ width: '100%', maxWidth: 480 }}>
@@ -306,6 +327,36 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
           </Button>
         </Box>
       </Box>
+
+      {filter === 'all' && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel id="sort-by-label">Sort by</InputLabel>
+            <Select
+              labelId="sort-by-label"
+              value={sortBy}
+              label="Sort by"
+              onChange={(e) => setSortBy(e.target.value as 'star' | 'spicy')}
+            >
+              <MenuItem value="star">
+                <Box component="span" sx={{ color: STAR_COLOR }}>★</Box> Star level
+              </MenuItem>
+              <MenuItem value="spicy">
+                <ChiliIcon size={14} inline /> Spicy level
+              </MenuItem>
+            </Select>
+          </FormControl>
+          <ToggleButtonGroup
+            value={sortOrder}
+            exclusive
+            onChange={(_, v) => v != null && setSortOrder(v)}
+            size="small"
+          >
+            <ToggleButton value="asc" aria-label="Ascending">Asc</ToggleButton>
+            <ToggleButton value="desc" aria-label="Descending">Desc</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      )}
 
       {loading ? (
         <Typography variant="body2" color="text.secondary">
