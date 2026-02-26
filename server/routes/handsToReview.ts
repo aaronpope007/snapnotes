@@ -36,7 +36,7 @@ router.post('/', async (req: Request, res: Response) => {
       handText: string;
       spoilerText?: string;
       createdBy: string;
-      initialComment?: { text: string; addedBy: string };
+      initialComment?: { text: string; addedBy: string; authorOnly?: boolean };
     };
     if (!body.handText?.trim()) {
       return res.status(400).json({ error: 'Hand text is required' });
@@ -53,6 +53,7 @@ router.post('/', async (req: Request, res: Response) => {
         text: body.initialComment.text.trim(),
         addedBy: body.initialComment.addedBy,
         addedAt: new Date(),
+        authorOnly: body.initialComment.authorOnly === true,
       });
       await hand.save();
     }
@@ -70,7 +71,12 @@ router.put('/:id', async (req: Request, res: Response) => {
       handText?: string;
       status?: 'open' | 'archived';
       addComment?: { text: string; addedBy: string };
-      updateComment?: { commentIndex: number; text: string; editedBy: string };
+      updateComment?: {
+        commentIndex: number;
+        text?: string;
+        editedBy?: string;
+        authorOnly?: boolean;
+      };
       deleteCommentIndex?: number;
       rateHand?: {
         starRating?: number;
@@ -131,16 +137,20 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     if (
-      body.updateComment?.text?.trim() != null &&
-      typeof body.updateComment.commentIndex === 'number' &&
+      typeof body.updateComment?.commentIndex === 'number' &&
       body.updateComment.commentIndex >= 0 &&
-      body.updateComment.commentIndex < (hand.comments?.length ?? 0) &&
-      body.updateComment.editedBy
+      body.updateComment.commentIndex < (hand.comments?.length ?? 0)
     ) {
-      const { commentIndex, text, editedBy } = body.updateComment;
-      hand.comments[commentIndex].text = text.trim();
-      (hand.comments[commentIndex] as Record<string, unknown>).editedAt = new Date();
-      (hand.comments[commentIndex] as Record<string, unknown>).editedBy = editedBy;
+      const { commentIndex, text, editedBy, authorOnly } = body.updateComment;
+      const comment = hand.comments[commentIndex] as Record<string, unknown>;
+      if (text?.trim() != null && editedBy) {
+        comment.text = text.trim();
+        comment.editedAt = new Date();
+        comment.editedBy = editedBy;
+      }
+      if (typeof authorOnly === 'boolean') {
+        comment.authorOnly = authorOnly;
+      }
       await hand.save();
       return res.json(hand);
     }

@@ -10,6 +10,7 @@ const commentSchema = new mongoose.Schema(
     addedAt: { type: Date, required: true, default: Date.now },
     editedAt: { type: Date, default: undefined },
     editedBy: { type: String, default: undefined },
+    authorOnly: { type: Boolean, default: false },
   },
   { _id: false }
 );

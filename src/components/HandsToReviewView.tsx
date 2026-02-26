@@ -7,7 +7,9 @@ import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -100,6 +102,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const [addHandText, setAddHandText] = useState('');
   const [addSpoilerText, setAddSpoilerText] = useState('');
   const [addInitialComment, setAddInitialComment] = useState('');
+  const [addInitialCommentPrivate, setAddInitialCommentPrivate] = useState(true);
   const [addSaving, setAddSaving] = useState(false);
   const [editHand, setEditHand] = useState<HandToReview | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -123,6 +126,8 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   } | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [revealedPrivateComments, setRevealedPrivateComments] = useState<Set<string>>(new Set());
+  const [deleteHandConfirmOpen, setDeleteHandConfirmOpen] = useState(false);
   const {
     confirmOpen: discardConfirmOpen,
     openConfirm: openDiscardConfirm,
@@ -150,7 +155,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   }, [loadHands]);
 
   const isAddModalDirty = () =>
-    addTitle.trim() !== '' || addHandText.trim() !== '' || addSpoilerText.trim() !== '' || addInitialComment.trim() !== '';
+    addTitle.trim() !== '' || addHandText.trim() !== '' || addSpoilerText.trim() !== '' || addInitialComment.trim() !== '' || !addInitialCommentPrivate;
 
   const isEditModalDirty = () =>
     editHand !== null &&
@@ -164,6 +169,9 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         setAddModalOpen(false);
         setAddTitle('');
         setAddHandText('');
+        setAddSpoilerText('');
+        setAddInitialComment('');
+        setAddInitialCommentPrivate(true);
       });
     } else {
       setAddModalOpen(false);
@@ -171,6 +179,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       setAddHandText('');
       setAddSpoilerText('');
       setAddInitialComment('');
+      setAddInitialCommentPrivate(true);
     }
   };
 
@@ -193,7 +202,11 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         createdBy: userName || 'Anonymous',
         initialComment:
           addInitialComment.trim() && userName
-            ? { text: addInitialComment.trim(), addedBy: userName }
+            ? {
+                text: addInitialComment.trim(),
+                addedBy: userName,
+                authorOnly: addInitialCommentPrivate,
+              }
             : undefined,
       });
       setHands((prev) => [created, ...prev]);
@@ -202,6 +215,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       setAddHandText('');
       setAddSpoilerText('');
       setAddInitialComment('');
+      setAddInitialCommentPrivate(true);
       setExpandedId(created._id);
       onSuccess?.('Hand added for review');
     } catch {
@@ -343,7 +357,10 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     const { handId, commentIndex } = editingComment;
     setCommentSaving(handId);
     try {
-      const updated = await updateHandComment(handId, commentIndex, editingCommentText.trim(), userName);
+      const updated = await updateHandComment(handId, commentIndex, {
+        text: editingCommentText.trim(),
+        editedBy: userName,
+      });
       setHands((prev) =>
         prev.map((h) => (h._id === handId ? updated : h))
       );
@@ -352,6 +369,29 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       onSuccess?.('Comment updated');
     } catch {
       onError?.('Failed to update comment');
+    } finally {
+      setCommentSaving(null);
+    }
+  };
+
+  const handleToggleCommentPrivate = async (
+    handId: string,
+    commentIndex: number,
+    currentAuthorOnly: boolean
+  ) => {
+    setCommentSaving(handId);
+    try {
+      const updated = await updateHandComment(handId, commentIndex, {
+        authorOnly: !currentAuthorOnly,
+      });
+      setHands((prev) =>
+        prev.map((h) => (h._id === handId ? updated : h))
+      );
+      onSuccess?.(
+        !currentAuthorOnly ? 'Comment is now private' : 'Comment visible to reviewers'
+      );
+    } catch {
+      onError?.('Failed to update comment visibility');
     } finally {
       setCommentSaving(null);
     }
@@ -798,14 +838,20 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                       </Box>
                     )}
 
+                    {(() => {
+                      const allComments = (hand.comments ?? []).map((c, i) => ({ c, i }));
+                      return (
+                        <>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                      Comments ({hand.comments?.length ?? 0})
+                      Comments ({allComments.length})
                     </Typography>
                     <Box sx={{ mt: 0.5, mb: 1 }}>
-                      {(hand.comments ?? []).map((c, i) => {
+                      {allComments.map(({ c, i }) => {
+                        const key = commentKey(hand._id, i);
+                        const isPrivateHiddenForReviewer =
+                          !!c.authorOnly && hand.createdBy !== userName && !revealedPrivateComments.has(key);
                         const isEditing =
                           editingComment?.handId === hand._id && editingComment?.commentIndex === i;
-                        const key = commentKey(hand._id, i);
                         const expanded = expandedComments.has(key);
                         const toggleExpanded = () =>
                           setExpandedComments((prev) => {
@@ -814,6 +860,38 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                             else next.add(key);
                             return next;
                           });
+                        const handleShowInitialComment = (e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          setRevealedPrivateComments((prev) => new Set(prev).add(key));
+                          setExpandedComments((prev) => new Set(prev).add(key));
+                        };
+                        if (isPrivateHiddenForReviewer) {
+                          return (
+                            <Box
+                              key={i}
+                              sx={{
+                                py: 0.5,
+                                px: 1,
+                                mb: 0.5,
+                                bgcolor: 'background.paper',
+                                borderRadius: 0.5,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                              }}
+                            >
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                Author&apos;s initial thoughts (hidden to avoid influencing review)
+                              </Typography>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={handleShowInitialComment}
+                              >
+                                Show initial comment
+                              </Button>
+                            </Box>
+                          );
+                        }
                         return (
                           <Box
                             key={i}
@@ -858,10 +936,38 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                               </IconButton>
                               <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
                                 {c.addedBy} • {new Date(c.addedAt).toLocaleString()}
+                                {c.authorOnly && hand.createdBy === userName && (
+                                  <> • <Box component="span" sx={{ fontStyle: 'italic' }}>private</Box></>
+                                )}
                                 {c.editedAt && (
                                   <> (edited by {c.editedBy ?? 'Unknown'} • {new Date(c.editedAt).toLocaleString()})</>
                                 )}
                               </Typography>
+                              {hand.createdBy === userName && (
+                                <Box
+                                  component="span"
+                                  onClick={(e) => e.stopPropagation()}
+                                  sx={{ flexShrink: 0 }}
+                                >
+                                  <FormControlLabel
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        checked={!!c.authorOnly}
+                                        onChange={() =>
+                                          handleToggleCommentPrivate(hand._id, i, !!c.authorOnly)
+                                        }
+                                        disabled={commentSaving === hand._id}
+                                      />
+                                    }
+                                    label={
+                                      <Typography variant="caption" color="text.secondary">
+                                        Private
+                                      </Typography>
+                                    }
+                                  />
+                                </Box>
+                              )}
                             </Box>
                             <Collapse in={expanded}>
                               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mt: 0.25, pl: 2.5 }}>
@@ -907,7 +1013,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                                     </Box>
                                   )}
                                 </Box>
-                                {!isEditing && (
+                                {!isEditing && hand.createdBy === userName && (
                                   <>
                                     <IconButton
                                       size="small"
@@ -951,6 +1057,9 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                         );
                       })}
                     </Box>
+                        </>
+                      );
+                    })()}
 
                     <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
                       <TextField
@@ -1032,10 +1141,25 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
               multiline
               minRows={2}
               maxRows={4}
-              placeholder="Add a comment when creating the hand..."
+              placeholder="Your thoughts, context, etc. Private by default; uncheck Mark private to show reviewers."
               value={addInitialComment}
               onChange={(e) => setAddInitialComment(e.target.value)}
               slotProps={{ input: { 'aria-label': 'Initial comment' } }}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={addInitialCommentPrivate}
+                  onChange={(e) => setAddInitialCommentPrivate(e.target.checked)}
+                  size="small"
+                />
+              }
+              label={
+                <Typography variant="caption" color="text.secondary">
+                  Mark private (hidden from reviewers)
+                </Typography>
+              }
+              sx={{ mt: 0.5 }}
             />
           </Box>
         </DialogContent>
@@ -1079,14 +1203,51 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             cardSize="xs"
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeEditModal}>Cancel</Button>
+        <DialogActions sx={{ justifyContent: 'space-between' }}>
           <Button
-            variant="contained"
-            onClick={handleEditSave}
-            disabled={editSaving || !editHandText.trim()}
+            color="error"
+            onClick={() => setDeleteHandConfirmOpen(true)}
+            disabled={editSaving}
           >
-            Save
+            Delete
+          </Button>
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Button onClick={closeEditModal}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleEditSave}
+              disabled={editSaving || !editHandText.trim()}
+            >
+              Save
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={deleteHandConfirmOpen}
+        onClose={() => setDeleteHandConfirmOpen(false)}
+      >
+        <DialogTitle>Delete hand?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this hand? This cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteHandConfirmOpen(false)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              if (!editHand) return;
+              const id = editHand._id;
+              setEditHand(null);
+              setDeleteHandConfirmOpen(false);
+              void handleDelete(id);
+            }}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

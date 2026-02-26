@@ -100,6 +100,8 @@ export interface HandToReviewComment {
   addedAt: string;
   editedAt?: string;
   editedBy?: string;
+  /** When true, only the hand author (createdBy) sees this comment; hidden from reviewers. */
+  authorOnly?: boolean;
 }
 
 export interface HandRatingEntry {
@@ -127,5 +129,5 @@ export interface HandToReviewCreate {
   handText: string;
   spoilerText?: string;
   createdBy: string;
-  initialComment?: { text: string; addedBy: string };
+  initialComment?: { text: string; addedBy: string; authorOnly?: boolean };
 }

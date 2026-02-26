@@ -66,11 +66,10 @@ export async function addHandComment(
 export async function updateHandComment(
   id: string,
   commentIndex: number,
-  text: string,
-  editedBy: string
+  updates: { text?: string; editedBy?: string; authorOnly?: boolean }
 ): Promise<HandToReview> {
   const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
-    updateComment: { commentIndex, text, editedBy },
+    updateComment: { commentIndex, ...updates },
   });
   return data;
 }
