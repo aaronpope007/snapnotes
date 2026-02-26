@@ -98,9 +98,8 @@ export function HandReviewCard({
     ]),
   ].sort();
   const spoilerRevealed = revealedSpoilerIds.has(hand._id);
-  const taggedForMe = userName && (hand.taggedReviewerNames ?? []).includes(userName);
   const hasReviewed = userName && (hand.reviewedBy ?? []).includes(userName);
-  const canMarkReviewed = taggedForMe && !hasReviewed && onMarkReviewed;
+  const canMarkReviewed = userName && !hasReviewed && onMarkReviewed;
 
   return (
     <Paper
@@ -222,14 +221,14 @@ export function HandReviewCard({
             by {hand.createdBy} • {new Date(hand.createdAt).toLocaleDateString()}
           </Typography>
 
-          {taggedForMe && (
+          {userName && (hasReviewed || canMarkReviewed) && (
             <Box sx={{ mb: 1 }}>
               {hasReviewed ? (
                 <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />
                   You reviewed this hand
                 </Typography>
-              ) : canMarkReviewed ? (
+              ) : (
                 <Button
                   variant="outlined"
                   size="small"
@@ -239,7 +238,7 @@ export function HandReviewCard({
                 >
                   Mark as reviewed
                 </Button>
-              ) : null}
+              )}
             </Box>
           )}
 
