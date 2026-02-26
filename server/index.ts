@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import playersRouter from './routes/players.js';
 import handsToReviewRouter from './routes/handsToReview.js';
 import reviewersRouter from './routes/reviewers.js';
+import backupRouter from './routes/backup.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,6 +16,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api/players', playersRouter);
 app.use('/api/hands-to-review', handsToReviewRouter);
 app.use('/api/reviewers', reviewersRouter);
+app.use('/api/backup', backupRouter);
 
 const start = async () => {
   const uri = process.env.MONGODB_URI;

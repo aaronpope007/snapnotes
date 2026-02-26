@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
@@ -8,6 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import AddIcon from '@mui/icons-material/Add';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { ChiliIcon } from './ChiliIcon';
 import { STAR_COLOR } from '../constants/ratings';
 import type { HandToReviewStatus } from '../types';
@@ -23,6 +25,7 @@ interface HandReviewFiltersProps {
   sortOrder: 'asc' | 'desc';
   onSortOrderChange: (v: 'asc' | 'desc') => void;
   onAddClick: () => void;
+  onRefresh?: () => void;
 }
 
 export function HandReviewFilters({
@@ -36,6 +39,7 @@ export function HandReviewFilters({
   sortOrder,
   onSortOrderChange,
   onAddClick,
+  onRefresh,
 }: HandReviewFiltersProps) {
   return (
     <>
@@ -52,7 +56,12 @@ export function HandReviewFilters({
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           Hands to Review
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {onRefresh && (
+            <IconButton size="small" onClick={onRefresh} aria-label="Refresh hands">
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          )}
           <ToggleButtonGroup
             value={filter}
             exclusive

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
@@ -8,10 +8,12 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import RateReviewIcon from '@mui/icons-material/RateReview';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
@@ -19,6 +21,8 @@ import { HandHistoryPanel } from './components/HandHistoryPanel';
 import { HandsToReviewView } from './components/HandsToReviewView';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
+import { MergePlayerDialog } from './components/MergePlayerDialog';
+import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
 import {
   fetchPlayers,
   fetchPlayer,
@@ -26,7 +30,10 @@ import {
   updatePlayer,
   deletePlayer,
   importPlayers,
+  mergePlayers,
 } from './api/players';
+import { exportBackup, restoreBackup, type BackupPayload } from './api/backup';
+import { getApiErrorMessage } from './utils/apiError';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer } from './types';
 
@@ -38,6 +45,12 @@ export default function App() {
   const [addInitialUsername, setAddInitialUsername] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
   const [showHandsToReview, setShowHandsToReview] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeLoading, setMergeLoading] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [restorePayload, setRestorePayload] = useState<BackupPayload | null>(null);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -54,9 +67,9 @@ export default function App() {
     try {
       const data = await fetchPlayers();
       setPlayers(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
       setPlayers([]);
-      showError('Failed to load players');
+      showError(getApiErrorMessage(err, 'Failed to load players'));
     } finally {
       setLoading(false);
     }
@@ -71,8 +84,8 @@ export default function App() {
       setShowHandsToReview(false);
       const full = await fetchPlayer(p._id);
       setSelected(full);
-    } catch {
-      showError('Failed to load player');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to load player'));
     }
   };
 
@@ -97,8 +110,8 @@ export default function App() {
       );
       if (selected?._id === id) setSelected(updated);
       showSuccess('Player updated');
-    } catch {
-      showError('Failed to update player');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to update player'));
       throw new Error('Update failed');
     }
   };
@@ -109,8 +122,8 @@ export default function App() {
       setPlayers((prev) => prev.filter((p) => p._id !== id));
       if (selected?._id === id) setSelected(null);
       showSuccess('Player deleted');
-    } catch {
-      showError('Failed to delete player');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to delete player'));
       throw new Error('Delete failed');
     }
   };
@@ -125,17 +138,105 @@ export default function App() {
       );
       setSelected(created);
       showSuccess('Player added');
-    } catch {
-      showError('Failed to add player');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to add player'));
       throw new Error('Add failed');
     }
   };
 
   const handleImport = async (toImport: ImportPlayer[]) => {
-    const result = await importPlayers(toImport);
+    try {
+      const result = await importPlayers(toImport);
+      await loadPlayers();
+      showSuccess(`Imported: ${result.created} new, ${result.updated} updated`);
+      return result;
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Import failed'));
+      throw new Error('Import failed');
+    }
+  };
+
+  const handleExportBackup = async () => {
+    try {
+      const payload = await exportBackup();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `snapnotes-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showSuccess('Backup exported');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to export backup'));
+    }
+  };
+
+  const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const payload = JSON.parse(reader.result as string) as BackupPayload;
+        if (!payload || typeof payload !== 'object') throw new Error('Invalid backup file');
+        setRestorePayload({
+          exportedAt: payload.exportedAt ?? '',
+          players: Array.isArray(payload.players) ? payload.players : [],
+          handsToReview: Array.isArray(payload.handsToReview) ? payload.handsToReview : [],
+        });
+        setRestoreDialogOpen(true);
+      } catch {
+        showError('Invalid backup file');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restorePayload) return;
+    setRestoreLoading(true);
+    try {
+      await restoreBackup(restorePayload);
+      setRestoreDialogOpen(false);
+      setRestorePayload(null);
+      await loadPlayers();
+      setSelected(null);
+      showSuccess('Backup restored');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to restore backup'));
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
+  const handleRefresh = useCallback(async () => {
     await loadPlayers();
-    showSuccess(`Imported: ${result.created} new, ${result.updated} updated`);
-    return result;
+    if (selected) {
+      try {
+        const full = await fetchPlayer(selected._id);
+        setSelected(full);
+      } catch {
+        // keep current selected on refresh failure
+      }
+    }
+  }, [loadPlayers, selected]);
+
+  const handleMergeConfirm = async (targetId: string) => {
+    if (!selected) return;
+    setMergeLoading(true);
+    try {
+      const merged = await mergePlayers(selected._id, targetId);
+      await loadPlayers();
+      setSelected(merged);
+      setMergeDialogOpen(false);
+      showSuccess('Players merged');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to merge players'));
+    } finally {
+      setMergeLoading(false);
+    }
   };
 
   const existingUsernames = new Set(players.map((p) => p.username.toLowerCase()));
@@ -172,7 +273,10 @@ export default function App() {
             }}
             selectedId={selected?._id}
           />
-          <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <IconButton size="small" onClick={() => void handleRefresh()} aria-label="Refresh" disabled={loading}>
+              <RefreshIcon fontSize="small" />
+            </IconButton>
             <Button
               variant="outlined"
               size="small"
@@ -188,6 +292,23 @@ export default function App() {
               onClick={() => setImportOpen(true)}
             >
               Import
+            </Button>
+            <Button variant="outlined" size="small" onClick={handleExportBackup}>
+              Export backup
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              component="label"
+            >
+              Restore backup
+              <input
+                ref={backupFileInputRef}
+                type="file"
+                accept=".json"
+                hidden
+                onChange={handleRestoreFileChange}
+              />
             </Button>
             <Button
               variant={showHandsToReview ? 'contained' : 'outlined'}
@@ -228,8 +349,10 @@ export default function App() {
               <Box sx={{ flex: '0 0 400px', maxWidth: 400 }}>
                 <PlayerCard
                   player={selected}
+                  players={players}
                   onUpdate={handleUpdatePlayer}
                   onDelete={handleDeletePlayer}
+                  onMergeClick={() => setMergeDialogOpen(true)}
                   onClose={() => setSelected(null)}
                 />
               </Box>
@@ -307,6 +430,26 @@ export default function App() {
         onClose={() => setImportOpen(false)}
         onImport={handleImport}
         existingUsernames={existingUsernames}
+      />
+
+      {selected && (
+        <MergePlayerDialog
+          open={mergeDialogOpen}
+          onClose={() => setMergeDialogOpen(false)}
+          sourcePlayer={selected}
+          players={players}
+          onConfirm={handleMergeConfirm}
+          loading={mergeLoading}
+        />
+      )}
+
+      <RestoreBackupConfirmDialog
+        open={restoreDialogOpen}
+        onClose={() => { setRestoreDialogOpen(false); setRestorePayload(null); }}
+        onConfirm={handleConfirmRestore}
+        playerCount={restorePayload?.players?.length ?? 0}
+        handsToReviewCount={restorePayload?.handsToReview?.length ?? 0}
+        loading={restoreLoading}
       />
 
       <Snackbar

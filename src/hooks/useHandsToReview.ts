@@ -13,6 +13,7 @@ import {
   markHandReviewed,
 } from '../api/handsToReview';
 import { fetchReviewers } from '../api/reviewers';
+import { getApiErrorMessage } from '../utils/apiError';
 import type { HandToReview, HandToReviewStatus } from '../types';
 import { normalizeStarRating } from '../utils/handReviewUtils';
 import { DEFAULT_HAND_TITLE } from '../../shared/constants';
@@ -83,9 +84,9 @@ export function useHandsToReview({
       const status = filter === 'all' ? undefined : (filter as HandToReviewStatus);
       const data = await fetchHandsToReview(status);
       setHands(data);
-    } catch {
+    } catch (err) {
       setHands([]);
-      onError?.('Failed to load hands to review');
+      onError?.(getApiErrorMessage(err, 'Failed to load hands to review'));
     } finally {
       setLoading(false);
     }
@@ -440,6 +441,7 @@ export function useHandsToReview({
   return {
     hands: displayHands,
     loading,
+    loadHands,
     filter,
     setFilter,
     filterForMe,

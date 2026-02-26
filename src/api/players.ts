@@ -50,3 +50,11 @@ export async function importPlayers(
   });
   return data;
 }
+
+export async function mergePlayers(
+  sourceId: string,
+  targetId: string
+): Promise<Player> {
+  const { data } = await api.post<Player>('/players/merge', { sourceId, targetId });
+  return data;
+}

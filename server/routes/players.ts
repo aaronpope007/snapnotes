@@ -162,6 +162,62 @@ router.post('/import', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/players/merge — merge source player into target (notes, hand histories, exploits combined; source deleted)
+router.post('/merge', async (req: Request, res: Response) => {
+  try {
+    const { sourceId, targetId } = req.body as { sourceId?: string; targetId?: string };
+    if (!sourceId || !targetId || sourceId === targetId) {
+      return res.status(400).json({ error: 'Invalid merge: provide distinct sourceId and targetId' });
+    }
+    const [source, target] = await Promise.all([
+      Player.findById(sourceId).lean(),
+      Player.findById(targetId),
+    ]);
+    if (!source || !target) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    const src = source as Record<string, unknown>;
+    const srcNotes = Array.isArray(src.notes) ? (src.notes as unknown[]) : [];
+    const srcHandHistories = normalizeHandHistories(src.handHistories);
+    const srcExploits = Array.isArray(src.exploits) ? (src.exploits as string[]) : [];
+    const srcGameTypes = Array.isArray(src.gameTypes) ? (src.gameTypes as string[]) : [];
+    const srcStakes = Array.isArray(src.stakesSeenAt) ? (src.stakesSeenAt as number[]) : [];
+    const srcFormats = Array.isArray(src.formats) ? (src.formats as string[]) : [];
+
+    const mergedNotes = [...(target.notes || []), ...srcNotes];
+    const mergedHandHistories = [...(target.handHistories || []), ...srcHandHistories];
+    const mergedExploits = [...new Set([...(target.exploits || []), ...srcExploits])];
+    const mergedGameTypes = [...new Set([...(target.gameTypes || []), ...srcGameTypes])];
+    const mergedStakes = [...new Set([...(target.stakesSeenAt || []), ...srcStakes])].sort((a, b) => a - b);
+    const mergedFormats = [...new Set([...(target.formats || []), ...srcFormats])];
+
+    await Player.findByIdAndUpdate(targetId, {
+      notes: mergedNotes,
+      handHistories: mergedHandHistories,
+      exploits: mergedExploits,
+      gameTypes: mergedGameTypes,
+      stakesSeenAt: mergedStakes,
+      formats: mergedFormats,
+    });
+    await Player.findByIdAndDelete(sourceId);
+
+    const updated = await Player.findById(targetId).lean();
+    if (!updated) return res.status(500).json({ error: 'Merge completed but failed to load target' });
+    const out = updated as Record<string, unknown>;
+    const handHistories = normalizeHandHistories(out.handHistories);
+    const { stakesSeenAt, formats } = normalizeStakesAndFormats(out);
+    const origin = typeof out.origin === 'string' ? out.origin : 'WPT Gold';
+    const gameTypes = Array.isArray(out.gameTypes) ? (out.gameTypes as string[]) : [];
+    const { stakeNotes, rawNote, stakesWithFormat, ...rest } = out;
+    void stakeNotes;
+    void rawNote;
+    void stakesWithFormat;
+    res.json({ ...rest, handHistories, gameTypes, stakesSeenAt, formats, origin } as object);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to merge players' });
+  }
+});
+
 interface HandHistoryComment {
   text: string;
   addedBy: string;

@@ -50,6 +50,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         sortOrder={hook.sortOrder}
         onSortOrderChange={hook.setSortOrder}
         onAddClick={() => hook.setAddModalOpen(true)}
+        onRefresh={() => void hook.loadHands()}
       />
 
       {hook.forMeCount > 0 && !hook.filterForMe && (

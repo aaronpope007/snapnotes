@@ -11,6 +11,7 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import MergeTypeIcon from '@mui/icons-material/MergeType';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -26,16 +27,18 @@ import {
   getPlayerTypeColor,
   getPlayerTypeLabel,
 } from '../constants/playerTypes';
-import type { Player, PlayerTypeKey, NoteEntry } from '../types';
+import type { Player, PlayerListItem, PlayerTypeKey, NoteEntry } from '../types';
 
 interface PlayerCardProps {
   player: Player;
+  players: PlayerListItem[];
   onUpdate: (id: string, updates: Partial<Player>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onMergeClick: () => void;
   onClose: () => void;
 }
 
-export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardProps) {
+export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, onClose }: PlayerCardProps) {
   const userName = useUserName();
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(player.username);
@@ -276,7 +279,15 @@ export function PlayerCard({ player, onUpdate, onDelete, onClose }: PlayerCardPr
           saving={saving}
         />
 
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5 }}>
+          <Button
+            size="small"
+            startIcon={<MergeTypeIcon />}
+            onClick={onMergeClick}
+            disabled={saving || players.length < 2}
+          >
+            Merge into another player
+          </Button>
           <Button
             color="error"
             size="small"
