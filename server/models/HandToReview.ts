@@ -42,6 +42,8 @@ const handToReviewSchema = new mongoose.Schema(
     starRatings: { type: [ratingEntrySchema], default: [] },
     spicyRatings: { type: [ratingEntrySchema], default: [] },
     archivedAt: { type: Date, default: null },
+    taggedReviewerNames: { type: [String], default: [] },
+    reviewedBy: { type: [String], default: [] },
   },
   { timestamps: true }
 );

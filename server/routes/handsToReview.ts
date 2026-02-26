@@ -37,16 +37,21 @@ router.post('/', async (req: Request, res: Response) => {
       handText: string;
       spoilerText?: string;
       createdBy: string;
+      taggedReviewerNames?: string[];
       initialComment?: { text: string; addedBy: string; authorOnly?: boolean };
     };
     if (!body.handText?.trim()) {
       return res.status(400).json({ error: 'Hand text is required' });
     }
+    const taggedReviewerNames = Array.isArray(body.taggedReviewerNames)
+      ? body.taggedReviewerNames.filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+      : [];
     const hand = new HandToReview({
       title: body.title?.trim() || DEFAULT_HAND_TITLE,
       handText: body.handText.trim(),
       spoilerText: body.spoilerText?.trim() ?? '',
       createdBy: body.createdBy || 'Anonymous',
+      taggedReviewerNames,
     });
     await hand.save();
     if (body.initialComment?.text?.trim() && body.initialComment.addedBy) {
@@ -71,6 +76,8 @@ router.put('/:id', async (req: Request, res: Response) => {
       title?: string;
       handText?: string;
       status?: 'open' | 'archived';
+      taggedReviewerNames?: string[];
+      markReviewed?: { userName: string };
       addComment?: { text: string; addedBy: string };
       updateComment?: {
         commentIndex: number;
@@ -93,6 +100,19 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (body.title !== undefined) update.title = body.title.trim() || DEFAULT_HAND_TITLE;
     if (body.handText !== undefined) update.handText = body.handText.trim();
     if (body.spoilerText !== undefined) update.spoilerText = body.spoilerText.trim();
+    if (Array.isArray(body.taggedReviewerNames)) {
+      update.taggedReviewerNames = body.taggedReviewerNames.filter(
+        (n): n is string => typeof n === 'string' && n.trim() !== ''
+      );
+    }
+    if (body.markReviewed?.userName?.trim()) {
+      const name = body.markReviewed.userName.trim();
+      const reviewedBy = [...(hand.reviewedBy || [])];
+      if (!reviewedBy.includes(name)) {
+        reviewedBy.push(name);
+        update.reviewedBy = reviewedBy;
+      }
+    }
 
     if (body.status !== undefined && (body.status === 'open' || body.status === 'archived')) {
       update.status = body.status;

@@ -33,9 +33,17 @@ export async function updateHandToReview(
     handText?: string;
     spoilerText?: string;
     status?: HandToReviewStatus;
+    taggedReviewerNames?: string[];
   }
 ): Promise<HandToReview> {
   const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, updates);
+  return data;
+}
+
+export async function markHandReviewed(id: string, userName: string): Promise<HandToReview> {
+  const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
+    markReviewed: { userName },
+  });
   return data;
 }
 

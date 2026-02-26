@@ -10,7 +10,9 @@ import {
   deleteHandComment,
   deleteHandToReview,
   rateHand,
+  markHandReviewed,
 } from '../api/handsToReview';
+import { fetchReviewers } from '../api/reviewers';
 import type { HandToReview, HandToReviewStatus } from '../types';
 import { normalizeStarRating } from '../utils/handReviewUtils';
 import { DEFAULT_HAND_TITLE } from '../../shared/constants';
@@ -27,7 +29,9 @@ export function useHandsToReview({
   onError,
 }: UseHandsToReviewOptions) {
   const [hands, setHands] = useState<HandToReview[]>([]);
+  const [reviewersList, setReviewersList] = useState<string[]>([]);
   const [filter, setFilter] = useState<'all' | HandToReviewStatus>('open');
+  const [filterForMe, setFilterForMe] = useState(false);
   const [sortBy, setSortBy] = useState<'star' | 'spicy'>('star');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [loading, setLoading] = useState(true);
@@ -38,11 +42,13 @@ export function useHandsToReview({
   const [addSpoilerText, setAddSpoilerText] = useState('');
   const [addInitialComment, setAddInitialComment] = useState('');
   const [addInitialCommentPrivate, setAddInitialCommentPrivate] = useState(true);
+  const [addTaggedReviewers, setAddTaggedReviewers] = useState<string[]>([]);
   const [addSaving, setAddSaving] = useState(false);
   const [editHand, setEditHand] = useState<HandToReview | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editHandText, setEditHandText] = useState('');
   const [editSpoilerText, setEditSpoilerText] = useState('');
+  const [editTaggedReviewers, setEditTaggedReviewers] = useState<string[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [revealedSpoilerIds, setRevealedSpoilerIds] = useState<Set<string>>(new Set());
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
@@ -89,18 +95,32 @@ export function useHandsToReview({
     loadHands();
   }, [loadHands]);
 
+  useEffect(() => {
+    fetchReviewers()
+      .then(setReviewersList)
+      .catch(() => setReviewersList([]));
+  }, []);
+
   const isAddModalDirty = () =>
     addTitle.trim() !== '' ||
     addHandText.trim() !== '' ||
     addSpoilerText.trim() !== '' ||
     addInitialComment.trim() !== '' ||
+    addTaggedReviewers.length > 0 ||
     !addInitialCommentPrivate;
 
-  const isEditModalDirty = () =>
-    editHand !== null &&
-    (editTitle !== (editHand.title ?? '') ||
+  const isEditModalDirty = () => {
+    if (!editHand) return false;
+    const taggedSame =
+      (editHand.taggedReviewerNames ?? []).length === editTaggedReviewers.length &&
+      (editHand.taggedReviewerNames ?? []).every((n, i) => n === editTaggedReviewers[i]);
+    return (
+      editTitle !== (editHand.title ?? '') ||
       editHandText !== (editHand.handText ?? '') ||
-      editSpoilerText !== (editHand.spoilerText ?? ''));
+      editSpoilerText !== (editHand.spoilerText ?? '') ||
+      !taggedSame
+    );
+  };
 
   const closeAddModal = () => {
     if (isAddModalDirty()) {
@@ -111,6 +131,7 @@ export function useHandsToReview({
         setAddSpoilerText('');
         setAddInitialComment('');
         setAddInitialCommentPrivate(true);
+        setAddTaggedReviewers([]);
       });
     } else {
       setAddModalOpen(false);
@@ -119,6 +140,7 @@ export function useHandsToReview({
       setAddSpoilerText('');
       setAddInitialComment('');
       setAddInitialCommentPrivate(true);
+      setAddTaggedReviewers([]);
     }
   };
 
@@ -135,10 +157,11 @@ export function useHandsToReview({
     setAddSaving(true);
     try {
       const created = await createHandToReview({
-        title: addTitle.trim() || 'Untitled hand',
+        title: addTitle.trim() || DEFAULT_HAND_TITLE,
         handText: addHandText.trim(),
         spoilerText: addSpoilerText.trim() || undefined,
         createdBy: userName || 'Anonymous',
+        taggedReviewerNames: addTaggedReviewers.length > 0 ? addTaggedReviewers : undefined,
         initialComment:
           addInitialComment.trim() && userName
             ? {
@@ -155,6 +178,7 @@ export function useHandsToReview({
       setAddSpoilerText('');
       setAddInitialComment('');
       setAddInitialCommentPrivate(true);
+      setAddTaggedReviewers([]);
       setExpandedId(created._id);
       onSuccess?.('Hand added for review');
     } catch {
@@ -192,6 +216,7 @@ export function useHandsToReview({
     setEditTitle(hand.title || '');
     setEditHandText(hand.handText || '');
     setEditSpoilerText(hand.spoilerText ?? '');
+    setEditTaggedReviewers(hand.taggedReviewerNames ?? []);
   };
 
   const handleEditSave = async () => {
@@ -202,6 +227,7 @@ export function useHandsToReview({
         title: editTitle.trim() || DEFAULT_HAND_TITLE,
         handText: editHandText.trim(),
         spoilerText: editSpoilerText.trim(),
+        taggedReviewerNames: editTaggedReviewers,
       });
       setHands((prev) => prev.map((h) => (h._id === editHand._id ? updated : h)));
       setEditHand(null);
@@ -365,28 +391,65 @@ export function useHandsToReview({
     void handleDelete(id);
   };
 
-  const displayHands =
-    filter === 'all'
-      ? [...hands].sort((a, b) => {
-          const aVal = sortBy === 'star' ? avgRating(a.starRatings) : avgRating(a.spicyRatings);
-          const bVal = sortBy === 'star' ? avgRating(b.starRatings) : avgRating(b.spicyRatings);
-          const aNum =
-            sortBy === 'star'
-              ? (normalizeStarRating(aVal) ?? -Infinity)
-              : (aVal ?? -Infinity);
-          const bNum =
-            sortBy === 'star'
-              ? (normalizeStarRating(bVal) ?? -Infinity)
-              : (bVal ?? -Infinity);
-          return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
-        })
-      : hands;
+  const handleMarkReviewed = async (handId: string) => {
+    if (!userName) return;
+    try {
+      const updated = await markHandReviewed(handId, userName);
+      setHands((prev) => prev.map((h) => (h._id === handId ? updated : h)));
+      onSuccess?.('Marked as reviewed');
+    } catch {
+      onError?.('Failed to mark as reviewed');
+    }
+  };
+
+  const forMeCount =
+    userName != null
+      ? hands.filter(
+          (h) =>
+            (h.taggedReviewerNames ?? []).includes(userName) &&
+            !(h.reviewedBy ?? []).includes(userName) &&
+            h.status !== 'archived'
+        ).length
+      : 0;
+
+  let displayHands = filterForMe && userName
+    ? hands.filter(
+        (h) =>
+          (h.taggedReviewerNames ?? []).includes(userName) &&
+          !(h.reviewedBy ?? []).includes(userName) &&
+          h.status !== 'archived'
+      )
+    : hands;
+
+  if (filter === 'all') {
+    displayHands = [...displayHands].sort((a, b) => {
+      const aVal = sortBy === 'star' ? avgRating(a.starRatings) : avgRating(a.spicyRatings);
+      const bVal = sortBy === 'star' ? avgRating(b.starRatings) : avgRating(b.spicyRatings);
+      const aNum =
+        sortBy === 'star'
+          ? (normalizeStarRating(aVal) ?? -Infinity)
+          : (aVal ?? -Infinity);
+      const bNum =
+        sortBy === 'star'
+          ? (normalizeStarRating(bVal) ?? -Infinity)
+          : (bVal ?? -Infinity);
+      return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
+    });
+  }
 
   return {
     hands: displayHands,
     loading,
     filter,
     setFilter,
+    filterForMe,
+    setFilterForMe,
+    forMeCount,
+    reviewersList,
+    addTaggedReviewers,
+    setAddTaggedReviewers,
+    editTaggedReviewers,
+    setEditTaggedReviewers,
     sortBy,
     setSortBy,
     sortOrder,
@@ -449,6 +512,7 @@ export function useHandsToReview({
     ratingSaving,
     deleteHandConfirmOpen,
     setDeleteHandConfirmOpen,
+    handleMarkReviewed,
     handleConfirmDeleteHandFromModal,
     discardConfirmOpen,
     closeDiscardConfirm,

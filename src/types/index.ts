@@ -120,6 +120,8 @@ export interface HandToReview {
   starRatings?: HandRatingEntry[];
   spicyRatings?: HandRatingEntry[];
   archivedAt: string | null;
+  taggedReviewerNames?: string[];
+  reviewedBy?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -129,5 +131,6 @@ export interface HandToReviewCreate {
   handText: string;
   spoilerText?: string;
   createdBy: string;
+  taggedReviewerNames?: string[];
   initialComment?: { text: string; addedBy: string; authorOnly?: boolean };
 }

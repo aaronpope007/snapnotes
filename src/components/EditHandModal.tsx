@@ -5,6 +5,9 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
 import { HandHistoryFormContent } from './HandHistoryFormContent';
 
 interface EditHandModalProps {
@@ -13,10 +16,13 @@ interface EditHandModalProps {
   title: string;
   handText: string;
   spoilerText: string;
+  taggedReviewers: string[];
+  reviewerOptions: string[];
   saving: boolean;
   onTitleChange: (v: string) => void;
   onHandTextChange: (v: string) => void;
   onSpoilerTextChange: (v: string) => void;
+  onTaggedReviewersChange: (v: string[]) => void;
   onSave: () => void;
   onDelete: () => void;
 }
@@ -27,10 +33,13 @@ export function EditHandModal({
   title,
   handText,
   spoilerText,
+  taggedReviewers,
+  reviewerOptions,
   saving,
   onTitleChange,
   onHandTextChange,
   onSpoilerTextChange,
+  onTaggedReviewersChange,
   onSave,
   onDelete,
 }: EditHandModalProps) {
@@ -57,6 +66,30 @@ export function EditHandModal({
           contentRequired
           cardSize="xs"
         />
+        <Box sx={{ mt: 1.5 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}
+          >
+            Tag reviewers
+          </Typography>
+          <Autocomplete
+            multiple
+            size="small"
+            options={reviewerOptions}
+            value={taggedReviewers}
+            onChange={(_, v) => onTaggedReviewersChange(v)}
+            renderInput={(params) => (
+              <TextField {...params} placeholder="Select who should review" />
+            )}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip label={option} size="small" {...getTagProps({ index })} />
+              ))
+            }
+          />
+        </Box>
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'space-between' }}>
         <Button color="error" onClick={onDelete} disabled={saving}>

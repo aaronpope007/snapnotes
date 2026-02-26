@@ -15,6 +15,9 @@ import type { HandToReviewStatus } from '../types';
 interface HandReviewFiltersProps {
   filter: 'all' | HandToReviewStatus;
   onFilterChange: (v: 'all' | HandToReviewStatus) => void;
+  filterForMe: boolean;
+  onFilterForMeChange: (v: boolean) => void;
+  forMeCount: number;
   sortBy: 'star' | 'spicy';
   onSortByChange: (v: 'star' | 'spicy') => void;
   sortOrder: 'asc' | 'desc';
@@ -25,6 +28,9 @@ interface HandReviewFiltersProps {
 export function HandReviewFilters({
   filter,
   onFilterChange,
+  filterForMe,
+  onFilterForMeChange,
+  forMeCount,
   sortBy,
   onSortByChange,
   sortOrder,
@@ -57,6 +63,21 @@ export function HandReviewFilters({
             <ToggleButton value="archived">Archived</ToggleButton>
             <ToggleButton value="all">All</ToggleButton>
           </ToggleButtonGroup>
+          {forMeCount > 0 && (
+            <Button
+              variant={filterForMe ? 'contained' : 'outlined'}
+              size="small"
+              color={filterForMe ? 'primary' : 'inherit'}
+              onClick={() => onFilterForMeChange(!filterForMe)}
+              aria-label={`${forMeCount} hands tagged for you to review`}
+            >
+              For me (
+              <Box component="span" sx={{ color: forMeCount > 0 ? 'error.main' : 'inherit' }}>
+                {forMeCount}
+              </Box>
+              )
+            </Button>
+          )}
           <Button
             variant="outlined"
             size="small"

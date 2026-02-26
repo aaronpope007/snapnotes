@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import Dialog from '@mui/material/Dialog';
+import { registerReviewer } from '../api/reviewers';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
@@ -45,7 +46,9 @@ export function UserNameProvider({ children }: UserNameProviderProps) {
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored?.trim()) {
-      setUserNameState(stored.trim());
+      const trimmed = stored.trim();
+      setUserNameState(trimmed);
+      void registerReviewer(trimmed);
     } else {
       setPromptOpen(true);
     }
@@ -57,6 +60,7 @@ export function UserNameProvider({ children }: UserNameProviderProps) {
       localStorage.setItem(STORAGE_KEY, trimmed);
       setUserNameState(trimmed);
       setPromptOpen(false);
+      void registerReviewer(trimmed);
     }
   }, []);
 

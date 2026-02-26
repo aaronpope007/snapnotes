@@ -8,6 +8,8 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
 import { HandHistoryFormContent } from './HandHistoryFormContent';
 
 interface AddHandModalProps {
@@ -18,12 +20,15 @@ interface AddHandModalProps {
   spoilerText: string;
   initialComment: string;
   initialCommentPrivate: boolean;
+  taggedReviewers: string[];
+  reviewerOptions: string[];
   saving: boolean;
   onTitleChange: (v: string) => void;
   onHandTextChange: (v: string) => void;
   onSpoilerTextChange: (v: string) => void;
   onInitialCommentChange: (v: string) => void;
   onInitialCommentPrivateChange: (v: boolean) => void;
+  onTaggedReviewersChange: (v: string[]) => void;
   onSubmit: () => void;
 }
 
@@ -35,12 +40,15 @@ export function AddHandModal({
   spoilerText,
   initialComment,
   initialCommentPrivate,
+  taggedReviewers,
+  reviewerOptions,
   saving,
   onTitleChange,
   onHandTextChange,
   onSpoilerTextChange,
   onInitialCommentChange,
   onInitialCommentPrivateChange,
+  onTaggedReviewersChange,
   onSubmit,
 }: AddHandModalProps) {
   return (
@@ -66,6 +74,30 @@ export function AddHandModal({
           contentRequired
           cardSize="xs"
         />
+        <Box sx={{ mt: 1.5 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}
+          >
+            Tag reviewers (optional)
+          </Typography>
+          <Autocomplete
+            multiple
+            size="small"
+            options={reviewerOptions}
+            value={taggedReviewers}
+            onChange={(_, v) => onTaggedReviewersChange(v)}
+            renderInput={(params) => (
+              <TextField {...params} placeholder="Select who should review" />
+            )}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip label={option} size="small" {...getTagProps({ index })} />
+              ))
+            }
+          />
+        </Box>
         <Box sx={{ mt: 1.5 }}>
           <Typography
             variant="caption"

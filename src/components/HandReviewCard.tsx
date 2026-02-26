@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Collapse from '@mui/material/Collapse';
@@ -10,6 +11,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandReviewCommentsSection } from './HandReviewCommentsSection';
 import type { HandReviewCommentsSectionActions } from './HandReviewCommentsSection';
@@ -33,6 +35,7 @@ export interface HandReviewCardActions {
   onArchive: (hand: HandToReview) => void;
   onDelete: (handId: string) => void;
   onRate: (handId: string, starRating?: number, spicyRating?: number) => void;
+  onMarkReviewed?: (handId: string) => void;
   setHoverStarRating: (handId: string, value: number | null) => void;
   setHoverSpicyRating: (handId: string, value: number | null) => void;
   setRevealedSpoiler: (handId: string, revealed: boolean) => void;
@@ -76,6 +79,7 @@ export function HandReviewCard({
     onArchive,
     onDelete,
     onRate,
+    onMarkReviewed,
     setHoverStarRating,
     setHoverSpicyRating,
     setRevealedSpoiler,
@@ -94,6 +98,9 @@ export function HandReviewCard({
     ]),
   ].sort();
   const spoilerRevealed = revealedSpoilerIds.has(hand._id);
+  const taggedForMe = userName && (hand.taggedReviewerNames ?? []).includes(userName);
+  const hasReviewed = userName && (hand.reviewedBy ?? []).includes(userName);
+  const canMarkReviewed = taggedForMe && !hasReviewed && onMarkReviewed;
 
   return (
     <Paper
@@ -214,6 +221,27 @@ export function HandReviewCard({
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
             by {hand.createdBy} • {new Date(hand.createdAt).toLocaleDateString()}
           </Typography>
+
+          {taggedForMe && (
+            <Box sx={{ mb: 1 }}>
+              {hasReviewed ? (
+                <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />
+                  You reviewed this hand
+                </Typography>
+              ) : canMarkReviewed ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<CheckCircleOutlineIcon />}
+                  onClick={() => onMarkReviewed(hand._id)}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Mark as reviewed
+                </Button>
+              ) : null}
+            </Box>
+          )}
 
           <Box sx={{ mb: 1.5 }}>
             <Typography

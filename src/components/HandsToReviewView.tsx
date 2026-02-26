@@ -42,6 +42,9 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       <HandReviewFilters
         filter={hook.filter}
         onFilterChange={hook.setFilter}
+        filterForMe={hook.filterForMe}
+        onFilterForMeChange={hook.setFilterForMe}
+        forMeCount={hook.forMeCount}
         sortBy={hook.sortBy}
         onSortByChange={hook.setSortBy}
         sortOrder={hook.sortOrder}
@@ -49,13 +52,20 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         onAddClick={() => hook.setAddModalOpen(true)}
       />
 
+      {hook.forMeCount > 0 && !hook.filterForMe && (
+        <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
+          You have {hook.forMeCount} hand{hook.forMeCount !== 1 ? 's' : ''} tagged for you to review.
+        </Typography>
+      )}
       {hook.loading ? (
         <Typography variant="body2" color="text.secondary">
           Loading...
         </Typography>
       ) : hook.hands.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No hands to review. Add one to get started.
+          {hook.filterForMe
+            ? 'No hands tagged for you to review.'
+            : 'No hands to review. Add one to get started.'}
         </Typography>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -82,6 +92,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                 onArchive: hook.handleArchive,
                 onDelete: hook.handleDelete,
                 onRate: hook.handleRate,
+                onMarkReviewed: hook.handleMarkReviewed,
                 setHoverStarRating: hook.setHoverStarRating,
                 setHoverSpicyRating: hook.setHoverSpicyRating,
                 setRevealedSpoiler: hook.setRevealedSpoiler,
@@ -100,12 +111,15 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         spoilerText={hook.addSpoilerText}
         initialComment={hook.addInitialComment}
         initialCommentPrivate={hook.addInitialCommentPrivate}
+        taggedReviewers={hook.addTaggedReviewers}
+        reviewerOptions={hook.reviewersList}
         saving={hook.addSaving}
         onTitleChange={hook.setAddTitle}
         onHandTextChange={hook.setAddHandText}
         onSpoilerTextChange={hook.setAddSpoilerText}
         onInitialCommentChange={hook.setAddInitialComment}
         onInitialCommentPrivateChange={hook.setAddInitialCommentPrivate}
+        onTaggedReviewersChange={hook.setAddTaggedReviewers}
         onSubmit={hook.handleAddHand}
       />
 
@@ -115,10 +129,13 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         title={hook.editTitle}
         handText={hook.editHandText}
         spoilerText={hook.editSpoilerText}
+        taggedReviewers={hook.editTaggedReviewers}
+        reviewerOptions={hook.reviewersList}
         saving={hook.editSaving}
         onTitleChange={hook.setEditTitle}
         onHandTextChange={hook.setEditHandText}
         onSpoilerTextChange={hook.setEditSpoilerText}
+        onTaggedReviewersChange={hook.setEditTaggedReviewers}
         onSave={hook.handleEditSave}
         onDelete={() => hook.setDeleteHandConfirmOpen(true)}
       />
