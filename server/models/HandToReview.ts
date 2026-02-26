@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { DEFAULT_HAND_TITLE } from '../constants.js';
 
 export const HAND_STATUS = ['open', 'archived'] as const;
 export type HandStatus = (typeof HAND_STATUS)[number];
@@ -25,7 +26,7 @@ const ratingEntrySchema = new mongoose.Schema(
 
 const handToReviewSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, default: 'Untitled hand' },
+    title: { type: String, required: true, default: DEFAULT_HAND_TITLE },
     handText: { type: String, required: true, default: '' },
     spoilerText: { type: String, default: '' },
     status: {

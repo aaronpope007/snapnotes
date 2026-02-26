@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { HandToReview } from '../models/HandToReview.js';
+import { DEFAULT_HAND_TITLE } from '../constants.js';
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Hand text is required' });
     }
     const hand = new HandToReview({
-      title: body.title?.trim() || 'Untitled hand',
+      title: body.title?.trim() || DEFAULT_HAND_TITLE,
       handText: body.handText.trim(),
       spoilerText: body.spoilerText?.trim() ?? '',
       createdBy: body.createdBy || 'Anonymous',
@@ -89,7 +90,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const update: Record<string, unknown> = {};
 
-    if (body.title !== undefined) update.title = body.title.trim() || 'Untitled hand';
+    if (body.title !== undefined) update.title = body.title.trim() || DEFAULT_HAND_TITLE;
     if (body.handText !== undefined) update.handText = body.handText.trim();
     if (body.spoilerText !== undefined) update.spoilerText = body.spoilerText.trim();
 
