@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { theme } from './theme';
 import { UserNameProvider } from './context/UserNameContext';
 import { CompactModeProvider } from './context/CompactModeContext';
+import { HorizontalModeProvider } from './context/HorizontalModeContext';
 import App from './App.tsx';
 import './index.css';
 
@@ -14,7 +15,9 @@ createRoot(document.getElementById('root')!).render(
       <CssBaseline />
       <UserNameProvider>
         <CompactModeProvider>
-          <App />
+          <HorizontalModeProvider>
+            <App />
+          </HorizontalModeProvider>
         </CompactModeProvider>
       </UserNameProvider>
     </ThemeProvider>

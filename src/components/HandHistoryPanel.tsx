@@ -23,16 +23,18 @@ interface HandHistoryPanelProps {
   handHistories: HandHistoryEntry[];
   onUpdateHandHistories: (handHistories: HandHistoryEntry[]) => Promise<void>;
   saving?: boolean;
+  horizontal?: boolean;
 }
 
 export function HandHistoryPanel({
   handHistories,
   onUpdateHandHistories,
   saving = false,
+  horizontal = false,
 }: HandHistoryPanelProps) {
   const userName = useUserName();
   const compact = useCompactMode();
-  const panelWidth = compact ? PANEL_WIDTH_COMPACT : PANEL_WIDTH_DEFAULT;
+  const panelWidth = horizontal ? '100%' : compact ? PANEL_WIDTH_COMPACT : PANEL_WIDTH_DEFAULT;
   const hook = useHandHistoryPanel({
     handHistories,
     onUpdateHandHistories,
@@ -59,25 +61,35 @@ export function HandHistoryPanel({
   });
 
   return (
-    <Box sx={{ display: 'flex', flexShrink: 0, height: '100%' }}>
-      <IconButton
-        size="small"
-        onClick={() => hook.setExpanded(!hook.expanded)}
-        sx={{
-          alignSelf: 'flex-start',
-          mt: 1,
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 1,
-          bgcolor: 'background.paper',
-          '&:hover': { bgcolor: 'action.hover' },
-        }}
-        aria-label={hook.expanded ? 'Collapse panel' : 'Expand panel'}
-      >
-        {hook.expanded ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-      </IconButton>
+    <Box
+      sx={{
+        display: 'flex',
+        flexShrink: 0,
+        height: horizontal ? undefined : '100%',
+        flexDirection: horizontal ? 'column' : 'row',
+        width: horizontal ? '100%' : undefined,
+      }}
+    >
+      {!horizontal && (
+        <IconButton
+          size="small"
+          onClick={() => hook.setExpanded(!hook.expanded)}
+          sx={{
+            alignSelf: 'flex-start',
+            mt: 1,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+            bgcolor: 'background.paper',
+            '&:hover': { bgcolor: 'action.hover' },
+          }}
+          aria-label={hook.expanded ? 'Collapse panel' : 'Expand panel'}
+        >
+          {hook.expanded ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+        </IconButton>
+      )}
 
-      {hook.expanded && (
+      {(hook.expanded || horizontal) && (
         <Paper
           elevation={0}
           sx={{
@@ -105,14 +117,16 @@ export function HandHistoryPanel({
               >
                 Add
               </Button>
-              <IconButton
-                size="small"
-                onClick={() => hook.setExpanded(false)}
-                aria-label="Close panel"
-                sx={{ p: 0.25 }}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
+              {!horizontal && (
+                <IconButton
+                  size="small"
+                  onClick={() => hook.setExpanded(false)}
+                  aria-label="Close panel"
+                  sx={{ p: 0.25 }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              )}
             </Box>
           </Box>
 

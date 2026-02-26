@@ -81,6 +81,7 @@ export function HandReviewFilters({
               color={filterForMe ? 'primary' : 'inherit'}
               onClick={() => onFilterForMeChange(!filterForMe)}
               aria-label={`${forMeCount} hands tagged for you to review`}
+              sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               For me (
               <Box component="span" sx={{ color: forMeCount > 0 ? 'error.main' : 'inherit' }}>

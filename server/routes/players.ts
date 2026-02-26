@@ -8,6 +8,27 @@ interface LegacyStakeNote {
   text?: string;
 }
 
+/** Extract canonical core of a note for deduplication (strips stake/player prefixes). */
+function getNoteCore(text: string): string {
+  let t = text.trim();
+  t = t.replace(/^\[\d+\]\s*/, ''); // [400] 
+  t = t.replace(/^[^-]+ - \d+(?:\s+(?:ring|tournament|hu))? - /i, ''); // Username - 400 ring - 
+  return t.replace(/\s+/g, ' ').toLowerCase().trim();
+}
+
+/** Collect canonical cores from notes (handles multi-line combined notes). */
+function getNoteCores(notes: Array<{ text: string }>): Set<string> {
+  const cores = new Set<string>();
+  for (const n of notes) {
+    const paragraphs = n.text.split(/\n\n+/);
+    for (const p of paragraphs) {
+      const c = getNoteCore(p);
+      if (c) cores.add(c);
+    }
+  }
+  return cores;
+}
+
 function migrateLegacyNotes(doc: {
   stakeNotes?: LegacyStakeNote[];
   rawNote?: string;
@@ -125,7 +146,15 @@ router.post('/import', async (req: Request, res: Response) => {
       if (existing) {
         const existingDoc = existing.toObject() as Record<string, unknown>;
         const migratedNotes = migrateLegacyNotes(existingDoc);
-        const mergedNotes = [...migratedNotes, ...importNotes];
+        const existingCores = getNoteCores(migratedNotes);
+        const newImportNotes = importNotes.filter((n) => {
+          const core = getNoteCore(n.text);
+          if (!core) return true;
+          if (existingCores.has(core)) return false;
+          existingCores.add(core); // avoid duplicates within import batch
+          return true;
+        });
+        const mergedNotes = [...migratedNotes, ...newImportNotes];
         const mergedExploits = [...new Set([...(existing.exploits || []), ...(p.exploits || [])])];
         const existingGameTypes = Array.isArray(existingDoc.gameTypes) ? (existingDoc.gameTypes as string[]) : [];
         const mergedGameTypes = [...new Set([...existingGameTypes, ...importGameTypes])];

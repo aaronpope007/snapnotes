@@ -23,6 +23,7 @@ interface StakesSectionProps {
   onUpdateFormats: (formats: string[]) => Promise<void>;
   onUpdateOrigin: (origin: string) => Promise<void>;
   saving?: boolean;
+  inline?: boolean;
 }
 
 export function StakesSection({
@@ -35,6 +36,7 @@ export function StakesSection({
   onUpdateFormats,
   onUpdateOrigin,
   saving = false,
+  inline = false,
 }: StakesSectionProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -72,7 +74,7 @@ export function StakesSection({
   const summary = [gameTypesSummary, stakesSummary, formatsSummary, origin || 'WPT Gold'].join(' · ');
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: inline ? 0 : 2 }}>
       <Box
         component="button"
         onClick={() => setExpanded((e) => !e)}
@@ -84,14 +86,16 @@ export function StakesSection({
           background: 'none',
           cursor: 'pointer',
           p: 0,
-          mb: 0.5,
+          mb: inline ? 0 : 0.5,
           textAlign: 'left',
-          width: '100%',
+          width: inline ? 'auto' : '100%',
         }}
       >
+        {!inline && (
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
           Games, format & stakes
         </Typography>
+        )}
         <IconButton size="small" sx={{ p: 0, ml: -0.5 }}>
           {expanded ? (
             <ExpandLessIcon fontSize="small" />
@@ -99,6 +103,11 @@ export function StakesSection({
             <ExpandMoreIcon fontSize="small" />
           )}
         </IconButton>
+        {inline && (
+          <Typography variant="caption" color="text.secondary" component="span">
+            {summary}
+          </Typography>
+        )}
       </Box>
       <Collapse in={expanded}>
         <Box sx={{ pl: 0.5 }}>

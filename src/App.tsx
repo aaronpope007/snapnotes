@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Box from '@mui/material/Box';
-import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -22,6 +21,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
 import PersonIcon from '@mui/icons-material/Person';
 import ViewCompactIcon from '@mui/icons-material/ViewCompact';
+import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
@@ -33,6 +33,7 @@ import { MergePlayerDialog } from './components/MergePlayerDialog';
 import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
 import { ChangeNameDialog } from './components/ChangeNameDialog';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
+import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import {
   fetchPlayers,
   fetchPlayer,
@@ -50,6 +51,8 @@ import type { Player, PlayerListItem, PlayerCreate, ImportPlayer } from './types
 export default function App() {
   const compact = useCompactMode();
   const setCompact = useSetCompactMode();
+  const horizontal = useHorizontalMode();
+  const setHorizontal = useSetHorizontalMode();
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
@@ -267,108 +270,214 @@ export default function App() {
       .slice(0, 10);
   }, [players]);
 
+  const menuAndInput = (
+    <>
+      <Menu
+        id="settings-menu"
+        anchorEl={settingsAnchorEl}
+        open={settingsOpen}
+        onClose={() => setSettingsAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={() => { setSettingsAnchorEl(null); setChangeNameOpen(true); }}>
+          <PersonIcon fontSize="small" sx={{ mr: 1 }} />
+          Change my name
+        </MenuItem>
+        <MenuItem onClick={() => { setSettingsAnchorEl(null); setImportOpen(true); }}>
+          <ImportExportIcon fontSize="small" sx={{ mr: 1 }} />
+          Import
+        </MenuItem>
+        <MenuItem onClick={() => { setSettingsAnchorEl(null); handleExportBackup(); }}>
+          <SaveIcon fontSize="small" sx={{ mr: 1 }} />
+          Export backup
+        </MenuItem>
+        <MenuItem onClick={() => { setSettingsAnchorEl(null); backupFileInputRef.current?.click(); }}>
+          <RestoreIcon fontSize="small" sx={{ mr: 1 }} />
+          Restore backup
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ViewCompactIcon fontSize="small" />
+            Compact mode
+          </Box>
+          <Switch size="small" checked={compact} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompact(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ViewAgendaIcon fontSize="small" />
+            Horizontal layout
+          </Box>
+          <Switch size="small" checked={horizontal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHorizontal(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+      </Menu>
+      <input ref={backupFileInputRef} type="file" accept=".json" hidden onChange={handleRestoreFileChange} />
+    </>
+  );
+
+  const leftSidebar = (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: compact ? 1 : 1.5,
+        flexShrink: 0,
+        width: horizontal ? (compact ? 260 : 320) : undefined,
+        minWidth: horizontal ? (compact ? 260 : 320) : undefined,
+        alignSelf: 'flex-start',
+        position: horizontal ? 'sticky' : undefined,
+        top: horizontal ? (compact ? 1 : 2) : undefined,
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <SearchBar
+            players={players}
+            onSelect={handleSelectPlayer}
+            onNoMatchCreate={(username) => {
+              setAddInitialUsername(username);
+              setAddOpen(true);
+            }}
+            selectedId={selected?._id}
+          />
+        </Box>
+        <IconButton
+          size="small"
+          onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
+          aria-label="Settings"
+          aria-controls={settingsOpen ? 'settings-menu' : undefined}
+          aria-haspopup="true"
+          aria-expanded={settingsOpen ? 'true' : undefined}
+        >
+          <SettingsIcon fontSize="small" />
+        </IconButton>
+      </Box>
+      {!selected && (
+        <>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+            <IconButton size="small" onClick={() => void handleRefresh()} aria-label="Refresh" disabled={loading}>
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setAddOpen(true)}
+            >
+              Add Player
+            </Button>
+            <Button
+              variant={showHandsToReview ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={<RateReviewIcon />}
+              onClick={() => setShowHandsToReview(!showHandsToReview)}
+            >
+              Hands to Review
+            </Button>
+          </Box>
+          {recentPlayers.length > 0 && (
+            <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: compact ? 0.5 : 1, fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
+                Recent players
+              </Typography>
+              <List dense disablePadding>
+                {recentPlayers.map((p) => (
+                  <ListItemButton
+                    key={p._id}
+                    onClick={() => handleSelectPlayer(p)}
+                    selected={p._id === selected?._id}
+                    sx={{
+                      borderRadius: 0.5,
+                      py: compact ? 0.2 : 0.5,
+                      minHeight: compact ? 28 : undefined,
+                      '&:hover': { bgcolor: 'action.hover' },
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <Typography variant={compact ? 'caption' : 'body2'} sx={{ mr: 0.5, fontSize: compact ? '0.7rem' : undefined }}>
+                        {p.username}
+                      </Typography>
+                      <Box
+                        component="span"
+                        sx={{
+                          px: 0.75,
+                          py: 0.25,
+                          borderRadius: 0.5,
+                          fontSize: '0.7rem',
+                          bgcolor: getPlayerTypeColor(p.playerType),
+                          color: 'rgba(0,0,0,0.7)',
+                        }}
+                      >
+                        {getPlayerTypeLabel(p.playerType)}
+                      </Box>
+                      <Box sx={{ flex: 1 }} />
+                      <Typography variant="caption" color="text.secondary" sx={compact ? { fontSize: '0.6rem' } : undefined}>
+                        {new Date(p.updatedAt ?? p.createdAt ?? '').toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </ListItemButton>
+                ))}
+              </List>
+            </Paper>
+          )}
+        </>
+      )}
+    </Box>
+  );
+
   return (
     <Box
       sx={{
         minHeight: '100vh',
         bgcolor: 'background.default',
         width: '100%',
-        maxWidth: 900,
+        maxWidth: horizontal ? 'none' : 900,
         margin: '0 auto',
+        overflowX: 'hidden',
       }}
     >
-      <Container maxWidth={false} sx={{ py: compact ? 1 : 2, px: compact ? 1 : 2, maxWidth: 900 }}>
-        <Box sx={{ mb: compact ? 1 : 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <SearchBar
-                players={players}
-                onSelect={handleSelectPlayer}
-                onNoMatchCreate={(username) => {
-                  setAddInitialUsername(username);
-                  setAddOpen(true);
-                }}
-                selectedId={selected?._id}
-              />
-            </Box>
-            <IconButton
-              size="small"
-              onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
-              aria-label="Settings"
-              aria-controls={settingsOpen ? 'settings-menu' : undefined}
-              aria-haspopup="true"
-              aria-expanded={settingsOpen ? 'true' : undefined}
-            >
-              <SettingsIcon fontSize="small" />
-            </IconButton>
-            <Menu
-              id="settings-menu"
-              anchorEl={settingsAnchorEl}
-              open={settingsOpen}
-              onClose={() => setSettingsAnchorEl(null)}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            >
-              <MenuItem
-                onClick={() => {
-                  setSettingsAnchorEl(null);
-                  setChangeNameOpen(true);
-                }}
-              >
-                <PersonIcon fontSize="small" sx={{ mr: 1 }} />
-                Change my name
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setSettingsAnchorEl(null);
-                  setImportOpen(true);
-                }}
-              >
-                <ImportExportIcon fontSize="small" sx={{ mr: 1 }} />
-                Import
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setSettingsAnchorEl(null);
-                  handleExportBackup();
-                }}
-              >
-                <SaveIcon fontSize="small" sx={{ mr: 1 }} />
-                Export backup
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setSettingsAnchorEl(null);
-                  backupFileInputRef.current?.click();
-                }}
-              >
-                <RestoreIcon fontSize="small" sx={{ mr: 1 }} />
-                Restore backup
-              </MenuItem>
-              <MenuItem
-                onClick={(e) => e.stopPropagation()}
-                sx={{ justifyContent: 'space-between', gap: 2 }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <ViewCompactIcon fontSize="small" />
-                  Compact mode
+      {menuAndInput}
+      <Box
+        sx={{
+          maxWidth: horizontal ? 'none' : 900,
+          width: '100%',
+          margin: '0 auto',
+          px: compact ? 1 : 2,
+          pt: compact ? 1 : 2,
+          pb: compact ? 1 : 2,
+          display: horizontal ? 'flex' : 'block',
+          flexDirection: horizontal ? 'row' : undefined,
+          gap: horizontal ? 2 : undefined,
+          alignItems: horizontal ? 'flex-start' : undefined,
+        }}
+      >
+        {horizontal && !selected && leftSidebar}
+        <Box sx={{ flex: horizontal ? 1 : undefined, minWidth: horizontal ? 0 : undefined, display: 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
+          {!horizontal && (
+            <Box sx={{ mb: compact ? 1 : 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <SearchBar
+                    players={players}
+                    onSelect={handleSelectPlayer}
+                    onNoMatchCreate={(username) => {
+                      setAddInitialUsername(username);
+                      setAddOpen(true);
+                    }}
+                    selectedId={selected?._id}
+                  />
                 </Box>
-                <Switch
+                <IconButton
                   size="small"
-                  checked={compact}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompact(e.target.checked)}
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                />
-              </MenuItem>
-            </Menu>
-            <input
-              ref={backupFileInputRef}
-              type="file"
-              accept=".json"
-              hidden
-              onChange={handleRestoreFileChange}
-            />
-          </Box>
+                  onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
+                  aria-label="Settings"
+                  aria-controls={settingsOpen ? 'settings-menu' : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={settingsOpen ? 'true' : undefined}
+                >
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Box>
           <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
             <IconButton size="small" onClick={() => void handleRefresh()} aria-label="Refresh" disabled={loading}>
               <RefreshIcon fontSize="small" />
@@ -391,6 +500,7 @@ export default function App() {
             </Button>
           </Box>
         </Box>
+        )}
 
         {showHandsToReview ? (
           <Box>
@@ -415,9 +525,50 @@ export default function App() {
             Loading...
           </Box>
         ) : selected ? (
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: compact ? 0 : 0 }}>
+          <>
+            {horizontal && (
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexShrink: 0 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <SearchBar
+                    players={players}
+                    onSelect={handleSelectPlayer}
+                    onNoMatchCreate={(username) => {
+                      setAddInitialUsername(username);
+                      setAddOpen(true);
+                    }}
+                    selectedId={selected?._id}
+                  />
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
+                  aria-label="Settings"
+                  aria-controls={settingsOpen ? 'settings-menu' : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={settingsOpen ? 'true' : undefined}
+                >
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: horizontal ? 'column' : 'row',
+                alignItems: horizontal ? 'stretch' : 'flex-start',
+                gap: horizontal ? 1 : compact ? 0 : 0,
+                flex: horizontal ? 1 : undefined,
+                minHeight: horizontal ? 0 : undefined,
+              }}
+            >
             <ErrorBoundary>
-              <Box sx={{ flex: compact ? '0 0 280px' : '0 0 400px', maxWidth: compact ? 280 : 400 }}>
+              <Box
+                sx={{
+                  flex: horizontal ? undefined : compact ? '0 0 280px' : '0 0 400px',
+                  maxWidth: horizontal ? '100%' : compact ? 280 : 400,
+                  width: horizontal ? '100%' : undefined,
+                }}
+              >
                 <PlayerCard
                   player={selected}
                   players={players}
@@ -425,17 +576,22 @@ export default function App() {
                   onDelete={handleDeletePlayer}
                   onMergeClick={() => setMergeDialogOpen(true)}
                   onClose={() => setSelected(null)}
+                  horizontal={horizontal}
                 />
               </Box>
             </ErrorBoundary>
-            <HandHistoryPanel
-              handHistories={selected.handHistories ?? []}
-              onUpdateHandHistories={async (handHistories) =>
-                handleUpdatePlayer(selected._id, { handHistories })
-              }
-            />
+            <Box sx={{ flex: horizontal ? undefined : 1, minWidth: horizontal ? undefined : 0 }}>
+              <HandHistoryPanel
+                handHistories={selected.handHistories ?? []}
+                onUpdateHandHistories={async (handHistories) =>
+                  handleUpdatePlayer(selected._id, { handHistories })
+                }
+                horizontal={horizontal}
+              />
+            </Box>
           </Box>
-        ) : (
+          </>
+        ) : !horizontal ? (
           <Box>
             <Typography variant={compact ? 'caption' : 'body2'} color="text.secondary" sx={{ mb: compact ? 0.5 : 1 }}>
               Search for a player or add a new one.
@@ -485,8 +641,9 @@ export default function App() {
               </Paper>
             )}
           </Box>
-        )}
-      </Container>
+        ) : null}
+        </Box>
+      </Box>
 
       <AddPlayerModal
         open={addOpen}

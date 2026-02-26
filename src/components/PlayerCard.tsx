@@ -13,6 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import MergeTypeIcon from '@mui/icons-material/MergeType';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -37,9 +38,10 @@ interface PlayerCardProps {
   onDelete: (id: string) => Promise<void>;
   onMergeClick: () => void;
   onClose: () => void;
+  horizontal?: boolean;
 }
 
-export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, onClose }: PlayerCardProps) {
+export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, onClose, horizontal = false }: PlayerCardProps) {
   const userName = useUserName();
   const compact = useCompactMode();
   const [editingName, setEditingName] = useState(false);
@@ -194,7 +196,120 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
         borderColor: accentColor,
       }}
     >
-      <CardContent sx={compact ? { p: 1.25, '&:last-child': { pb: 1.25 } } : undefined}>
+      <CardContent
+        sx={[
+          compact ? { p: 1.25, '&:last-child': { pb: 1.25 } } : {},
+          horizontal ? { display: 'flex', flexDirection: 'column', gap: 0 } : {},
+        ]}
+      >
+        {horizontal ? (
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: compact ? 0.5 : 0.75 }}>
+              <IconButton size="small" onClick={onClose} aria-label="Back to player list">
+                <ArrowBackIcon />
+              </IconButton>
+            <Box sx={{ flex: 1 }}>
+              {editingName ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <TextField
+                    size="small"
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                    autoFocus
+                    sx={{ minWidth: 120 }}
+                  />
+                  <Button size="small" onClick={handleSaveName} disabled={saving}>
+                    Save
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant={compact ? 'subtitle1' : 'h6'} sx={compact ? { fontSize: '0.85rem' } : undefined}>
+                    {player.username}
+                  </Typography>
+                  <IconButton size="small" onClick={() => setEditingName(true)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )}
+            </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: compact ? 0.5 : 1 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <Select
+                  value={player.playerType}
+                  onChange={(e) => handleTypeChange(e.target.value as PlayerTypeKey)}
+                  disabled={saving}
+                >
+                  {PLAYER_TYPE_KEYS.map((key) => (
+                    <MenuItem key={key} value={key}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 1,
+                            bgcolor: getPlayerTypeColor(key),
+                          }}
+                        />
+                        {getPlayerTypeLabel(key)}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <StakesSection
+                gameTypes={player.gameTypes || []}
+                stakesSeenAt={player.stakesSeenAt || []}
+                formats={player.formats || []}
+                origin={player.origin || 'WPT Gold'}
+                onUpdateGameTypes={handleUpdateGameTypes}
+                onUpdateStakes={handleUpdateStakes}
+                onUpdateFormats={handleUpdateFormats}
+                onUpdateOrigin={handleUpdateOrigin}
+                saving={saving}
+                inline={true}
+              />
+              <ExploitsDisplay
+                exploits={player.exploits || []}
+                onAddExploit={handleAddExploit}
+                onDeleteExploit={handleDeleteExploit}
+                saving={saving}
+                inline={true}
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>
+                <Button
+                  size="small"
+                  startIcon={<MergeTypeIcon />}
+                  onClick={onMergeClick}
+                  disabled={saving || players.length < 2}
+                >
+                  Merge
+                </Button>
+                <Button
+                  color="error"
+                  size="small"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => setDeleteOpen(true)}
+                  disabled={saving}
+                >
+                  Delete
+                </Button>
+              </Box>
+            </Box>
+            <NotesSection
+              key={player._id}
+              notes={player.notes || []}
+              onAppendNote={handleAppendNote}
+              onEditNote={handleEditNote}
+              onDeleteNote={handleDeleteNote}
+              userName={userName}
+              saving={saving}
+            />
+          </>
+        ) : (
+        <>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: compact ? 0.5 : 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
           {editingName ? (
@@ -300,6 +415,8 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
             Delete Player
           </Button>
         </Box>
+        </>
+        )}
       </CardContent>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
