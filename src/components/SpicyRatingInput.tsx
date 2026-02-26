@@ -8,6 +8,7 @@ const STEP = 1; // whole numbers only
 interface SpicyRatingInputProps {
   value: number | null;
   onChange: (value: number) => void;
+  onHoverChange?: (value: number | null) => void;
   size?: 'small' | 'medium';
   disabled?: boolean;
 }
@@ -15,6 +16,7 @@ interface SpicyRatingInputProps {
 export function SpicyRatingInput({
   value,
   onChange,
+  onHoverChange,
   size = 'medium',
   disabled = false,
 }: SpicyRatingInputProps) {
@@ -36,14 +38,17 @@ export function SpicyRatingInput({
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (disabled) return;
-      setHoverValue(resolveValue(e));
+      const v = resolveValue(e);
+      setHoverValue(v);
+      onHoverChange?.(v);
     },
-    [disabled, resolveValue]
+    [disabled, resolveValue, onHoverChange]
   );
 
   const handleMouseLeave = useCallback(() => {
     setHoverValue(null);
-  }, []);
+    onHoverChange?.(null);
+  }, [onHoverChange]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

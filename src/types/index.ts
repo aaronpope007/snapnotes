@@ -44,6 +44,8 @@ export interface PlayerListItem {
   stakesSeenAt: number[];
   formats: string[];
   origin: string;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 export interface PlayerCreate {

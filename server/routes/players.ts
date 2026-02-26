@@ -65,7 +65,7 @@ function normalizeStakesAndFormats(doc: Record<string, unknown>): { stakesSeenAt
 router.get('/', async (_req: Request, res: Response) => {
   try {
     const players = await Player.find()
-      .select('username playerType gameTypes stakesSeenAt stakesWithFormat formats origin')
+      .select('username playerType gameTypes stakesSeenAt stakesWithFormat formats origin updatedAt createdAt')
       .sort({ username: 1 })
       .collation({ locale: 'en', strength: 2 })
       .lean();

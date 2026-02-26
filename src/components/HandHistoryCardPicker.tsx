@@ -58,14 +58,19 @@ export interface HandHistoryCardPickerProps {
   onInsertText: (text: string) => void;
   /** Card shorthands already used in the content (e.g. from backticks). Clicking a used card removes one instance. */
   usedShorthands?: Set<string>;
+  /** Count of unknown-card (`x`) tokens in content. Used to show up to 4 ? cards as used. */
+  usedUnknownCardCount?: number;
   /** When provided, clicking a used card removes one instance from content instead of being disabled. */
   onRemoveCard?: (shorthand: string) => void;
 }
+
+const UNKNOWN_CARD_SLOTS = 4;
 
 export function HandHistoryCardPicker({
   onInsertCard,
   onInsertText,
   usedShorthands,
+  usedUnknownCardCount = 0,
   onRemoveCard,
 }: HandHistoryCardPickerProps) {
   const [customPsbPercent, setCustomPsbPercent] = useState<string>('');
@@ -110,20 +115,26 @@ export function HandHistoryCardPicker({
           </Box>
         ))}
         <Box sx={{ display: 'flex', gap: 0.25 }}>
-          <CardButton
-            rank="?"
-            suit={null}
-            used={usedShorthands?.has('x') ?? false}
-            onInsert={() => onInsertCard('x')}
-            onRemove={onRemoveCard ? () => onRemoveCard('x') : undefined}
-            ariaLabel={
-              usedShorthands?.has('x')
-                ? onRemoveCard
-                  ? 'Remove unknown card from content'
-                  : 'Unknown card (already used)'
-                : 'Insert unknown card'
-            }
-          />
+          {Array.from({ length: UNKNOWN_CARD_SLOTS }).map((_, i) => {
+            const used = usedUnknownCardCount > i;
+            return (
+              <CardButton
+                key={i}
+                rank="?"
+                suit={null}
+                used={used}
+                onInsert={() => onInsertCard('x')}
+                onRemove={onRemoveCard ? () => onRemoveCard('x') : undefined}
+                ariaLabel={
+                  used
+                    ? onRemoveCard
+                      ? `Remove unknown card ${i + 1} from content`
+                      : `Unknown card ${i + 1} (already used)`
+                    : `Insert unknown card ${i + 1}`
+                }
+              />
+            );
+          })}
         </Box>
       </Box>
       <Box

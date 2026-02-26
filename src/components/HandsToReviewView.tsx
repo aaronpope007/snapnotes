@@ -60,6 +60,32 @@ function userRating(ratings: HandRatingEntry[] | undefined, userName: string): n
   return entry != null ? entry.rating : null;
 }
 
+/** Normalize stored rating to 1–5 (handles legacy 0–10 scale). */
+function normalizeStarRating(rating: number | null): number | null {
+  if (rating == null) return null;
+  if (rating >= 1 && rating <= 5) return Math.round(rating);
+  return Math.min(5, Math.max(1, Math.round(rating / 2)));
+}
+
+function getStarRatingLabel(rating: number | null): string {
+  const n = rating == null ? null : normalizeStarRating(rating);
+  if (n == null) return 'Well Played';
+  if (n === 1) return 'Poor';
+  if (n === 2) return 'Meh';
+  if (n === 3) return 'Average';
+  if (n === 4) return 'Good';
+  return 'Great';
+}
+
+function getSpicyRatingLabel(level: number | null): string {
+  if (level == null || level < 1) return 'Spicy';
+  if (level === 1) return 'Mild';
+  if (level === 2) return 'Simmer';
+  if (level === 3) return 'Spicy';
+  if (level === 4) return 'Hot';
+  return 'Blazing';
+}
+
 export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps) {
   const userName = useUserName();
   const [hands, setHands] = useState<HandToReview[]>([]);
@@ -80,6 +106,8 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const [commentSaving, setCommentSaving] = useState<string | null>(null);
   const [ratingSaving, setRatingSaving] = useState<string | null>(null);
   const [expandedRatingsId, setExpandedRatingsId] = useState<string | null>(null);
+  const [hoverStarRating, setHoverStarRating] = useState<Record<string, number | null>>({});
+  const [hoverSpicyRating, setHoverSpicyRating] = useState<Record<string, number | null>>({});
   const [deleteCommentTarget, setDeleteCommentTarget] = useState<{
     handId: string;
     commentIndex: number;
@@ -285,8 +313,14 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             sortBy === 'star'
               ? avgRating(b.starRatings)
               : avgRating(b.spicyRatings);
-          const aNum = aVal ?? -Infinity;
-          const bNum = bVal ?? -Infinity;
+          const aNum =
+            sortBy === 'star'
+              ? (normalizeStarRating(aVal) ?? -Infinity)
+              : (aVal ?? -Infinity);
+          const bNum =
+            sortBy === 'star'
+              ? (normalizeStarRating(bVal) ?? -Infinity)
+              : (bVal ?? -Infinity);
           return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
         })
       : hands;
@@ -429,7 +463,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                           {starAvg != null && (
                             <>
                               <Box component="span" sx={{ color: STAR_COLOR }}>★</Box>{' '}
-                              {starAvg} ({(hand.starRatings ?? []).length})
+                              {normalizeStarRating(starAvg)} ({(hand.starRatings ?? []).length})
                             </>
                           )}
                           {starAvg != null && spicyAvg != null && ' • '}
@@ -505,19 +539,33 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary">Well Played:</Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ minWidth: '3.75rem', display: 'inline-block' }}
+                          >
+                            {getStarRatingLabel(hoverStarRating[hand._id] ?? normalizeStarRating(userRating(hand.starRatings, userName ?? '')))}:
+                          </Typography>
                           <StarRatingInput
-                            value={userRating(hand.starRatings, userName ?? '')}
+                            value={normalizeStarRating(userRating(hand.starRatings, userName ?? ''))}
                             onChange={(v) => handleRate(hand._id, v, undefined)}
+                            onHoverChange={(v) => setHoverStarRating((prev) => ({ ...prev, [hand._id]: v }))}
                             size="small"
                             disabled={ratingSaving === hand._id || !userName}
                           />
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary">Spicy:</Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ minWidth: '3.75rem', display: 'inline-block' }}
+                          >
+                            {getSpicyRatingLabel(hoverSpicyRating[hand._id] ?? userRating(hand.spicyRatings, userName ?? ''))}:
+                          </Typography>
                           <SpicyRatingInput
                             value={userRating(hand.spicyRatings, userName ?? '')}
                             onChange={(v) => handleRate(hand._id, undefined, v)}
+                            onHoverChange={(v) => setHoverSpicyRating((prev) => ({ ...prev, [hand._id]: v }))}
                             size="small"
                             disabled={ratingSaving === hand._id || !userName}
                           />
@@ -559,7 +607,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                                 Overall: {starAvg != null && (
                                   <>
                                     <Box component="span" sx={{ color: STAR_COLOR }}>★</Box>{' '}
-                                    {starAvg} ({starRatingsList.length})
+                                    {normalizeStarRating(starAvg)} ({starRatingsList.length})
                                   </>
                                 )}
                                 {starAvg != null && spicyAvg != null && ' • '}
@@ -602,7 +650,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                                       {star != null && (
                                         <>
                                           <Box component="span" sx={{ color: STAR_COLOR }}>★</Box>{' '}
-                                          {star.rating}
+                                          {normalizeStarRating(star.rating)}
                                         </>
                                       )}
                                       {star != null && spicy != null && ' • '}

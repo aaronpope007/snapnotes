@@ -1,16 +1,15 @@
 import { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import StarIcon from '@mui/icons-material/Star';
-import StarHalfIcon from '@mui/icons-material/StarHalf';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 
-const MAX = 10;
-const STEP = 0.5;
-const STAR_COUNT = 10;
+const MAX = 5;
+const STAR_COUNT = 5;
 
 interface StarRatingInputProps {
   value: number | null;
   onChange: (value: number) => void;
+  onHoverChange?: (value: number | null) => void;
   size?: 'small' | 'medium';
   disabled?: boolean;
 }
@@ -18,6 +17,7 @@ interface StarRatingInputProps {
 export function StarRatingInput({
   value,
   onChange,
+  onHoverChange,
   size = 'medium',
   disabled = false,
 }: StarRatingInputProps) {
@@ -29,9 +29,8 @@ export function StarRatingInput({
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const pct = Math.max(0, Math.min(1, x / rect.width));
-      const raw = pct * MAX;
-      const snapped = Math.round(raw / STEP) * STEP;
-      return Math.max(0, Math.min(MAX, snapped));
+      const star = pct <= 0 ? 1 : Math.min(MAX, Math.ceil(pct * MAX));
+      return Math.max(1, Math.min(MAX, star));
     },
     []
   );
@@ -39,14 +38,17 @@ export function StarRatingInput({
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (disabled) return;
-      setHoverValue(resolveValue(e));
+      const v = resolveValue(e);
+      setHoverValue(v);
+      onHoverChange?.(v);
     },
-    [disabled, resolveValue]
+    [disabled, resolveValue, onHoverChange]
   );
 
   const handleMouseLeave = useCallback(() => {
     setHoverValue(null);
-  }, []);
+    onHoverChange?.(null);
+  }, [onHoverChange]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -85,14 +87,7 @@ export function StarRatingInput({
       }}
     >
       {Array.from({ length: STAR_COUNT }).map((_, i) => {
-        const thresholdFull = i + 1;
-        const thresholdHalf = i + 0.5;
-        const filled =
-          displayValue >= thresholdFull
-            ? 'full'
-            : displayValue >= thresholdHalf
-              ? 'half'
-              : 'empty';
+        const filled = displayValue >= i + 1;
         return (
           <Box
             key={i}
@@ -104,10 +99,8 @@ export function StarRatingInput({
               flexShrink: 0,
             }}
           >
-            {filled === 'full' ? (
+            {filled ? (
               <StarIcon sx={{ fontSize: starSize, color: 'warning.main' }} />
-            ) : filled === 'half' ? (
-              <StarHalfIcon sx={{ fontSize: starSize, color: 'warning.main' }} />
             ) : (
               <StarBorderIcon
                 sx={{ fontSize: starSize, color: 'action.disabled' }}

@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryCardPicker } from './HandHistoryCardPicker';
-import { getUsedCardShorthands } from '../utils/cardParser';
+import { getUsedCardShorthands, getUsedUnknownCardCount } from '../utils/cardParser';
 
 const DEFAULT_CONTENT_LABEL = 'Content';
 const DEFAULT_PLACEHOLDER = 'Paste hand history… Click a card on the right to insert at cursor';
@@ -205,6 +205,7 @@ export function HandHistoryFormContent({
         onInsertText={insertTextAtCursor}
         onRemoveCard={removeCardFromContent}
         usedShorthands={getUsedCardShorthands(content)}
+        usedUnknownCardCount={getUsedUnknownCardCount(content)}
       />
     </Box>
   );

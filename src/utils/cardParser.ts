@@ -84,7 +84,8 @@ export function parseNoteTokens(text: string): CardToken[] {
 
 /**
  * Returns the set of card shorthands already used in note text (inside backticks).
- * Used to grey out those cards in the picker. Includes "x" for unknown cards.
+ * Used to grey out those cards in the picker. Unknown cards are not added here;
+ * use getUsedUnknownCardCount for the count of `x` unknown cards.
  */
 export function getUsedCardShorthands(text: string): Set<string> {
   const tokens = parseNoteTokens(text);
@@ -92,9 +93,19 @@ export function getUsedCardShorthands(text: string): Set<string> {
   for (const t of tokens) {
     if (t.type === 'card') {
       used.add(t.rank.toLowerCase() + t.suit);
-    } else if (t.type === 'unknown_card') {
-      used.add('x');
     }
   }
   return used;
+}
+
+/**
+ * Returns how many unknown-card tokens (`x`) are in the note text (inside backticks).
+ */
+export function getUsedUnknownCardCount(text: string): number {
+  const tokens = parseNoteTokens(text);
+  let count = 0;
+  for (const t of tokens) {
+    if (t.type === 'unknown_card') count++;
+  }
+  return count;
 }

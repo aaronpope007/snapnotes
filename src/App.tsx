@@ -1,7 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import AddIcon from '@mui/icons-material/Add';
@@ -23,6 +27,7 @@ import {
   deletePlayer,
   importPlayers,
 } from './api/players';
+import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer } from './types';
 
 export default function App() {
@@ -85,6 +90,7 @@ export default function App() {
                 stakesSeenAt: updated.stakesSeenAt,
                 formats: updated.formats,
                 origin: updated.origin,
+                updatedAt: updated.updatedAt,
               }
             : p
         )
@@ -113,7 +119,7 @@ export default function App() {
     try {
       const created = await createPlayer(player);
       setPlayers((prev) =>
-        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, gameTypes: created.gameTypes ?? [], stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold' }].sort(
+        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, gameTypes: created.gameTypes ?? [], stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold', updatedAt: created.updatedAt, createdAt: created.createdAt }].sort(
           (a, b) => a.username.localeCompare(b.username)
         )
       );
@@ -133,6 +139,17 @@ export default function App() {
   };
 
   const existingUsernames = new Set(players.map((p) => p.username.toLowerCase()));
+
+  const recentPlayers = useMemo(() => {
+    return [...players]
+      .filter((p) => p.updatedAt ?? p.createdAt)
+      .sort((a, b) => {
+        const aTs = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+        const bTs = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+        return bTs - aTs;
+      })
+      .slice(0, 10);
+  }, [players]);
 
   return (
     <Box
@@ -225,8 +242,53 @@ export default function App() {
             />
           </Box>
         ) : (
-          <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
-            Search for a player or add a new one.
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Search for a player or add a new one.
+            </Typography>
+            {recentPlayers.length > 0 && (
+              <Paper variant="outlined" sx={{ p: 1, borderRadius: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>
+                  Recent players
+                </Typography>
+                <List dense disablePadding>
+                  {recentPlayers.map((p) => (
+                    <ListItemButton
+                      key={p._id}
+                      onClick={() => handleSelectPlayer(p)}
+                      sx={{
+                        borderRadius: 0.5,
+                        py: 0.5,
+                        '&:hover': { bgcolor: 'action.hover' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <Typography variant="body2" sx={{ mr: 0.5 }}>
+                          {p.username}
+                        </Typography>
+                        <Box
+                          component="span"
+                          sx={{
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 0.5,
+                            fontSize: '0.7rem',
+                            bgcolor: getPlayerTypeColor(p.playerType),
+                            color: 'rgba(0,0,0,0.7)',
+                          }}
+                        >
+                          {getPlayerTypeLabel(p.playerType)}
+                        </Box>
+                        <Box sx={{ flex: 1 }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(p.updatedAt ?? p.createdAt ?? '').toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Paper>
+            )}
           </Box>
         )}
       </Container>
