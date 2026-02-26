@@ -99,6 +99,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const [addTitle, setAddTitle] = useState('');
   const [addHandText, setAddHandText] = useState('');
   const [addSpoilerText, setAddSpoilerText] = useState('');
+  const [addInitialComment, setAddInitialComment] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [editHand, setEditHand] = useState<HandToReview | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -149,7 +150,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   }, [loadHands]);
 
   const isAddModalDirty = () =>
-    addTitle.trim() !== '' || addHandText.trim() !== '' || addSpoilerText.trim() !== '';
+    addTitle.trim() !== '' || addHandText.trim() !== '' || addSpoilerText.trim() !== '' || addInitialComment.trim() !== '';
 
   const isEditModalDirty = () =>
     editHand !== null &&
@@ -169,6 +170,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       setAddTitle('');
       setAddHandText('');
       setAddSpoilerText('');
+      setAddInitialComment('');
     }
   };
 
@@ -189,12 +191,17 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         handText: addHandText.trim(),
         spoilerText: addSpoilerText.trim() || undefined,
         createdBy: userName || 'Anonymous',
+        initialComment:
+          addInitialComment.trim() && userName
+            ? { text: addInitialComment.trim(), addedBy: userName }
+            : undefined,
       });
       setHands((prev) => [created, ...prev]);
       setAddModalOpen(false);
       setAddTitle('');
       setAddHandText('');
       setAddSpoilerText('');
+      setAddInitialComment('');
       setExpandedId(created._id);
       onSuccess?.('Hand added for review');
     } catch {
@@ -1015,6 +1022,22 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             contentRequired
             cardSize="xs"
           />
+          <Box sx={{ mt: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+              Initial comment (optional)
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              multiline
+              minRows={2}
+              maxRows={4}
+              placeholder="Add a comment when creating the hand..."
+              value={addInitialComment}
+              onChange={(e) => setAddInitialComment(e.target.value)}
+              slotProps={{ input: { 'aria-label': 'Initial comment' } }}
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeAddModal}>Cancel</Button>

@@ -84,6 +84,19 @@ const playerSchema = new mongoose.Schema(
         {
           title: { type: String, default: '' },
           content: { type: String, default: '' },
+          spoilerText: { type: String, default: '' },
+          comments: {
+            type: [
+              {
+                text: { type: String, default: '' },
+                addedBy: { type: String, required: true },
+                addedAt: { type: Date, required: true, default: Date.now },
+                editedAt: { type: Date, default: undefined },
+                editedBy: { type: String, default: undefined },
+              },
+            ],
+            default: [],
+          },
         },
       ],
       default: [],

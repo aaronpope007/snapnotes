@@ -3,11 +3,13 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
 import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import DialogContentText from '@mui/material/DialogContentText';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
@@ -21,7 +23,8 @@ import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryFormContent } from './HandHistoryFormContent';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useConfirm } from '../hooks/useConfirm';
-import type { HandHistoryEntry } from '../types';
+import { useUserName } from '../context/UserNameContext';
+import type { HandHistoryEntry, HandHistoryComment } from '../types';
 
 const PANEL_WIDTH = 340;
 
@@ -46,8 +49,15 @@ export function HandHistoryPanel({
   const [modalIndex, setModalIndex] = useState<number>(0);
   const [modalTitle, setModalTitle] = useState('');
   const [modalContent, setModalContent] = useState('');
+  const [modalSpoiler, setModalSpoiler] = useState('');
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [savingAll, setSavingAll] = useState(false);
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [editingComment, setEditingComment] = useState<{ entryIndex: number; commentIndex: number } | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [deleteCommentTarget, setDeleteCommentTarget] = useState<{ entryIndex: number; commentIndex: number } | null>(null);
+  const userName = useUserName();
   const {
     confirmOpen: discardConfirmOpen,
     openConfirm: openDiscardConfirm,
@@ -72,6 +82,7 @@ export function HandHistoryPanel({
     setModalMode('add');
     setModalTitle('');
     setModalContent('');
+    setModalSpoiler('');
     setModalOpen(true);
   };
 
@@ -80,6 +91,7 @@ export function HandHistoryPanel({
     setModalIndex(index);
     setModalTitle(localValues[index]?.title ?? '');
     setModalContent(localValues[index]?.content ?? '');
+    setModalSpoiler(localValues[index]?.spoilerText ?? '');
     setModalOpen(true);
   };
 
@@ -89,12 +101,13 @@ export function HandHistoryPanel({
 
   const isModalDirty = () => {
     if (modalMode === 'add') {
-      return modalTitle.trim() !== '' || modalContent.trim() !== '';
+      return modalTitle.trim() !== '' || modalContent.trim() !== '' || modalSpoiler.trim() !== '';
     }
     const original = localValues[modalIndex];
     return (
       modalTitle !== (original?.title ?? '') ||
-      modalContent !== (original?.content ?? '')
+      modalContent !== (original?.content ?? '') ||
+      modalSpoiler !== (original?.spoilerText ?? '')
     );
   };
 
@@ -108,6 +121,8 @@ export function HandHistoryPanel({
       const entry: HandHistoryEntry = {
         title: modalTitle.trim() || 'Hand',
         content: modalContent,
+        spoilerText: modalSpoiler.trim() || undefined,
+        comments: [],
       };
       const next = [...localValues, entry];
       setLocalValues(next);
@@ -118,9 +133,12 @@ export function HandHistoryPanel({
         setSavingAll(false);
       }
     } else {
+      const existing = localValues[modalIndex];
       const entry: HandHistoryEntry = {
         title: modalTitle.trim() || 'Hand',
         content: modalContent,
+        spoilerText: modalSpoiler.trim() || undefined,
+        comments: existing?.comments ?? [],
       };
       const next = [...localValues];
       next[modalIndex] = entry;
@@ -133,6 +151,54 @@ export function HandHistoryPanel({
       }
     }
     closeModal();
+  };
+
+  const commentKey = (entryIndex: number, commentIndex: number) => `${entryIndex}-${commentIndex}`;
+
+  const updateEntryComments = (entryIndex: number, comments: HandHistoryComment[]) => {
+    const next = [...localValues];
+    const entry = { ...next[entryIndex], comments };
+    next[entryIndex] = entry;
+    setLocalValues(next);
+    return next;
+  };
+
+  const handleAddComment = async (entryIndex: number) => {
+    const text = commentTexts[entryIndex]?.trim();
+    if (!text || !userName) return;
+    const entry = localValues[entryIndex];
+    const comments = [...(entry.comments ?? []), { text, addedBy: userName, addedAt: new Date().toISOString() }];
+    setSavingIndex(entryIndex);
+    try {
+      await onUpdateHandHistories(updateEntryComments(entryIndex, comments));
+      setCommentTexts((prev) => ({ ...prev, [String(entryIndex)]: '' }));
+    } finally {
+      setSavingIndex(null);
+    }
+  };
+
+  const handleSaveEditComment = (entryIndex: number, commentIndex: number) => {
+    if (!editingCommentText.trim() || !userName) return;
+    const entry = localValues[entryIndex];
+    const comments = [...(entry.comments ?? [])];
+    const existing = comments[commentIndex];
+    if (!existing) return;
+    comments[commentIndex] = { ...existing, text: editingCommentText.trim(), editedBy: userName, editedAt: new Date().toISOString() };
+    setEditingComment(null);
+    setEditingCommentText('');
+    onUpdateHandHistories(updateEntryComments(entryIndex, comments));
+  };
+
+  const handleDeleteComment = async (entryIndex: number, commentIndex: number) => {
+    const entry = localValues[entryIndex];
+    const comments = (entry.comments ?? []).filter((_, j) => j !== commentIndex);
+    setSavingIndex(entryIndex);
+    try {
+      await onUpdateHandHistories(updateEntryComments(entryIndex, comments));
+      setDeleteCommentTarget(null);
+    } finally {
+      setSavingIndex(null);
+    }
   };
 
   const handleDelete = async (index: number) => {
@@ -315,6 +381,163 @@ export function HandHistoryPanel({
                         No content
                       </Typography>
                     )}
+                    {(entry.spoilerText ?? '').trim() !== '' && (
+                      <Box sx={{ mt: 1 }}>
+                        <Box
+                          component="button"
+                          type="button"
+                          onClick={() =>
+                            setExpandedComments((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(`spoiler-${i}`)) next.delete(`spoiler-${i}`);
+                              else next.add(`spoiler-${i}`);
+                              return next;
+                            })
+                          }
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            p: 0,
+                            color: 'text.secondary',
+                            fontSize: '0.75rem',
+                            '&:hover': { color: 'text.primary' },
+                          }}
+                        >
+                          {expandedComments.has(`spoiler-${i}`) ? (
+                            <ExpandLessIcon sx={{ fontSize: 14 }} />
+                          ) : (
+                            <ExpandMoreIcon sx={{ fontSize: 14 }} />
+                          )}
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            {expandedComments.has(`spoiler-${i}`) ? 'Hide spoiler' : 'Reveal spoiler'}
+                          </Typography>
+                        </Box>
+                        <Collapse in={expandedComments.has(`spoiler-${i}`)}>
+                          <Box sx={{ mt: 0.5, p: 0.5, borderRadius: 0.5, bgcolor: 'action.hover' }}>
+                            <RichNoteRenderer text={entry.spoilerText ?? ''} />
+                          </Box>
+                        </Collapse>
+                      </Box>
+                    )}
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mt: 1 }}>
+                      Comments ({(entry.comments ?? []).length})
+                    </Typography>
+                    <Box sx={{ mt: 0.5, mb: 1 }}>
+                      {(entry.comments ?? []).map((c, j) => {
+                        const key = commentKey(i, j);
+                        const expanded = expandedComments.has(key);
+                        const isEditing = editingComment?.entryIndex === i && editingComment?.commentIndex === j;
+                        return (
+                          <Box
+                            key={j}
+                            sx={{
+                              py: 0.5,
+                              px: 0.5,
+                              mb: 0.5,
+                              bgcolor: 'background.paper',
+                              borderRadius: 0.5,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                            }}
+                          >
+                            <Box
+                              component="button"
+                              type="button"
+                              onClick={() =>
+                                setExpandedComments((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(key)) next.delete(key);
+                                  else next.add(key);
+                                  return next;
+                                })
+                              }
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                width: '100%',
+                                border: 'none',
+                                background: 'none',
+                                cursor: 'pointer',
+                                p: 0,
+                                textAlign: 'left',
+                                color: 'inherit',
+                                fontSize: '0.75rem',
+                              }}
+                            >
+                              {expanded ? <ExpandLessIcon sx={{ fontSize: 14 }} /> : <ExpandMoreIcon sx={{ fontSize: 14 }} />}
+                              <Typography variant="caption" color="text.secondary">
+                                {c.addedBy} • {new Date(c.addedAt).toLocaleString()}
+                                {c.editedAt && <> (edited)</>}
+                              </Typography>
+                            </Box>
+                            <Collapse in={expanded}>
+                              <Box sx={{ pl: 2.5, pt: 0.25 }}>
+                                {isEditing ? (
+                                  <>
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      multiline
+                                      minRows={2}
+                                      value={editingCommentText}
+                                      onChange={(e) => setEditingCommentText(e.target.value)}
+                                      sx={{ '& .MuiInputBase-input': { resize: 'none' } }}
+                                    />
+                                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                                      <Button size="small" onClick={() => { setEditingComment(null); setEditingCommentText(''); }}>
+                                        Cancel
+                                      </Button>
+                                      <Button size="small" variant="contained" onClick={() => handleSaveEditComment(i, j)} disabled={!editingCommentText.trim() || savingIndex === i}>
+                                        Save
+                                      </Button>
+                                    </Box>
+                                  </>
+                                ) : (
+                                  <>
+                                    <RichNoteRenderer text={c.text} />
+                                    <Box sx={{ display: 'flex', gap: 0, mt: 0.25 }}>
+                                      <IconButton size="small" sx={{ p: 0.25 }} onClick={(e) => { e.stopPropagation(); setEditingComment({ entryIndex: i, commentIndex: j }); setEditingCommentText(c.text); }} aria-label="Edit comment">
+                                        <EditIcon sx={{ fontSize: 14 }} />
+                                      </IconButton>
+                                      <IconButton size="small" sx={{ p: 0.25 }} onClick={(e) => { e.stopPropagation(); setDeleteCommentTarget({ entryIndex: i, commentIndex: j }); }} aria-label="Delete comment">
+                                        <DeleteIcon sx={{ fontSize: 14 }} />
+                                      </IconButton>
+                                    </Box>
+                                  </>
+                                )}
+                              </Box>
+                            </Collapse>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        multiline
+                        minRows={1}
+                        maxRows={4}
+                        placeholder="Add a comment..."
+                        value={commentTexts[String(i)] ?? ''}
+                        onChange={(e) => setCommentTexts((prev) => ({ ...prev, [String(i)]: e.target.value }))}
+                        disabled={savingIndex === i}
+                        sx={{ '& .MuiInputBase-input': { resize: 'none' } }}
+                      />
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleAddComment(i)}
+                        disabled={!(commentTexts[String(i)]?.trim()) || savingIndex === i || !userName}
+                      >
+                        Add
+                      </Button>
+                    </Box>
                   </Box>
                 </Collapse>
               </Box>
@@ -340,6 +563,8 @@ export function HandHistoryPanel({
             onTitleChange={setModalTitle}
             content={modalContent}
             onContentChange={setModalContent}
+            spoilerValue={modalSpoiler}
+            onSpoilerChange={setModalSpoiler}
             contentLabel="Content"
             placeholder="Paste hand history… Click a card on the right to insert at cursor"
             cardSize="xs"
@@ -363,6 +588,27 @@ export function HandHistoryPanel({
         onConfirm={handleDiscardConfirm}
         {...discardConfirmOptions}
       />
+
+      <Dialog open={deleteCommentTarget !== null} onClose={() => setDeleteCommentTarget(null)}>
+        <DialogTitle>Delete comment?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Are you sure you want to delete this comment? This cannot be undone.</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteCommentTarget(null)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              if (deleteCommentTarget) {
+                handleDeleteComment(deleteCommentTarget.entryIndex, deleteCommentTarget.commentIndex);
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

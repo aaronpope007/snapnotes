@@ -162,9 +162,31 @@ router.post('/import', async (req: Request, res: Response) => {
   }
 });
 
+interface HandHistoryComment {
+  text: string;
+  addedBy: string;
+  addedAt: Date | string;
+  editedAt?: Date | string;
+  editedBy?: string;
+}
+
 interface HandHistoryEntry {
   title: string;
   content: string;
+  spoilerText?: string;
+  comments?: HandHistoryComment[];
+}
+
+function normalizeComment(c: unknown): HandHistoryComment | null {
+  if (typeof c !== 'object' || c === null || !('text' in c) || !('addedBy' in c)) return null;
+  const o = c as Record<string, unknown>;
+  return {
+    text: String(o.text ?? ''),
+    addedBy: String(o.addedBy),
+    addedAt: (o.addedAt as Date) ?? new Date(),
+    editedAt: o.editedAt as Date | string | undefined,
+    editedBy: o.editedBy as string | undefined,
+  };
 }
 
 function normalizeHandHistories(val: unknown): HandHistoryEntry[] {
@@ -173,17 +195,24 @@ function normalizeHandHistories(val: unknown): HandHistoryEntry[] {
       (v) => typeof v === 'object' && v !== null && 'title' in v && 'content' in v
     );
     if (hasObjects) {
-      return val.map((v) => ({
-        title: (v as HandHistoryEntry).title ?? '',
-        content: (v as HandHistoryEntry).content ?? '',
-      }));
+      return (val as Record<string, unknown>[]).map((v) => {
+        const comments = Array.isArray(v.comments)
+          ? (v.comments as unknown[]).map(normalizeComment).filter((c): c is HandHistoryComment => c !== null)
+          : [];
+        return {
+          title: (v.title as string) ?? '',
+          content: (v.content as string) ?? '',
+          spoilerText: (v.spoilerText as string) ?? '',
+          comments,
+        };
+      });
     }
     if (val.every((v) => typeof v === 'string')) {
-      return (val as string[]).map((s, i) => ({ title: `Hand ${i + 1}`, content: s }));
+      return (val as string[]).map((s, i) => ({ title: `Hand ${i + 1}`, content: s, spoilerText: '', comments: [] }));
     }
   }
   if (typeof val === 'string' && val.trim()) {
-    return [{ title: 'Hand 1', content: val.trim() }];
+    return [{ title: 'Hand 1', content: val.trim(), spoilerText: '', comments: [] }];
   }
   return [];
 }
@@ -264,6 +293,20 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...n,
         addedAt: n.addedAt ? new Date(n.addedAt) : new Date(),
       }));
+    }
+    if (body.handHistories && Array.isArray(body.handHistories)) {
+      body.handHistories = (body.handHistories as Record<string, unknown>[]).map((entry) => {
+        const comments = Array.isArray(entry.comments)
+          ? (entry.comments as Record<string, unknown>[]).map((c) => ({
+              text: c.text ?? '',
+              addedBy: c.addedBy,
+              addedAt: c.addedAt ? new Date(c.addedAt as string) : new Date(),
+              editedAt: c.editedAt ? new Date(c.editedAt as string) : undefined,
+              editedBy: c.editedBy,
+            }))
+          : [];
+        return { ...entry, comments };
+      });
     }
     const update: Record<string, unknown> = { $set: body };
     if (body.notes) update.$unset = { stakeNotes: 1, rawNote: 1 };

@@ -36,6 +36,7 @@ router.post('/', async (req: Request, res: Response) => {
       handText: string;
       spoilerText?: string;
       createdBy: string;
+      initialComment?: { text: string; addedBy: string };
     };
     if (!body.handText?.trim()) {
       return res.status(400).json({ error: 'Hand text is required' });
@@ -47,6 +48,14 @@ router.post('/', async (req: Request, res: Response) => {
       createdBy: body.createdBy || 'Anonymous',
     });
     await hand.save();
+    if (body.initialComment?.text?.trim() && body.initialComment.addedBy) {
+      hand.comments.push({
+        text: body.initialComment.text.trim(),
+        addedBy: body.initialComment.addedBy,
+        addedAt: new Date(),
+      });
+      await hand.save();
+    }
     res.status(201).json(hand);
   } catch (err) {
     res.status(400).json({ error: 'Failed to create hand' });

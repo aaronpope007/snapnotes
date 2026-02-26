@@ -15,9 +15,19 @@ export interface NoteEntry {
   editedAt?: string;
 }
 
+export interface HandHistoryComment {
+  text: string;
+  addedBy: string;
+  addedAt: string;
+  editedAt?: string;
+  editedBy?: string;
+}
+
 export interface HandHistoryEntry {
   title: string;
   content: string;
+  spoilerText?: string;
+  comments?: HandHistoryComment[];
 }
 
 export interface Player {
@@ -117,4 +127,5 @@ export interface HandToReviewCreate {
   handText: string;
   spoilerText?: string;
   createdBy: string;
+  initialComment?: { text: string; addedBy: string };
 }
