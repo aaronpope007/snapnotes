@@ -10,6 +10,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AddIcon from '@mui/icons-material/Add';
@@ -202,14 +203,24 @@ export function HandHistoryPanel({
             >
               Hand Histories
             </Typography>
-            <Button
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={openAddModal}
-              disabled={saving || savingAll}
-            >
-              Add
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Button
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={openAddModal}
+                disabled={saving || savingAll}
+              >
+                Add
+              </Button>
+              <IconButton
+                size="small"
+                onClick={() => setExpanded(false)}
+                aria-label="Close panel"
+                sx={{ p: 0.25 }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>

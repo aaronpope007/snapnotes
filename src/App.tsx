@@ -185,17 +185,15 @@ export default function App() {
 
         {showHandsToReview ? (
           <Box>
-            {selected && (
-              <Button
-                variant="text"
-                size="small"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => setShowHandsToReview(false)}
-                sx={{ mb: 1 }}
-              >
-                Back to {selected.username}
-              </Button>
-            )}
+            <Button
+              variant="text"
+              size="small"
+              startIcon={<ArrowBackIcon />}
+              onClick={() => setShowHandsToReview(false)}
+              sx={{ mb: 1 }}
+            >
+              {selected ? `Back to ${selected.username}` : 'Back to Players'}
+            </Button>
             <ErrorBoundary>
               <HandsToReviewView
                 onSuccess={showSuccess}
