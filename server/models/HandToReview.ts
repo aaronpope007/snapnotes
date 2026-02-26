@@ -12,6 +12,14 @@ const commentSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const ratingEntrySchema = new mongoose.Schema(
+  {
+    user: { type: String, required: true },
+    rating: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
 const handToReviewSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, default: 'Untitled hand' },
@@ -26,6 +34,8 @@ const handToReviewSchema = new mongoose.Schema(
       type: [commentSchema],
       default: [],
     },
+    starRatings: { type: [ratingEntrySchema], default: [] },
+    spicyRatings: { type: [ratingEntrySchema], default: [] },
     archivedAt: { type: Date, default: null },
   },
   { timestamps: true }

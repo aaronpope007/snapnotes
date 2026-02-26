@@ -38,6 +38,20 @@ export async function updateHandToReview(
   return data;
 }
 
+export async function rateHand(
+  id: string,
+  ratings: {
+    starRating?: number;
+    spicyRating?: number;
+    userName: string;
+  }
+): Promise<HandToReview> {
+  const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
+    rateHand: ratings,
+  });
+  return data;
+}
+
 export async function addHandComment(
   id: string,
   comment: { text: string; addedBy: string }

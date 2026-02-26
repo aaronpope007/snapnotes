@@ -51,7 +51,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/hands-to-review/:id — update (title, handText, status, add comment)
+// PUT /api/hands-to-review/:id — update (title, handText, status, add comment, rate)
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const body = req.body as {
@@ -60,6 +60,11 @@ router.put('/:id', async (req: Request, res: Response) => {
       status?: 'open' | 'archived';
       addComment?: { text: string; addedBy: string };
       deleteCommentIndex?: number;
+      rateHand?: {
+        starRating?: number;
+        spicyRating?: number;
+        userName: string;
+      };
     };
     const hand = await HandToReview.findById(req.params.id);
     if (!hand) return res.status(404).json({ error: 'Hand not found' });
@@ -76,6 +81,29 @@ router.put('/:id', async (req: Request, res: Response) => {
       } else {
         update.archivedAt = null;
       }
+    }
+
+    if (body.rateHand?.userName) {
+      const { starRating, spicyRating, userName } = body.rateHand;
+      const starRatings = [...(hand.starRatings || [])];
+      const spicyRatings = [...(hand.spicyRatings || [])];
+
+      if (typeof starRating === 'number' && starRating >= 0 && starRating <= 10) {
+        const existing = starRatings.findIndex((r: { user: string }) => r.user === userName);
+        const entry = { user: userName, rating: starRating };
+        if (existing >= 0) starRatings[existing] = entry;
+        else starRatings.push(entry);
+        hand.starRatings = starRatings;
+      }
+      if (typeof spicyRating === 'number' && spicyRating >= 0 && spicyRating <= 5) {
+        const existing = spicyRatings.findIndex((r: { user: string }) => r.user === userName);
+        const entry = { user: userName, rating: spicyRating };
+        if (existing >= 0) spicyRatings[existing] = entry;
+        else spicyRatings.push(entry);
+        hand.spicyRatings = spicyRatings;
+      }
+      await hand.save();
+      return res.json(hand);
     }
 
     if (body.addComment?.text?.trim() && body.addComment.addedBy) {

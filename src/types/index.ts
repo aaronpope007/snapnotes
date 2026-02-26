@@ -88,6 +88,11 @@ export interface HandToReviewComment {
   addedAt: string;
 }
 
+export interface HandRatingEntry {
+  user: string;
+  rating: number;
+}
+
 export interface HandToReview {
   _id: string;
   title: string;
@@ -95,6 +100,8 @@ export interface HandToReview {
   status: HandToReviewStatus;
   createdBy: string;
   comments: HandToReviewComment[];
+  starRatings?: HandRatingEntry[];
+  spicyRatings?: HandRatingEntry[];
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;

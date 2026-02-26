@@ -32,12 +32,28 @@ import {
   addHandComment,
   deleteHandComment,
   deleteHandToReview,
+  rateHand,
 } from '../api/handsToReview';
-import type { HandToReview, HandToReviewStatus } from '../types';
+import type { HandToReview, HandToReviewStatus, HandRatingEntry } from '../types';
+import { STAR_COLOR } from '../constants/ratings';
+import { ChiliIcon } from './ChiliIcon';
+import { StarRatingInput } from './StarRatingInput';
+import { SpicyRatingInput } from './SpicyRatingInput';
 
 interface HandsToReviewViewProps {
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
+}
+
+function avgRating(ratings: HandRatingEntry[] | undefined): number | null {
+  if (!ratings?.length) return null;
+  const sum = ratings.reduce((a, r) => a + r.rating, 0);
+  return Math.round((sum / ratings.length) * 10) / 10;
+}
+
+function userRating(ratings: HandRatingEntry[] | undefined, userName: string): number | null {
+  const entry = ratings?.find((r) => r.user === userName);
+  return entry != null ? entry.rating : null;
 }
 
 export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps) {
@@ -56,6 +72,8 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const [editSaving, setEditSaving] = useState(false);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [commentSaving, setCommentSaving] = useState<string | null>(null);
+  const [ratingSaving, setRatingSaving] = useState<string | null>(null);
+  const [expandedRatingsId, setExpandedRatingsId] = useState<string | null>(null);
   const [deleteCommentTarget, setDeleteCommentTarget] = useState<{
     handId: string;
     commentIndex: number;
@@ -207,6 +225,31 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     }
   };
 
+  const handleRate = async (
+    handId: string,
+    starRating?: number,
+    spicyRating?: number
+  ) => {
+    if (!userName) return;
+    if (starRating == null && spicyRating == null) return;
+    setRatingSaving(handId);
+    try {
+      const updated = await rateHand(handId, {
+        starRating,
+        spicyRating,
+        userName,
+      });
+      setHands((prev) =>
+        prev.map((h) => (h._id === handId ? updated : h))
+      );
+      onSuccess?.('Rating updated');
+    } catch {
+      onError?.('Failed to update rating');
+    } finally {
+      setRatingSaving(null);
+    }
+  };
+
   const handleConfirmDeleteComment = async () => {
     if (!deleteCommentTarget) return;
     const { handId, commentIndex } = deleteCommentTarget;
@@ -313,19 +356,42 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                       <ExpandMoreIcon fontSize="small" />
                     )}
                   </IconButton>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontWeight: 500,
-                      color: 'rgba(255, 255, 255, 0.9)',
-                    }}
-                  >
-                    {hand.title || 'Untitled hand'}
-                  </Typography>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontWeight: 500,
+                        color: 'rgba(255, 255, 255, 0.9)',
+                      }}
+                    >
+                      {hand.title || 'Untitled hand'}
+                    </Typography>
+                    {(() => {
+                      const starAvg = avgRating(hand.starRatings);
+                      const spicyAvg = avgRating(hand.spicyRatings);
+                      if (starAvg == null && spicyAvg == null) return null;
+                      return (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {starAvg != null && (
+                            <>
+                              <Box component="span" sx={{ color: STAR_COLOR }}>★</Box>{' '}
+                              {starAvg} ({(hand.starRatings ?? []).length})
+                            </>
+                          )}
+                          {starAvg != null && spicyAvg != null && ' • '}
+                          {spicyAvg != null && (
+                            <>
+                              <ChiliIcon size={12} inline />{' '}
+                              {spicyAvg} ({(hand.spicyRatings ?? []).length})
+                            </>
+                          )}
+                        </Typography>
+                      );
+                    })()}
+                  </Box>
                   <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
                     {hand.status === 'archived' ? 'Archived' : 'Open'}
                   </Typography>
@@ -381,6 +447,130 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                       by {hand.createdBy} • {new Date(hand.createdAt).toLocaleDateString()}
                     </Typography>
+
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                        Your rating
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">Well Played:</Typography>
+                          <StarRatingInput
+                            value={userRating(hand.starRatings, userName ?? '')}
+                            onChange={(v) => handleRate(hand._id, v, undefined)}
+                            size="small"
+                            disabled={ratingSaving === hand._id || !userName}
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">Spicy:</Typography>
+                          <SpicyRatingInput
+                            value={userRating(hand.spicyRatings, userName ?? '')}
+                            onChange={(v) => handleRate(hand._id, undefined, v)}
+                            size="small"
+                            disabled={ratingSaving === hand._id || !userName}
+                          />
+                        </Box>
+                      </Box>
+                      {(() => {
+                        const starAvg = avgRating(hand.starRatings);
+                        const spicyAvg = avgRating(hand.spicyRatings);
+                        if (starAvg == null && spicyAvg == null) return null;
+                        const starRatingsList = hand.starRatings ?? [];
+                        const spicyRatingsList = hand.spicyRatings ?? [];
+                        const allUsers = [
+                          ...new Set([
+                            ...starRatingsList.map((r) => r.user),
+                            ...spicyRatingsList.map((r) => r.user),
+                          ]),
+                        ].sort();
+                        const ratingsExpanded = expandedRatingsId === hand._id;
+                        return (
+                          <Box sx={{ mt: 0.5 }}>
+                            <Box
+                              component="button"
+                              onClick={() =>
+                                setExpandedRatingsId(ratingsExpanded ? null : hand._id)
+                              }
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                border: 'none',
+                                background: 'none',
+                                cursor: 'pointer',
+                                p: 0,
+                                color: 'text.secondary',
+                                '&:hover': { color: 'text.primary' },
+                              }}
+                            >
+                              <Typography variant="caption">
+                                Overall: {starAvg != null && (
+                                  <>
+                                    <Box component="span" sx={{ color: STAR_COLOR }}>★</Box>{' '}
+                                    {starAvg} ({starRatingsList.length})
+                                  </>
+                                )}
+                                {starAvg != null && spicyAvg != null && ' • '}
+                                {spicyAvg != null && (
+                                  <>
+                                    <ChiliIcon size={12} inline />{' '}
+                                    {spicyAvg} ({spicyRatingsList.length})
+                                  </>
+                                )}
+                              </Typography>
+                              <IconButton size="small" sx={{ p: 0, ml: 0 }}>
+                                {ratingsExpanded ? (
+                                  <ExpandLessIcon sx={{ fontSize: 14 }} />
+                                ) : (
+                                  <ExpandMoreIcon sx={{ fontSize: 14 }} />
+                                )}
+                              </IconButton>
+                            </Box>
+                            <Collapse in={ratingsExpanded}>
+                              <Box
+                                sx={{
+                                  mt: 0.5,
+                                  pl: 1,
+                                  borderLeft: '1px solid',
+                                  borderColor: 'divider',
+                                }}
+                              >
+                                {allUsers.map((user) => {
+                                  const star = starRatingsList.find((r) => r.user === user);
+                                  const spicy = spicyRatingsList.find((r) => r.user === user);
+                                  if (!star && !spicy) return null;
+                                  return (
+                                    <Typography
+                                      key={user}
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ display: 'block', py: 0.25 }}
+                                    >
+                                      {user}:{' '}
+                                      {star != null && (
+                                        <>
+                                          <Box component="span" sx={{ color: STAR_COLOR }}>★</Box>{' '}
+                                          {star.rating}
+                                        </>
+                                      )}
+                                      {star != null && spicy != null && ' • '}
+                                      {spicy != null && (
+                                        <>
+                                          <ChiliIcon size={12} inline />{' '}
+                                          {spicy.rating}
+                                        </>
+                                      )}
+                                    </Typography>
+                                  );
+                                })}
+                              </Box>
+                            </Collapse>
+                          </Box>
+                        );
+                      })()}
+                    </Box>
+
                     <Box
                       sx={{
                         fontSize: '0.85rem',
