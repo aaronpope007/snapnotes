@@ -88,6 +88,8 @@ export interface HandToReviewComment {
   text: string;
   addedBy: string;
   addedAt: string;
+  editedAt?: string;
+  editedBy?: string;
 }
 
 export interface HandRatingEntry {
@@ -99,6 +101,7 @@ export interface HandToReview {
   _id: string;
   title: string;
   handText: string;
+  spoilerText?: string;
   status: HandToReviewStatus;
   createdBy: string;
   comments: HandToReviewComment[];
@@ -112,5 +115,6 @@ export interface HandToReview {
 export interface HandToReviewCreate {
   title?: string;
   handText: string;
+  spoilerText?: string;
   createdBy: string;
 }

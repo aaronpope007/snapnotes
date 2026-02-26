@@ -8,6 +8,8 @@ const commentSchema = new mongoose.Schema(
     text: { type: String, required: true, default: '' },
     addedBy: { type: String, required: true },
     addedAt: { type: Date, required: true, default: Date.now },
+    editedAt: { type: Date, default: undefined },
+    editedBy: { type: String, default: undefined },
   },
   { _id: false }
 );
@@ -24,6 +26,7 @@ const handToReviewSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, default: 'Untitled hand' },
     handText: { type: String, required: true, default: '' },
+    spoilerText: { type: String, default: '' },
     status: {
       type: String,
       enum: HAND_STATUS,

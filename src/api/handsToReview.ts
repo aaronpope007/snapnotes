@@ -31,6 +31,7 @@ export async function updateHandToReview(
   updates: {
     title?: string;
     handText?: string;
+    spoilerText?: string;
     status?: HandToReviewStatus;
   }
 ): Promise<HandToReview> {
@@ -58,6 +59,18 @@ export async function addHandComment(
 ): Promise<HandToReview> {
   const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
     addComment: comment,
+  });
+  return data;
+}
+
+export async function updateHandComment(
+  id: string,
+  commentIndex: number,
+  text: string,
+  editedBy: string
+): Promise<HandToReview> {
+  const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
+    updateComment: { commentIndex, text, editedBy },
   });
   return data;
 }

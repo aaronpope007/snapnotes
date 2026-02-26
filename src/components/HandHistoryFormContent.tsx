@@ -1,7 +1,10 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
+import Collapse from '@mui/material/Collapse';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryCardPicker } from './HandHistoryCardPicker';
 import { getUsedCardShorthands, getUsedUnknownCardCount } from '../utils/cardParser';
@@ -22,6 +25,9 @@ export interface HandHistoryFormContentProps {
   contentRequired?: boolean;
   /** Card size in the preview */
   cardSize?: 'xxs' | 'xs' | 'sm' | 'md';
+  /** Optional spoiler text; when provided with onSpoilerChange, spoiler section is shown and card picker inserts into focused field */
+  spoilerValue?: string;
+  onSpoilerChange?: (value: string) => void;
 }
 
 export function HandHistoryFormContent({
@@ -33,16 +39,23 @@ export function HandHistoryFormContent({
   placeholder = DEFAULT_PLACEHOLDER,
   contentRequired = false,
   cardSize = 'xs',
+  spoilerValue = '',
+  onSpoilerChange,
 }: HandHistoryFormContentProps) {
   const contentInputRef = useRef<HTMLTextAreaElement | null>(null);
   const contentSelectionRef = useRef({ start: 0, end: 0 });
+  const spoilerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const spoilerSelectionRef = useRef({ start: 0, end: 0 });
+  const activeFieldRef = useRef<'content' | 'spoiler'>('content');
+  const [spoilerSectionOpen, setSpoilerSectionOpen] = useState(false);
+  const hasSpoiler = onSpoilerChange !== undefined;
 
-  const insertCardAtCursor = useCallback(
-    (shorthand: string) => {
+  const insertIntoContent = useCallback(
+    (shorthand: string, wrapBackticks: boolean) => {
       const { start } = contentSelectionRef.current;
       const before = content.slice(0, start);
       const after = content.slice(start);
-      const inserted = `\`${shorthand}\``;
+      const inserted = wrapBackticks ? `\`${shorthand}\`` : shorthand;
       const next = before + inserted + after;
       onContentChange(next);
       const newPos = start + inserted.length;
@@ -55,55 +68,116 @@ export function HandHistoryFormContent({
     [content, onContentChange]
   );
 
-  const insertTextAtCursor = useCallback(
-    (text: string) => {
-      const { start } = contentSelectionRef.current;
-      const before = content.slice(0, start);
-      const after = content.slice(start);
-      const next = before + text + after;
-      onContentChange(next);
-      const newPos = start + text.length;
-      contentSelectionRef.current = { start: newPos, end: newPos };
+  const insertIntoSpoiler = useCallback(
+    (shorthand: string, wrapBackticks: boolean) => {
+      if (!onSpoilerChange) return;
+      const { start } = spoilerSelectionRef.current;
+      const before = spoilerValue.slice(0, start);
+      const after = spoilerValue.slice(start);
+      const inserted = wrapBackticks ? `\`${shorthand}\`` : shorthand;
+      const next = before + inserted + after;
+      onSpoilerChange(next);
+      const newPos = start + inserted.length;
+      spoilerSelectionRef.current = { start: newPos, end: newPos };
       setTimeout(() => {
-        contentInputRef.current?.focus();
-        contentInputRef.current?.setSelectionRange(newPos, newPos);
+        spoilerInputRef.current?.focus();
+        spoilerInputRef.current?.setSelectionRange(newPos, newPos);
       }, 0);
     },
-    [content, onContentChange]
+    [spoilerValue, onSpoilerChange]
+  );
+
+  const insertCardAtCursor = useCallback(
+    (shorthand: string) => {
+      if (activeFieldRef.current === 'spoiler' && hasSpoiler) {
+        insertIntoSpoiler(shorthand, true);
+      } else {
+        insertIntoContent(shorthand, true);
+      }
+    },
+    [hasSpoiler, insertIntoContent, insertIntoSpoiler]
+  );
+
+  const insertTextAtCursor = useCallback(
+    (text: string) => {
+      if (activeFieldRef.current === 'spoiler' && hasSpoiler) {
+        insertIntoSpoiler(text, false);
+      } else {
+        insertIntoContent(text, false);
+      }
+    },
+    [hasSpoiler, insertIntoContent, insertIntoSpoiler]
   );
 
   const removeCardFromContent = useCallback(
     (shorthand: string) => {
-      const cursor = contentSelectionRef.current.start;
       const needle = `\`${shorthand}\``;
-      let index = content.indexOf(needle);
-      if (index === -1) return;
-      let bestIndex = index;
-      let bestDist = Math.min(
-        Math.abs(cursor - index),
-        Math.abs(cursor - (index + needle.length))
-      );
-      while (index !== -1) {
-        const dist = Math.min(
+      if (activeFieldRef.current === 'spoiler' && hasSpoiler) {
+        const cursor = spoilerSelectionRef.current.start;
+        let index = spoilerValue.indexOf(needle);
+        if (index === -1) return;
+        let bestIndex = index;
+        let bestDist = Math.min(
           Math.abs(cursor - index),
           Math.abs(cursor - (index + needle.length))
         );
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestIndex = index;
+        while (index !== -1) {
+          const dist = Math.min(
+            Math.abs(cursor - index),
+            Math.abs(cursor - (index + needle.length))
+          );
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestIndex = index;
+          }
+          index = spoilerValue.indexOf(needle, index + 1);
         }
-        index = content.indexOf(needle, index + 1);
+        onSpoilerChange!(spoilerValue.slice(0, bestIndex) + spoilerValue.slice(bestIndex + needle.length));
+        spoilerSelectionRef.current = { start: bestIndex, end: bestIndex };
+        setTimeout(() => {
+          spoilerInputRef.current?.focus();
+          spoilerInputRef.current?.setSelectionRange(bestIndex, bestIndex);
+        }, 0);
+      } else {
+        const cursor = contentSelectionRef.current.start;
+        let index = content.indexOf(needle);
+        if (index === -1) return;
+        let bestIndex = index;
+        let bestDist = Math.min(
+          Math.abs(cursor - index),
+          Math.abs(cursor - (index + needle.length))
+        );
+        while (index !== -1) {
+          const dist = Math.min(
+            Math.abs(cursor - index),
+            Math.abs(cursor - (index + needle.length))
+          );
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestIndex = index;
+          }
+          index = content.indexOf(needle, index + 1);
+        }
+        const next = content.slice(0, bestIndex) + content.slice(bestIndex + needle.length);
+        onContentChange(next);
+        contentSelectionRef.current = { start: bestIndex, end: bestIndex };
+        setTimeout(() => {
+          contentInputRef.current?.focus();
+          contentInputRef.current?.setSelectionRange(bestIndex, bestIndex);
+        }, 0);
       }
-      const next = content.slice(0, bestIndex) + content.slice(bestIndex + needle.length);
-      onContentChange(next);
-      contentSelectionRef.current = { start: bestIndex, end: bestIndex };
-      setTimeout(() => {
-        contentInputRef.current?.focus();
-        contentInputRef.current?.setSelectionRange(bestIndex, bestIndex);
-      }, 0);
     },
-    [content, onContentChange]
+    [content, spoilerValue, onContentChange, onSpoilerChange, hasSpoiler]
   );
+
+  const usedShorthands = useMemo(() => {
+    const fromContent = getUsedCardShorthands(content);
+    const fromSpoiler = hasSpoiler ? getUsedCardShorthands(spoilerValue) : new Set<string>();
+    return new Set([...fromContent, ...fromSpoiler]);
+  }, [content, spoilerValue, hasSpoiler]);
+
+  const usedUnknownCardCount =
+    (getUsedUnknownCardCount(content) + (hasSpoiler ? getUsedUnknownCardCount(spoilerValue) : 0)) | 0;
 
   return (
     <Box
@@ -173,6 +247,7 @@ export function HandHistoryFormContent({
             placeholder=""
             value={content}
             onChange={(e) => onContentChange(e.target.value)}
+            onFocus={() => { activeFieldRef.current = 'content'; }}
             onSelect={(e) => {
               const t = e.target as HTMLTextAreaElement;
               contentSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
@@ -198,14 +273,79 @@ export function HandHistoryFormContent({
               input: { 'aria-label': 'Raw content (backtick codes)' },
             }}
           />
+
+          {hasSpoiler && (
+            <Box sx={{ mt: 1 }}>
+              <Box
+                component="button"
+                type="button"
+                onClick={() => setSpoilerSectionOpen((o) => !o)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  p: 0,
+                  color: 'text.secondary',
+                  '&:hover': { color: 'text.primary' },
+                }}
+                aria-expanded={spoilerSectionOpen}
+              >
+                {spoilerSectionOpen ? (
+                  <ExpandLessIcon fontSize="small" />
+                ) : (
+                  <ExpandMoreIcon fontSize="small" />
+                )}
+                <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                  Spoiler (optional)
+                </Typography>
+              </Box>
+              <Collapse in={spoilerSectionOpen}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  multiline
+                  minRows={2}
+                  maxRows={6}
+                  placeholder="Hidden info — click a card on the right to insert at cursor"
+                  value={spoilerValue}
+                  onChange={(e) => onSpoilerChange!(e.target.value)}
+                  onFocus={() => { activeFieldRef.current = 'spoiler'; }}
+                  onSelect={(e) => {
+                    const t = e.target as HTMLTextAreaElement;
+                    spoilerSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
+                  }}
+                  onBlur={(e) => {
+                    const t = e.target as HTMLTextAreaElement;
+                    spoilerSelectionRef.current = { start: t.selectionStart ?? 0, end: t.selectionEnd ?? 0 };
+                  }}
+                  inputRef={spoilerInputRef}
+                  sx={{
+                    mt: 0.5,
+                    '& .MuiInputBase-root': { bgcolor: 'grey.900' },
+                    '& .MuiInputBase-input': {
+                      fontSize: '0.8rem',
+                      fontFamily: 'monospace',
+                      color: 'text.secondary',
+                    },
+                  }}
+                  slotProps={{
+                    input: { 'aria-label': 'Spoiler text (backtick codes)' },
+                  }}
+                />
+              </Collapse>
+            </Box>
+          )}
         </Box>
       </Box>
       <HandHistoryCardPicker
         onInsertCard={insertCardAtCursor}
         onInsertText={insertTextAtCursor}
         onRemoveCard={removeCardFromContent}
-        usedShorthands={getUsedCardShorthands(content)}
-        usedUnknownCardCount={getUsedUnknownCardCount(content)}
+        usedShorthands={usedShorthands}
+        usedUnknownCardCount={usedUnknownCardCount}
       />
     </Box>
   );

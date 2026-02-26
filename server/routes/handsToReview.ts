@@ -34,6 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
     const body = req.body as {
       title?: string;
       handText: string;
+      spoilerText?: string;
       createdBy: string;
     };
     if (!body.handText?.trim()) {
@@ -42,6 +43,7 @@ router.post('/', async (req: Request, res: Response) => {
     const hand = new HandToReview({
       title: body.title?.trim() || 'Untitled hand',
       handText: body.handText.trim(),
+      spoilerText: body.spoilerText?.trim() ?? '',
       createdBy: body.createdBy || 'Anonymous',
     });
     await hand.save();
@@ -59,6 +61,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       handText?: string;
       status?: 'open' | 'archived';
       addComment?: { text: string; addedBy: string };
+      updateComment?: { commentIndex: number; text: string; editedBy: string };
       deleteCommentIndex?: number;
       rateHand?: {
         starRating?: number;
@@ -73,6 +76,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     if (body.title !== undefined) update.title = body.title.trim() || 'Untitled hand';
     if (body.handText !== undefined) update.handText = body.handText.trim();
+    if (body.spoilerText !== undefined) update.spoilerText = body.spoilerText.trim();
 
     if (body.status !== undefined && (body.status === 'open' || body.status === 'archived')) {
       update.status = body.status;
@@ -113,6 +117,21 @@ router.put('/:id', async (req: Request, res: Response) => {
         addedAt: new Date(),
       };
       hand.comments.push(comment);
+      await hand.save();
+      return res.json(hand);
+    }
+
+    if (
+      body.updateComment?.text?.trim() != null &&
+      typeof body.updateComment.commentIndex === 'number' &&
+      body.updateComment.commentIndex >= 0 &&
+      body.updateComment.commentIndex < (hand.comments?.length ?? 0) &&
+      body.updateComment.editedBy
+    ) {
+      const { commentIndex, text, editedBy } = body.updateComment;
+      hand.comments[commentIndex].text = text.trim();
+      (hand.comments[commentIndex] as Record<string, unknown>).editedAt = new Date();
+      (hand.comments[commentIndex] as Record<string, unknown>).editedBy = editedBy;
       await hand.save();
       return res.json(hand);
     }

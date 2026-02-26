@@ -34,6 +34,7 @@ import {
   createHandToReview,
   updateHandToReview,
   addHandComment,
+  updateHandComment,
   deleteHandComment,
   deleteHandToReview,
   rateHand,
@@ -97,11 +98,14 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addTitle, setAddTitle] = useState('');
   const [addHandText, setAddHandText] = useState('');
+  const [addSpoilerText, setAddSpoilerText] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [editHand, setEditHand] = useState<HandToReview | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editHandText, setEditHandText] = useState('');
+  const [editSpoilerText, setEditSpoilerText] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [revealedSpoilerIds, setRevealedSpoilerIds] = useState<Set<string>>(new Set());
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [commentSaving, setCommentSaving] = useState<string | null>(null);
   const [ratingSaving, setRatingSaving] = useState<string | null>(null);
@@ -112,6 +116,12 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     handId: string;
     commentIndex: number;
   } | null>(null);
+  const [editingComment, setEditingComment] = useState<{
+    handId: string;
+    commentIndex: number;
+  } | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const {
     confirmOpen: discardConfirmOpen,
     openConfirm: openDiscardConfirm,
@@ -139,12 +149,13 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   }, [loadHands]);
 
   const isAddModalDirty = () =>
-    addTitle.trim() !== '' || addHandText.trim() !== '';
+    addTitle.trim() !== '' || addHandText.trim() !== '' || addSpoilerText.trim() !== '';
 
   const isEditModalDirty = () =>
     editHand !== null &&
     (editTitle !== (editHand.title ?? '') ||
-      editHandText !== (editHand.handText ?? ''));
+      editHandText !== (editHand.handText ?? '') ||
+      editSpoilerText !== (editHand.spoilerText ?? ''));
 
   const closeAddModal = () => {
     if (isAddModalDirty()) {
@@ -157,6 +168,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       setAddModalOpen(false);
       setAddTitle('');
       setAddHandText('');
+      setAddSpoilerText('');
     }
   };
 
@@ -175,12 +187,14 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       const created = await createHandToReview({
         title: addTitle.trim() || 'Untitled hand',
         handText: addHandText.trim(),
+        spoilerText: addSpoilerText.trim() || undefined,
         createdBy: userName || 'Anonymous',
       });
       setHands((prev) => [created, ...prev]);
       setAddModalOpen(false);
       setAddTitle('');
       setAddHandText('');
+      setAddSpoilerText('');
       setExpandedId(created._id);
       onSuccess?.('Hand added for review');
     } catch {
@@ -219,6 +233,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
     setEditHand(hand);
     setEditTitle(hand.title || '');
     setEditHandText(hand.handText || '');
+    setEditSpoilerText(hand.spoilerText ?? '');
   };
 
   const handleEditSave = async () => {
@@ -228,6 +243,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       const updated = await updateHandToReview(editHand._id, {
         title: editTitle.trim() || 'Untitled hand',
         handText: editHandText.trim(),
+        spoilerText: editSpoilerText.trim(),
       });
       setHands((prev) =>
         prev.map((h) => (h._id === editHand._id ? updated : h))
@@ -297,6 +313,38 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       onSuccess?.('Comment deleted');
     } catch {
       onError?.('Failed to delete comment');
+    } finally {
+      setCommentSaving(null);
+    }
+  };
+
+  const commentKey = (handId: string, i: number) => `${handId}-${i}`;
+
+  const handleStartEditComment = (handId: string, commentIndex: number, text: string) => {
+    setEditingComment({ handId, commentIndex });
+    setEditingCommentText(text);
+    setExpandedComments((prev) => new Set(prev).add(commentKey(handId, commentIndex)));
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingComment(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveEditComment = async () => {
+    if (!editingComment || !editingCommentText.trim() || !userName) return;
+    const { handId, commentIndex } = editingComment;
+    setCommentSaving(handId);
+    try {
+      const updated = await updateHandComment(handId, commentIndex, editingCommentText.trim(), userName);
+      setHands((prev) =>
+        prev.map((h) => (h._id === handId ? updated : h))
+      );
+      setEditingComment(null);
+      setEditingCommentText('');
+      onSuccess?.('Comment updated');
+    } catch {
+      onError?.('Failed to update comment');
     } finally {
       setCommentSaving(null);
     }
@@ -687,62 +735,223 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                       )}
                     </Box>
 
+                    {(hand.spoilerText ?? '').trim() !== '' && (
+                      <Box sx={{ mb: 1.5 }}>
+                        <Box
+                          component="button"
+                          type="button"
+                          onClick={() =>
+                            setRevealedSpoilerIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(hand._id)) next.delete(hand._id);
+                              else next.add(hand._id);
+                              return next;
+                            })
+                          }
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            p: 0,
+                            color: 'text.secondary',
+                            fontSize: '0.75rem',
+                            '&:hover': { color: 'text.primary' },
+                          }}
+                          aria-expanded={revealedSpoilerIds.has(hand._id)}
+                        >
+                          {revealedSpoilerIds.has(hand._id) ? (
+                            <ExpandLessIcon sx={{ fontSize: 16 }} />
+                          ) : (
+                            <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                          )}
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            {revealedSpoilerIds.has(hand._id) ? 'Hide spoiler' : 'Reveal spoiler'}
+                          </Typography>
+                        </Box>
+                        <Collapse in={revealedSpoilerIds.has(hand._id)}>
+                          <Box
+                            sx={{
+                              mt: 0.5,
+                              p: 1,
+                              borderRadius: 0.5,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              bgcolor: 'action.hover',
+                              fontSize: '0.85rem',
+                              lineHeight: 1.5,
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            <RichNoteRenderer text={hand.spoilerText ?? ''} />
+                          </Box>
+                        </Collapse>
+                      </Box>
+                    )}
+
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                       Comments ({hand.comments?.length ?? 0})
                     </Typography>
                     <Box sx={{ mt: 0.5, mb: 1 }}>
-                      {(hand.comments ?? []).map((c, i) => (
-                        <Box
-                          key={i}
-                          sx={{
-                            py: 0.5,
-                            px: 1,
-                            mb: 0.5,
-                            bgcolor: 'background.paper',
-                            borderRadius: 0.5,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: 0.5,
-                            '&:hover .comment-delete-btn': {
-                              opacity: 1,
-                            },
-                          }}
-                        >
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              {c.addedBy} • {new Date(c.addedAt).toLocaleString()}
-                            </Typography>
-                            <Box sx={{ mt: 0.25 }}>
-                              <RichNoteRenderer text={c.text} />
-                            </Box>
-                          </Box>
-                          <IconButton
-                            size="small"
-                            className="comment-delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteCommentTarget({ handId: hand._id, commentIndex: i });
-                            }}
+                      {(hand.comments ?? []).map((c, i) => {
+                        const isEditing =
+                          editingComment?.handId === hand._id && editingComment?.commentIndex === i;
+                        const key = commentKey(hand._id, i);
+                        const expanded = expandedComments.has(key);
+                        const toggleExpanded = () =>
+                          setExpandedComments((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(key)) next.delete(key);
+                            else next.add(key);
+                            return next;
+                          });
+                        return (
+                          <Box
+                            key={i}
                             sx={{
-                              p: 0.25,
-                              opacity: 0,
-                              transition: 'opacity 0.2s',
-                              flexShrink: 0,
+                              py: 0.5,
+                              px: 1,
+                              mb: 0.5,
+                              bgcolor: 'background.paper',
+                              borderRadius: 0.5,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              '&:hover .comment-action-btn': {
+                                opacity: 1,
+                              },
                             }}
-                            aria-label="Delete comment"
                           >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      ))}
+                            <Box
+                              component="button"
+                              type="button"
+                              onClick={toggleExpanded}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                width: '100%',
+                                border: 'none',
+                                background: 'none',
+                                cursor: 'pointer',
+                                p: 0,
+                                textAlign: 'left',
+                                color: 'inherit',
+                                '&:hover': { color: 'text.primary' },
+                              }}
+                              aria-expanded={expanded}
+                            >
+                              <IconButton size="small" sx={{ p: 0 }} aria-hidden>
+                                {expanded ? (
+                                  <ExpandLessIcon fontSize="small" />
+                                ) : (
+                                  <ExpandMoreIcon fontSize="small" />
+                                )}
+                              </IconButton>
+                              <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
+                                {c.addedBy} • {new Date(c.addedAt).toLocaleString()}
+                                {c.editedAt && (
+                                  <> (edited by {c.editedBy ?? 'Unknown'} • {new Date(c.editedAt).toLocaleString()})</>
+                                )}
+                              </Typography>
+                            </Box>
+                            <Collapse in={expanded}>
+                              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mt: 0.25, pl: 2.5 }}>
+                                <Box sx={{ flex: 1, minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
+                                  {isEditing ? (
+                                    <Box sx={{ mt: 0.5 }}>
+                                      <TextField
+                                        fullWidth
+                                        size="small"
+                                        multiline
+                                        minRows={2}
+                                        maxRows={8}
+                                        value={editingCommentText}
+                                        onChange={(e) => setEditingCommentText(e.target.value)}
+                                        disabled={commentSaving === hand._id}
+                                        sx={{
+                                          '& .MuiInputBase-input': { resize: 'none' },
+                                        }}
+                                        slotProps={{ input: { 'aria-label': 'Edit comment' } }}
+                                      />
+                                      <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          onClick={handleCancelEditComment}
+                                          disabled={commentSaving === hand._id}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          variant="contained"
+                                          onClick={handleSaveEditComment}
+                                          disabled={!editingCommentText.trim() || commentSaving === hand._id}
+                                        >
+                                          Save
+                                        </Button>
+                                      </Box>
+                                    </Box>
+                                  ) : (
+                                    <Box sx={{ mt: 0.25 }}>
+                                      <RichNoteRenderer text={c.text} />
+                                    </Box>
+                                  )}
+                                </Box>
+                                {!isEditing && (
+                                  <>
+                                    <IconButton
+                                      size="small"
+                                      className="comment-action-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartEditComment(hand._id, i, c.text);
+                                      }}
+                                      sx={{
+                                        p: 0.25,
+                                        opacity: 0,
+                                        transition: 'opacity 0.2s',
+                                        flexShrink: 0,
+                                      }}
+                                      aria-label="Edit comment"
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                    <IconButton
+                                      size="small"
+                                      className="comment-action-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeleteCommentTarget({ handId: hand._id, commentIndex: i });
+                                      }}
+                                      sx={{
+                                        p: 0.25,
+                                        opacity: 0,
+                                        transition: 'opacity 0.2s',
+                                        flexShrink: 0,
+                                      }}
+                                      aria-label="Delete comment"
+                                    >
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </>
+                                )}
+                              </Box>
+                            </Collapse>
+                          </Box>
+                        );
+                      })}
                     </Box>
 
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
                       <TextField
                         fullWidth
                         size="small"
+                        multiline
+                        minRows={2}
+                        maxRows={8}
                         placeholder="Add a comment..."
                         value={commentTexts[hand._id] ?? ''}
                         onChange={(e) =>
@@ -758,6 +967,11 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                           }
                         }}
                         disabled={commentSaving === hand._id}
+                        sx={{
+                          '& .MuiInputBase-input': {
+                            resize: 'none',
+                          },
+                        }}
                       />
                       <Button
                         size="small"
@@ -794,6 +1008,8 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             onTitleChange={setAddTitle}
             content={addHandText}
             onContentChange={setAddHandText}
+            spoilerValue={addSpoilerText}
+            onSpoilerChange={setAddSpoilerText}
             contentLabel="Hand text"
             placeholder="Paste hand history... Click a card on the right to insert at cursor"
             contentRequired
@@ -832,6 +1048,8 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             onTitleChange={setEditTitle}
             content={editHandText}
             onContentChange={setEditHandText}
+            spoilerValue={editSpoilerText}
+            onSpoilerChange={setEditSpoilerText}
             contentLabel="Hand text"
             placeholder="Paste hand history... Click a card on the right to insert at cursor"
             contentRequired
