@@ -22,6 +22,7 @@ import { ExploitsDisplay } from './ExploitsDisplay';
 import { StakesSection } from './StakesSection';
 import { NotesSection } from './NotesSection';
 import { useUserName } from '../context/UserNameContext';
+import { useCompactMode } from '../context/CompactModeContext';
 import {
   PLAYER_TYPE_KEYS,
   getPlayerTypeColor,
@@ -40,6 +41,7 @@ interface PlayerCardProps {
 
 export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, onClose }: PlayerCardProps) {
   const userName = useUserName();
+  const compact = useCompactMode();
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(player.username);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -192,8 +194,8 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
         borderColor: accentColor,
       }}
     >
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+      <CardContent sx={compact ? { p: 1.25, '&:last-child': { pb: 1.25 } } : undefined}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: compact ? 0.5 : 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
           {editingName ? (
             <>
@@ -210,7 +212,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
             </>
           ) : (
             <>
-              <Typography variant="h6">{player.username}</Typography>
+              <Typography variant={compact ? 'subtitle1' : 'h6'} sx={compact ? { fontSize: '0.85rem' } : undefined}>{player.username}</Typography>
               <IconButton size="small" onClick={() => setEditingName(true)}>
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -227,7 +229,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
           </IconButton>
         </Box>
 
-        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+        <FormControl fullWidth size="small" sx={{ mb: compact ? 1 : 2 }}>
           <Select
             value={player.playerType}
             onChange={(e) => handleTypeChange(e.target.value as PlayerTypeKey)}
@@ -279,7 +281,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
           saving={saving}
         />
 
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5 }}>
+        <Box sx={{ mt: compact ? 1 : 2, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5 }}>
           <Button
             size="small"
             startIcon={<MergeTypeIcon />}

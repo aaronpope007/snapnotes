@@ -9,6 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryEntryCommentsSection } from './HandHistoryEntryCommentsSection';
 import type { HandHistoryEntryCommentsSectionActions } from './HandHistoryEntryCommentsSection';
+import { useCompactMode } from '../context/CompactModeContext';
 import type { HandHistoryEntry } from '../types';
 
 interface HandHistoryEntryCardProps {
@@ -56,6 +57,7 @@ export function HandHistoryEntryCard({
   userName,
   saving,
 }: HandHistoryEntryCardProps) {
+  const compact = useCompactMode();
   return (
     <Box
       sx={{
@@ -71,9 +73,10 @@ export function HandHistoryEntryCard({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 0.5,
+          gap: compact ? 0.25 : 0.5,
           width: '100%',
-          p: 1,
+          p: compact ? 0.375 : 1,
+          minHeight: compact ? 28 : undefined,
           border: 'none',
           background: 'none',
           cursor: 'pointer',
@@ -89,7 +92,7 @@ export function HandHistoryEntryCard({
           )}
         </IconButton>
         <Typography
-          variant="body2"
+          variant={compact ? 'caption' : 'body2'}
           sx={{
             flex: 1,
             overflow: 'hidden',
@@ -129,10 +132,10 @@ export function HandHistoryEntryCard({
       <Collapse in={expanded}>
         <Box
           sx={{
-            fontSize: '0.8rem',
+            fontSize: compact ? '0.7rem' : '0.8rem',
             lineHeight: 1.5,
             whiteSpace: 'pre-wrap',
-            p: 1,
+            p: compact ? 0.375 : 1,
             pt: 0,
             bgcolor: 'background.default',
             borderTop: '1px solid',
@@ -140,14 +143,14 @@ export function HandHistoryEntryCard({
           }}
         >
           {entry.content ? (
-            <RichNoteRenderer text={entry.content} />
+            <RichNoteRenderer text={entry.content} cardSize={compact ? 'xxxs' : 'sm'} />
           ) : (
             <Typography variant="caption" color="text.secondary" fontStyle="italic">
               No content
             </Typography>
           )}
           {(entry.spoilerText ?? '').trim() !== '' && (
-            <Box sx={{ mt: 1 }}>
+            <Box sx={{ mt: compact ? 0.5 : 1 }}>
               <Box
                 component="button"
                 type="button"
@@ -175,8 +178,8 @@ export function HandHistoryEntryCard({
                 </Typography>
               </Box>
               <Collapse in={spoilerExpanded}>
-                <Box sx={{ mt: 0.5, p: 0.5, borderRadius: 0.5, bgcolor: 'action.hover' }}>
-                  <RichNoteRenderer text={entry.spoilerText ?? ''} />
+                <Box sx={{ mt: 0.5, p: compact ? 0.25 : 0.5, borderRadius: 0.5, bgcolor: 'action.hover' }}>
+                  <RichNoteRenderer text={entry.spoilerText ?? ''} cardSize={compact ? 'xxxs' : 'sm'} />
                 </Box>
               </Collapse>
             </Box>

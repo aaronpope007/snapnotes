@@ -13,9 +13,11 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { DeleteCommentConfirmDialog } from './DeleteCommentConfirmDialog';
 import { useHandHistoryPanel } from '../hooks/useHandHistoryPanel';
 import { useUserName } from '../context/UserNameContext';
+import { useCompactMode } from '../context/CompactModeContext';
 import type { HandHistoryEntry } from '../types';
 
-const PANEL_WIDTH = 340;
+const PANEL_WIDTH_DEFAULT = 340;
+const PANEL_WIDTH_COMPACT = 260;
 
 interface HandHistoryPanelProps {
   handHistories: HandHistoryEntry[];
@@ -29,6 +31,8 @@ export function HandHistoryPanel({
   saving = false,
 }: HandHistoryPanelProps) {
   const userName = useUserName();
+  const compact = useCompactMode();
+  const panelWidth = compact ? PANEL_WIDTH_COMPACT : PANEL_WIDTH_DEFAULT;
   const hook = useHandHistoryPanel({
     handHistories,
     onUpdateHandHistories,
@@ -77,10 +81,10 @@ export function HandHistoryPanel({
         <Paper
           elevation={0}
           sx={{
-            width: PANEL_WIDTH,
-            minWidth: PANEL_WIDTH,
+            width: panelWidth,
+            minWidth: panelWidth,
             ml: 0.5,
-            p: 2,
+            p: compact ? 1 : 2,
             maxHeight: 'calc(100vh - 120px)',
             overflow: 'auto',
             bgcolor: 'background.paper',
@@ -88,7 +92,7 @@ export function HandHistoryPanel({
             borderColor: 'divider',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: compact ? 0.5 : 1 }}>
             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               Hand Histories
             </Typography>
@@ -112,7 +116,7 @@ export function HandHistoryPanel({
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: compact ? 0.25 : 0.5, mb: compact ? 1 : 2 }}>
             {hook.localValues.map((entry, i) => (
               <HandHistoryEntryCard
                 key={i}

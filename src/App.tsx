@@ -9,11 +9,19 @@ import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Switch from '@mui/material/Switch';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import SettingsIcon from '@mui/icons-material/Settings';
+import SaveIcon from '@mui/icons-material/Save';
+import RestoreIcon from '@mui/icons-material/Restore';
+import PersonIcon from '@mui/icons-material/Person';
+import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
@@ -23,6 +31,8 @@ import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import { MergePlayerDialog } from './components/MergePlayerDialog';
 import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
+import { ChangeNameDialog } from './components/ChangeNameDialog';
+import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
 import {
   fetchPlayers,
   fetchPlayer,
@@ -38,6 +48,8 @@ import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes'
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer } from './types';
 
 export default function App() {
+  const compact = useCompactMode();
+  const setCompact = useSetCompactMode();
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +63,9 @@ export default function App() {
   const [restorePayload, setRestorePayload] = useState<BackupPayload | null>(null);
   const [restoreLoading, setRestoreLoading] = useState(false);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+  const settingsOpen = Boolean(settingsAnchorEl);
+  const [changeNameOpen, setChangeNameOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -262,18 +277,99 @@ export default function App() {
         margin: '0 auto',
       }}
     >
-      <Container maxWidth={false} sx={{ py: 2, px: 2, maxWidth: 900 }}>
-        <Box sx={{ mb: 2 }}>
-          <SearchBar
-            players={players}
-            onSelect={handleSelectPlayer}
-            onNoMatchCreate={(username) => {
-              setAddInitialUsername(username);
-              setAddOpen(true);
-            }}
-            selectedId={selected?._id}
-          />
-          <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Container maxWidth={false} sx={{ py: compact ? 1 : 2, px: compact ? 1 : 2, maxWidth: 900 }}>
+        <Box sx={{ mb: compact ? 1 : 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <SearchBar
+                players={players}
+                onSelect={handleSelectPlayer}
+                onNoMatchCreate={(username) => {
+                  setAddInitialUsername(username);
+                  setAddOpen(true);
+                }}
+                selectedId={selected?._id}
+              />
+            </Box>
+            <IconButton
+              size="small"
+              onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
+              aria-label="Settings"
+              aria-controls={settingsOpen ? 'settings-menu' : undefined}
+              aria-haspopup="true"
+              aria-expanded={settingsOpen ? 'true' : undefined}
+            >
+              <SettingsIcon fontSize="small" />
+            </IconButton>
+            <Menu
+              id="settings-menu"
+              anchorEl={settingsAnchorEl}
+              open={settingsOpen}
+              onClose={() => setSettingsAnchorEl(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <MenuItem
+                onClick={() => {
+                  setSettingsAnchorEl(null);
+                  setChangeNameOpen(true);
+                }}
+              >
+                <PersonIcon fontSize="small" sx={{ mr: 1 }} />
+                Change my name
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setSettingsAnchorEl(null);
+                  setImportOpen(true);
+                }}
+              >
+                <ImportExportIcon fontSize="small" sx={{ mr: 1 }} />
+                Import
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setSettingsAnchorEl(null);
+                  handleExportBackup();
+                }}
+              >
+                <SaveIcon fontSize="small" sx={{ mr: 1 }} />
+                Export backup
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setSettingsAnchorEl(null);
+                  backupFileInputRef.current?.click();
+                }}
+              >
+                <RestoreIcon fontSize="small" sx={{ mr: 1 }} />
+                Restore backup
+              </MenuItem>
+              <MenuItem
+                onClick={(e) => e.stopPropagation()}
+                sx={{ justifyContent: 'space-between', gap: 2 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ViewCompactIcon fontSize="small" />
+                  Compact mode
+                </Box>
+                <Switch
+                  size="small"
+                  checked={compact}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompact(e.target.checked)}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                />
+              </MenuItem>
+            </Menu>
+            <input
+              ref={backupFileInputRef}
+              type="file"
+              accept=".json"
+              hidden
+              onChange={handleRestoreFileChange}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
             <IconButton size="small" onClick={() => void handleRefresh()} aria-label="Refresh" disabled={loading}>
               <RefreshIcon fontSize="small" />
             </IconButton>
@@ -284,31 +380,6 @@ export default function App() {
               onClick={() => setAddOpen(true)}
             >
               Add Player
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<ImportExportIcon />}
-              onClick={() => setImportOpen(true)}
-            >
-              Import
-            </Button>
-            <Button variant="outlined" size="small" onClick={handleExportBackup}>
-              Export backup
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              component="label"
-            >
-              Restore backup
-              <input
-                ref={backupFileInputRef}
-                type="file"
-                accept=".json"
-                hidden
-                onChange={handleRestoreFileChange}
-              />
             </Button>
             <Button
               variant={showHandsToReview ? 'contained' : 'outlined'}
@@ -340,13 +411,13 @@ export default function App() {
             </ErrorBoundary>
           </Box>
         ) : loading && !players.length ? (
-          <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+          <Box sx={{ py: compact ? 2 : 4, textAlign: 'center', color: 'text.secondary' }}>
             Loading...
           </Box>
         ) : selected ? (
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: compact ? 0 : 0 }}>
             <ErrorBoundary>
-              <Box sx={{ flex: '0 0 400px', maxWidth: 400 }}>
+              <Box sx={{ flex: compact ? '0 0 280px' : '0 0 400px', maxWidth: compact ? 280 : 400 }}>
                 <PlayerCard
                   player={selected}
                   players={players}
@@ -366,12 +437,12 @@ export default function App() {
           </Box>
         ) : (
           <Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography variant={compact ? 'caption' : 'body2'} color="text.secondary" sx={{ mb: compact ? 0.5 : 1 }}>
               Search for a player or add a new one.
             </Typography>
             {recentPlayers.length > 0 && (
-              <Paper variant="outlined" sx={{ p: 1, borderRadius: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>
+              <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: compact ? 0.5 : 1, fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
                   Recent players
                 </Typography>
                 <List dense disablePadding>
@@ -381,12 +452,13 @@ export default function App() {
                       onClick={() => handleSelectPlayer(p)}
                       sx={{
                         borderRadius: 0.5,
-                        py: 0.5,
+                        py: compact ? 0.2 : 0.5,
+                        minHeight: compact ? 28 : undefined,
                         '&:hover': { bgcolor: 'action.hover' },
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                        <Typography variant="body2" sx={{ mr: 0.5 }}>
+                        <Typography variant={compact ? 'caption' : 'body2'} sx={{ mr: 0.5, fontSize: compact ? '0.7rem' : undefined }}>
                           {p.username}
                         </Typography>
                         <Box
@@ -403,7 +475,7 @@ export default function App() {
                           {getPlayerTypeLabel(p.playerType)}
                         </Box>
                         <Box sx={{ flex: 1 }} />
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={compact ? { fontSize: '0.6rem' } : undefined}>
                           {new Date(p.updatedAt ?? p.createdAt ?? '').toLocaleDateString()}
                         </Typography>
                       </Box>
@@ -450,6 +522,12 @@ export default function App() {
         playerCount={restorePayload?.players?.length ?? 0}
         handsToReviewCount={restorePayload?.handsToReview?.length ?? 0}
         loading={restoreLoading}
+      />
+
+      <ChangeNameDialog
+        open={changeNameOpen}
+        onClose={() => setChangeNameOpen(false)}
+        onSuccess={showSuccess}
       />
 
       <Snackbar

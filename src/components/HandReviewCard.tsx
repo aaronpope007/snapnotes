@@ -27,6 +27,7 @@ import {
   getStarRatingLabel,
   getSpicyRatingLabel,
 } from '../utils/handReviewUtils';
+import { useCompactMode } from '../context/CompactModeContext';
 import type { HandToReview } from '../types';
 
 export interface HandReviewCardActions {
@@ -100,6 +101,7 @@ export function HandReviewCard({
   const spoilerRevealed = revealedSpoilerIds.has(hand._id);
   const hasReviewed = userName && (hand.reviewedBy ?? []).includes(userName);
   const canMarkReviewed = userName && !hasReviewed && onMarkReviewed;
+  const compact = useCompactMode();
 
   return (
     <Paper
@@ -117,9 +119,10 @@ export function HandReviewCard({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 0.5,
+          gap: compact ? 0.25 : 0.5,
           width: '100%',
-          p: 1,
+          p: compact ? 0.375 : 1,
+          minHeight: compact ? 28 : undefined,
           border: 'none',
           background: 'none',
           cursor: 'pointer',
@@ -137,7 +140,7 @@ export function HandReviewCard({
         </IconButton>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
-            variant="body2"
+            variant={compact ? 'caption' : 'body2'}
             sx={{
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -210,7 +213,7 @@ export function HandReviewCard({
       <Collapse in={expanded}>
         <Box
           sx={{
-            p: 1.5,
+            p: compact ? 0.75 : 1.5,
             pt: 0,
             borderTop: '1px solid',
             borderColor: 'divider',
@@ -222,7 +225,7 @@ export function HandReviewCard({
           </Typography>
 
           {userName && (hasReviewed || canMarkReviewed) && (
-            <Box sx={{ mb: 1 }}>
+            <Box sx={{ mb: compact ? 0.5 : 1 }}>
               {hasReviewed ? (
                 <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />
@@ -233,7 +236,7 @@ export function HandReviewCard({
                   variant="outlined"
                   size="small"
                   startIcon={<CheckCircleOutlineIcon />}
-                  onClick={() => onMarkReviewed(hand._id)}
+                  onClick={() => onMarkReviewed?.(hand._id)}
                   sx={{ textTransform: 'none' }}
                 >
                   Mark as reviewed
@@ -242,7 +245,7 @@ export function HandReviewCard({
             </Box>
           )}
 
-          <Box sx={{ mb: 1.5 }}>
+          <Box sx={{ mb: compact ? 1 : 1.5 }}>
             <Typography
               variant="caption"
               color="text.secondary"
@@ -373,14 +376,14 @@ export function HandReviewCard({
 
           <Box
             sx={{
-              fontSize: '0.85rem',
+              fontSize: compact ? '0.7rem' : '0.85rem',
               lineHeight: 1.5,
               whiteSpace: 'pre-wrap',
-              mb: 1.5,
+              mb: compact ? 1 : 1.5,
             }}
           >
             {hand.handText ? (
-              <RichNoteRenderer text={hand.handText} />
+              <RichNoteRenderer text={hand.handText} cardSize={compact ? 'xxxs' : 'sm'} />
             ) : (
               <Typography variant="caption" color="text.secondary" fontStyle="italic">
                 No hand text
@@ -389,7 +392,7 @@ export function HandReviewCard({
           </Box>
 
           {(hand.spoilerText ?? '').trim() !== '' && (
-            <Box sx={{ mb: 1.5 }}>
+            <Box sx={{ mb: compact ? 1 : 1.5 }}>
               <Box
                 component="button"
                 type="button"
@@ -421,17 +424,17 @@ export function HandReviewCard({
                 <Box
                   sx={{
                     mt: 0.5,
-                    p: 1,
+                    p: compact ? 0.375 : 1,
                     borderRadius: 0.5,
                     border: '1px solid',
                     borderColor: 'divider',
                     bgcolor: 'action.hover',
-                    fontSize: '0.85rem',
+                    fontSize: compact ? '0.7rem' : '0.85rem',
                     lineHeight: 1.5,
                     whiteSpace: 'pre-wrap',
                   }}
                 >
-                  <RichNoteRenderer text={hand.spoilerText ?? ''} />
+                  <RichNoteRenderer text={hand.spoilerText ?? ''} cardSize={compact ? 'xxxs' : 'sm'} />
                 </Box>
               </Collapse>
             </Box>

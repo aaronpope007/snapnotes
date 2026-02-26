@@ -4,7 +4,7 @@ interface CardImageProps {
   rank: string;
   suit: string | null;
   backdoor?: boolean;
-  size?: 'xxs' | 'xs' | 'sm' | 'md';
+  size?: 'xxxs' | 'xxs' | 'xs' | 'sm' | 'md';
 }
 
 const SUIT_COLORS: Record<string, string> = {
@@ -22,14 +22,15 @@ const SUIT_SYMBOLS: Record<string, string> = {
 };
 
 const SIZES = {
+  xxxs: { width: 16, height: 23 },
   xxs: { width: 20, height: 29 },
   xs: { width: 25, height: 36 },
   sm: { width: 42, height: 60 },
   md: { width: 56, height: 80 },
 };
-const RANK_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 12, xs: 14, sm: 22, md: 30 };
-const PLACEHOLDER_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 14, xs: 17, sm: 28, md: 36 };
-const BACKDOOR_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxs: 6, xs: 7, sm: 10, md: 12 };
+const RANK_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxxs: 10, xxs: 12, xs: 14, sm: 22, md: 30 };
+const PLACEHOLDER_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxxs: 11, xxs: 14, xs: 17, sm: 28, md: 36 };
+const BACKDOOR_FONT_SIZE: Record<keyof typeof SIZES, number> = { xxxs: 5, xxs: 6, xs: 7, sm: 10, md: 12 };
 
 /** Display rank as single character: A, K, Q, J, T, 9-2 (normalized from parser uppercase). */
 function displayRank(rank: string): string {

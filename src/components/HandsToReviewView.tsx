@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
+import { useCompactMode } from '../context/CompactModeContext';
 import { useHandsToReview } from '../hooks/useHandsToReview';
 import { HandReviewFilters } from './HandReviewFilters';
 import { HandReviewCard } from './HandReviewCard';
@@ -17,6 +18,7 @@ interface HandsToReviewViewProps {
 
 export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps) {
   const userName = useUserName();
+  const compact = useCompactMode();
   const hook = useHandsToReview({
     userName: userName ?? null,
     onSuccess,
@@ -38,7 +40,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   };
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 480 }}>
+    <Box sx={{ width: '100%', maxWidth: compact ? 360 : 480 }}>
       <HandReviewFilters
         filter={hook.filter}
         onFilterChange={hook.setFilter}
@@ -54,7 +56,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
       />
 
       {hook.forMeCount > 0 && !hook.filterForMe && (
-        <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
+        <Typography variant={compact ? 'caption' : 'body2'} color="primary" sx={{ mb: compact ? 0.5 : 1 }}>
           You have {hook.forMeCount} hand{hook.forMeCount !== 1 ? 's' : ''} tagged for you to review.
         </Typography>
       )}
@@ -69,7 +71,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
             : 'No hands to review. Add one to get started.'}
         </Typography>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: compact ? 0.25 : 0.5 }}>
           {hook.hands.map((hand) => (
             <HandReviewCard
               key={hand._id}

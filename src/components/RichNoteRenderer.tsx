@@ -5,7 +5,7 @@ import { CardImage } from './CardImage';
 
 const EXPLOIT_COLOR = '#ffb74d';
 
-type CardSize = 'xxs' | 'xs' | 'sm' | 'md';
+type CardSize = 'xxxs' | 'xxs' | 'xs' | 'sm' | 'md';
 
 interface RichNoteRendererProps {
   text: string;

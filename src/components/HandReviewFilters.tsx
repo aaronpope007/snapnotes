@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { ChiliIcon } from './ChiliIcon';
 import { STAR_COLOR } from '../constants/ratings';
+import { useCompactMode } from '../context/CompactModeContext';
 import type { HandToReviewStatus } from '../types';
 
 interface HandReviewFiltersProps {
@@ -41,6 +42,7 @@ export function HandReviewFilters({
   onAddClick,
   onRefresh,
 }: HandReviewFiltersProps) {
+  const compact = useCompactMode();
   return (
     <>
       <Box
@@ -49,11 +51,11 @@ export function HandReviewFilters({
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: 1,
-          mb: 2,
+          gap: compact ? 0.5 : 1,
+          mb: compact ? 1 : 2,
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Typography variant={compact ? 'subtitle1' : 'h6'} sx={{ fontWeight: 600, fontSize: compact ? '0.85rem' : undefined }}>
           Hands to Review
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -99,7 +101,7 @@ export function HandReviewFilters({
       </Box>
 
       {filter === 'all' && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: compact ? 0.5 : 1, mb: compact ? 1 : 1.5 }}>
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel id="sort-by-label">Sort by</InputLabel>
             <Select
