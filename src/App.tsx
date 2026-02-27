@@ -15,6 +15,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import RateReviewIcon from '@mui/icons-material/RateReview';
+import SchoolIcon from '@mui/icons-material/School';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SaveIcon from '@mui/icons-material/Save';
@@ -28,6 +29,7 @@ import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
 import { HandHistoryPanel } from './components/HandHistoryPanel';
 import { HandsToReviewView } from './components/HandsToReviewView';
+import { LearningPage } from './pages/LearningPage';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import { MergePlayerDialog } from './components/MergePlayerDialog';
@@ -85,6 +87,7 @@ export default function App() {
   const [addInitialUsername, setAddInitialUsername] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
   const [showHandsToReview, setShowHandsToReview] = useState(false);
+  const [showLearning, setShowLearning] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeLoading, setMergeLoading] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
@@ -142,6 +145,7 @@ export default function App() {
   const handleSelectPlayer = async (p: PlayerListItem) => {
     try {
       setShowHandsToReview(false);
+      setShowLearning(false);
       const full = await fetchPlayer(p._id);
       setSelected(full);
     } catch (err) {
@@ -459,9 +463,23 @@ export default function App() {
               variant={showHandsToReview ? 'contained' : 'outlined'}
               size="small"
               startIcon={<RateReviewIcon />}
-              onClick={() => setShowHandsToReview(!showHandsToReview)}
+              onClick={() => {
+                setShowHandsToReview(!showHandsToReview);
+                setShowLearning(false);
+              }}
             >
               Hands to Review
+            </Button>
+            <Button
+              variant={showLearning ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={<SchoolIcon />}
+              onClick={() => {
+                setShowLearning(!showLearning);
+                setShowHandsToReview(false);
+              }}
+            >
+              Learning
             </Button>
           </Box>
           {recentPlayers.length > 0 && (
@@ -470,11 +488,11 @@ export default function App() {
                 Recent players
               </Typography>
               <List dense disablePadding>
-                {recentPlayers.map((p) => (
+                {recentPlayers.map((p: PlayerListItem) => (
                   <ListItemButton
                     key={p._id}
                     onClick={() => handleSelectPlayer(p)}
-                    selected={p._id === selected?._id}
+                    selected={false}
                     sx={{
                       borderRadius: 0.5,
                       py: compact ? 0.2 : 0.5,
@@ -601,15 +619,48 @@ export default function App() {
               variant={showHandsToReview ? 'contained' : 'outlined'}
               size="small"
               startIcon={<RateReviewIcon />}
-              onClick={() => setShowHandsToReview(!showHandsToReview)}
+              onClick={() => {
+                setShowHandsToReview(!showHandsToReview);
+                setShowLearning(false);
+              }}
             >
               Hands to Review
+            </Button>
+            <Button
+              variant={showLearning ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={<SchoolIcon />}
+              onClick={() => {
+                setShowLearning(!showLearning);
+                setShowHandsToReview(false);
+              }}
+            >
+              Learning
             </Button>
           </Box>
         </Box>
         )}
 
-        {showHandsToReview ? (
+        {showLearning ? (
+          <Box>
+            <Button
+              variant="text"
+              size="small"
+              startIcon={<ArrowBackIcon />}
+              onClick={() => setShowLearning(false)}
+              sx={{ mb: 1 }}
+            >
+              {selected ? `Back to ${selected.username}` : 'Back to Players'}
+            </Button>
+            <ErrorBoundary>
+              <LearningPage
+                onBack={() => setShowLearning(false)}
+                onSuccess={showSuccess}
+                onError={showError}
+              />
+            </ErrorBoundary>
+          </Box>
+        ) : showHandsToReview ? (
           <Box>
             <Button
               variant="text"
@@ -730,7 +781,7 @@ export default function App() {
                   Recent players
                 </Typography>
                 <List dense disablePadding>
-                  {recentPlayers.map((p) => (
+                  {recentPlayers.map((p: PlayerListItem) => (
                     <ListItemButton
                       key={p._id}
                       onClick={() => handleSelectPlayer(p)}
