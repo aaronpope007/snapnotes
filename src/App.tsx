@@ -69,6 +69,8 @@ export default function App() {
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const settingsOpen = Boolean(settingsAnchorEl);
   const [changeNameOpen, setChangeNameOpen] = useState(false);
+  const [rngValue, setRngValue] = useState<number | null>(null);
+  const handleRngClick = () => setRngValue(Math.floor(Math.random() * 100) + 1);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -341,6 +343,15 @@ export default function App() {
             selectedId={selected?._id}
           />
         </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleRngClick}
+          aria-label="Random number 1-100"
+          sx={{ minWidth: 44, px: 1 }}
+        >
+          {rngValue ?? 'RNG'}
+        </Button>
         <IconButton
           size="small"
           onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -467,6 +478,15 @@ export default function App() {
                     selectedId={selected?._id}
                   />
                 </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleRngClick}
+                  aria-label="Random number 1-100"
+                  sx={{ minWidth: 44, px: 1 }}
+                >
+                  {rngValue ?? 'RNG'}
+                </Button>
                 <IconButton
                   size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -539,6 +559,15 @@ export default function App() {
                     selectedId={selected?._id}
                   />
                 </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleRngClick}
+                  aria-label="Random number 1-100"
+                  sx={{ minWidth: 44, px: 1 }}
+                >
+                  {rngValue ?? 'RNG'}
+                </Button>
                 <IconButton
                   size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}

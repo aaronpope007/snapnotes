@@ -156,6 +156,18 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
     }
   };
 
+  const handleEditExploit = async (index: number, newText: string) => {
+    const current = player.exploits || [];
+    const next = [...current];
+    next[index] = newText;
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { exploits: next });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteExploit = async (index: number) => {
     const current = player.exploits || [];
     const next = current.filter((_, i) => i !== index);
@@ -274,6 +286,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
               <ExploitsDisplay
                 exploits={player.exploits || []}
                 onAddExploit={handleAddExploit}
+                onEditExploit={handleEditExploit}
                 onDeleteExploit={handleDeleteExploit}
                 saving={saving}
                 inline={true}
@@ -383,6 +396,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
         <ExploitsDisplay
           exploits={player.exploits || []}
           onAddExploit={handleAddExploit}
+          onEditExploit={handleEditExploit}
           onDeleteExploit={handleDeleteExploit}
           saving={saving}
         />
