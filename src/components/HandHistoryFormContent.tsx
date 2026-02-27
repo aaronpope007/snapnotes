@@ -317,7 +317,7 @@ export function HandHistoryFormContent({
             required={contentRequired}
             sx={{
               mt: 1,
-              '& .MuiInputBase-root': { bgcolor: 'grey.900' },
+              '& .MuiInputBase-root': { bgcolor: 'background.paper' },
               '& .MuiInputBase-input': {
                 fontSize: '0.8rem',
                 fontFamily: 'monospace',
@@ -379,7 +379,7 @@ export function HandHistoryFormContent({
                   inputRef={spoilerInputRef}
                   sx={{
                     mt: 0.5,
-                    '& .MuiInputBase-root': { bgcolor: 'grey.900' },
+                    '& .MuiInputBase-root': { bgcolor: 'background.paper' },
                     '& .MuiInputBase-input': {
                       fontSize: '0.8rem',
                       fontFamily: 'monospace',

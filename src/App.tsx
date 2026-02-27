@@ -40,6 +40,7 @@ import { GeoPanel } from './components/GeoPanel';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
+import { useDarkMode, useSetDarkMode } from './context/DarkModeContext';
 import { useUserCredentials } from './context/UserNameContext';
 import {
   fetchPlayers,
@@ -74,6 +75,8 @@ export default function App() {
   const setHorizontal = useSetHorizontalMode();
   const calcVisibility = useCalculatorVisibility();
   const setCalcVisibility = useSetCalculatorVisibility();
+  const darkMode = useDarkMode();
+  const setDarkMode = useSetDarkMode();
   const { getAuthHeader } = useUserCredentials();
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
@@ -344,6 +347,10 @@ export default function App() {
           Refresh
         </MenuItem>
         <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>Dark mode</Box>
+          <Switch size="small" checked={darkMode} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDarkMode(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ViewCompactIcon fontSize="small" />
             Compact mode
@@ -368,6 +375,10 @@ export default function App() {
         <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>GEO</Box>
           <Switch size="small" checked={calcVisibility.showGEO} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCalcVisibility({ showGEO: e.target.checked })} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>RNG</Box>
+          <Switch size="small" checked={calcVisibility.showRNG} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCalcVisibility({ showRNG: e.target.checked })} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
         </MenuItem>
       </Menu>
       <input ref={backupFileInputRef} type="file" accept=".json" hidden onChange={handleRestoreFileChange} />
@@ -404,22 +415,24 @@ export default function App() {
         {calcVisibility.showMDF && <MDFPanel compact={compact} />}
         {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
         {calcVisibility.showGEO && <GeoPanel compact={compact} />}
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={handleRngClick}
-          aria-label="Random number 1-100"
-          sx={{
-            minWidth: 44,
-            px: 1,
-            ...(getRngButtonBgColor(rngValue) && {
-              backgroundColor: getRngButtonBgColor(rngValue),
-              '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
-            }),
-          }}
-        >
-          {rngValue ?? 'RNG'}
-        </Button>
+        {calcVisibility.showRNG && (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleRngClick}
+            aria-label="Random number 1-100"
+            sx={{
+              minWidth: 44,
+              px: 1,
+              ...(getRngButtonBgColor(rngValue) && {
+                backgroundColor: getRngButtonBgColor(rngValue),
+                '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
+              }),
+            }}
+          >
+            {rngValue ?? 'RNG'}
+          </Button>
+        )}
         <IconButton
           size="small"
           onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -546,22 +559,24 @@ export default function App() {
                 {calcVisibility.showMDF && <MDFPanel compact={compact} />}
                 {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
                 {calcVisibility.showGEO && <GeoPanel compact={compact} />}
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleRngClick}
-                  aria-label="Random number 1-100"
-                  sx={{
-                    minWidth: 44,
-                    px: 1,
-                    ...(getRngButtonBgColor(rngValue) && {
-                      backgroundColor: getRngButtonBgColor(rngValue),
-                      '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
-                    }),
-                  }}
-                >
-                  {rngValue ?? 'RNG'}
-                </Button>
+                {calcVisibility.showRNG && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleRngClick}
+                    aria-label="Random number 1-100"
+                    sx={{
+                      minWidth: 44,
+                      px: 1,
+                      ...(getRngButtonBgColor(rngValue) && {
+                        backgroundColor: getRngButtonBgColor(rngValue),
+                        '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
+                      }),
+                    }}
+                  >
+                    {rngValue ?? 'RNG'}
+                  </Button>
+                )}
                 <IconButton
                   size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -634,22 +649,24 @@ export default function App() {
                 {calcVisibility.showMDF && <MDFPanel compact={compact} />}
                 {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
                 {calcVisibility.showGEO && <GeoPanel compact={compact} />}
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleRngClick}
-                  aria-label="Random number 1-100"
-                  sx={{
-                    minWidth: 44,
-                    px: 1,
-                    ...(getRngButtonBgColor(rngValue) && {
-                      backgroundColor: getRngButtonBgColor(rngValue),
-                      '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
-                    }),
-                  }}
-                >
-                  {rngValue ?? 'RNG'}
-                </Button>
+                {calcVisibility.showRNG && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleRngClick}
+                    aria-label="Random number 1-100"
+                    sx={{
+                      minWidth: 44,
+                      px: 1,
+                      ...(getRngButtonBgColor(rngValue) && {
+                        backgroundColor: getRngButtonBgColor(rngValue),
+                        '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
+                      }),
+                    }}
+                  >
+                    {rngValue ?? 'RNG'}
+                  </Button>
+                )}
                 <IconButton
                   size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}

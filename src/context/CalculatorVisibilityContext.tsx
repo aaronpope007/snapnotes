@@ -6,12 +6,14 @@ export interface CalculatorVisibility {
   showMDF: boolean;
   showFE: boolean;
   showGEO: boolean;
+  showRNG: boolean;
 }
 
 const DEFAULT: CalculatorVisibility = {
   showMDF: true,
   showFE: true,
   showGEO: true,
+  showRNG: true,
 };
 
 interface CalculatorVisibilityContextValue {
@@ -41,6 +43,7 @@ function loadStored(): CalculatorVisibility {
       showMDF: parsed.showMDF ?? DEFAULT.showMDF,
       showFE: parsed.showFE ?? DEFAULT.showFE,
       showGEO: parsed.showGEO ?? DEFAULT.showGEO,
+      showRNG: parsed.showRNG ?? DEFAULT.showRNG,
     };
   } catch {
     return DEFAULT;

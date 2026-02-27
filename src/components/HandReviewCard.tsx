@@ -151,7 +151,7 @@ export function HandReviewCard({
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
               fontWeight: 500,
-              color: 'rgba(255, 255, 255, 0.9)',
+              color: 'text.primary',
             }}
           >
             {hand.title || DEFAULT_HAND_TITLE}
