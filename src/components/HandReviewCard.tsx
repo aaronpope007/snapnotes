@@ -15,6 +15,8 @@ import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandReviewCommentsSection } from './HandReviewCommentsSection';
+import { MDFPanel } from './MDFPanel';
+import { FoldEquityPanel } from './FoldEquityPanel';
 import type { HandReviewCommentsSectionActions } from './HandReviewCommentsSection';
 import { StarRatingInput } from './StarRatingInput';
 import { SpicyRatingInput } from './SpicyRatingInput';
@@ -379,6 +381,11 @@ export function HandReviewCard({
                 </Collapse>
               </Box>
             )}
+          </Box>
+
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: compact ? 0.75 : 1 }}>
+            <MDFPanel compact={compact} />
+            <FoldEquityPanel compact={compact} />
           </Box>
 
           <Box

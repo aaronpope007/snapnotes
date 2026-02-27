@@ -7,6 +7,8 @@ import Popover from '@mui/material/Popover';
 import Typography from '@mui/material/Typography';
 import EditIcon from '@mui/icons-material/Edit';
 import { CardImage } from './CardImage';
+import { MDFPanel } from './MDFPanel';
+import { FoldEquityPanel } from './FoldEquityPanel';
 
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
 const SUITS = ['s', 'h', 'd', 'c'] as const;
@@ -191,6 +193,8 @@ export function HandHistoryCardPicker({
           mt: 1,
         }}
       >
+        <MDFPanel compact />
+        <FoldEquityPanel compact />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
           {betSizes.map((pct, i) => (
             <Button

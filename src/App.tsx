@@ -32,6 +32,9 @@ import { ImportModal } from './components/ImportModal';
 import { MergePlayerDialog } from './components/MergePlayerDialog';
 import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
 import { ChangeNameDialog } from './components/ChangeNameDialog';
+import { MDFPanel } from './components/MDFPanel';
+import { FoldEquityPanel } from './components/FoldEquityPanel';
+import { GeoPanel } from './components/GeoPanel';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import {
@@ -362,7 +365,7 @@ export default function App() {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ width: 200, flexShrink: 0 }}>
           <SearchBar
             players={players}
             onSelect={handleSelectPlayer}
@@ -373,6 +376,9 @@ export default function App() {
             selectedId={selected?._id}
           />
         </Box>
+        <MDFPanel compact={compact} />
+        <FoldEquityPanel compact={compact} />
+        <GeoPanel compact={compact} />
         <Button
           variant="outlined"
           size="small"
@@ -501,7 +507,7 @@ export default function App() {
           {!horizontal && (
             <Box sx={{ mb: compact ? 1 : 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ width: 200, flexShrink: 0 }}>
                   <SearchBar
                     players={players}
                     onSelect={handleSelectPlayer}
@@ -512,6 +518,9 @@ export default function App() {
                     selectedId={selected?._id}
                   />
                 </Box>
+                <MDFPanel compact={compact} />
+                <FoldEquityPanel compact={compact} />
+                <GeoPanel compact={compact} />
                 <Button
                   variant="outlined"
                   size="small"
@@ -586,7 +595,7 @@ export default function App() {
           <>
             {horizontal && (
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexShrink: 0 }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ width: 200, flexShrink: 0 }}>
                   <SearchBar
                     players={players}
                     onSelect={handleSelectPlayer}
@@ -597,6 +606,9 @@ export default function App() {
                     selectedId={selected?._id}
                   />
                 </Box>
+                <MDFPanel compact={compact} />
+                <FoldEquityPanel compact={compact} />
+                <GeoPanel compact={compact} />
                 <Button
                   variant="outlined"
                   size="small"
