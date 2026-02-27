@@ -83,6 +83,7 @@ export function LearningPage({ onBack, onSuccess, onError }: LearningPageProps) 
         onTabChange={setActiveTab}
         dueCount={dueCount}
         onAddLeak={() => leaks.setAddModalOpen(true)}
+        onAddLeakToPlayer={() => leaks.setAddToPlayerModalOpen(true)}
         onAddEdge={() => edges.setAddModalOpen(true)}
         onAddMental={() => mental.setAddModalOpen(true)}
       />

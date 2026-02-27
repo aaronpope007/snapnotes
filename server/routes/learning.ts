@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Leak } from '../models/Leak.js';
 import { Edge } from '../models/Edge.js';
 import { MentalGameEntry } from '../models/MentalGameEntry.js';
@@ -30,10 +31,12 @@ router.get('/leaks', async (req: Request, res: Response) => {
     const userId = getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
     const status = req.query.status as string | undefined;
+    const playerId = typeof req.query.playerId === 'string' ? req.query.playerId.trim() : undefined;
     const filter: Record<string, unknown> = { userId };
     if (status && ['identified', 'working', 'resolved'].includes(status)) {
       filter.status = status;
     }
+    if (playerId) filter.playerId = playerId;
     const leaks = await Leak.find(filter).sort({ createdAt: -1 }).lean();
     res.json(leaks);
   } catch (err) {
@@ -49,6 +52,8 @@ router.post('/leaks', async (req: Request, res: Response) => {
       description?: string;
       category?: string;
       linkedHandIds?: string[];
+      playerId?: string;
+      playerUsername?: string;
     };
     const userId = body.userId?.trim() || getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId required' });
@@ -62,6 +67,8 @@ router.post('/leaks', async (req: Request, res: Response) => {
       category: body.category ?? 'other',
       status: 'identified',
       linkedHandIds,
+      playerId: body.playerId?.trim() || undefined,
+      playerUsername: body.playerUsername?.trim() || undefined,
     });
     await leak.save();
     res.status(201).json(leak);
@@ -107,7 +114,7 @@ router.patch('/leaks/:id', async (req: Request, res: Response) => {
     }
     if (Array.isArray(body.notes)) {
       leak.notes = body.notes.map((n) => ({
-        _id: n._id ?? new (await import('mongoose')).Types.ObjectId(),
+        _id: n._id ?? new mongoose.Types.ObjectId(),
         content: (n.content ?? '').trim(),
         createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
       }));
@@ -226,7 +233,7 @@ router.patch('/edges/:id', async (req: Request, res: Response) => {
     }
     if (Array.isArray(body.notes)) {
       edge.notes = body.notes.map((n) => ({
-        _id: n._id ?? new (await import('mongoose')).Types.ObjectId(),
+        _id: n._id ?? new mongoose.Types.ObjectId(),
         content: (n.content ?? '').trim(),
         createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
       }));

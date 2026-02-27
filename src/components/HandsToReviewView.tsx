@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
 import { useCompactMode } from '../context/CompactModeContext';
+import { useLearningVisibility } from '../context/LearningVisibilityContext';
 import { useHandsToReview } from '../hooks/useHandsToReview';
 import { HandReviewFilters } from './HandReviewFilters';
 import { HandReviewCard } from './HandReviewCard';
@@ -10,6 +12,9 @@ import { EditHandModal } from './EditHandModal';
 import { DeleteHandConfirmDialog } from './DeleteHandConfirmDialog';
 import { DeleteCommentConfirmDialog } from './DeleteCommentConfirmDialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { AddLeakToSelfModal } from './learning/AddLeakToSelfModal';
+import { createLeak } from '../api/learning';
+import { getApiErrorMessage } from '../utils/apiError';
 
 interface HandsToReviewViewProps {
   onSuccess?: (msg: string) => void;
@@ -19,11 +24,35 @@ interface HandsToReviewViewProps {
 export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps) {
   const userName = useUserName();
   const compact = useCompactMode();
+  const learningVisible = useLearningVisibility();
+  const [addLeakHand, setAddLeakHand] = useState<{ _id: string; title?: string } | null>(null);
+  const [leakSaving, setLeakSaving] = useState(false);
   const hook = useHandsToReview({
     userName: userName ?? null,
     onSuccess,
     onError,
   });
+
+  const handleAddLeakToSelf = async (
+    payload: { title: string; description?: string; category?: string; linkedHandIds?: string[] }
+  ) => {
+    if (!userName) return;
+    setLeakSaving(true);
+    try {
+      await createLeak({
+        ...payload,
+        userId: userName,
+        description: payload.description ?? '',
+        category: (payload.category ?? 'other') as import('../types/learning').LeakCategory,
+      });
+      setAddLeakHand(null);
+      onSuccess?.('Leak added');
+    } catch (err) {
+      onError?.(getApiErrorMessage(err, 'Failed to add leak'));
+    } finally {
+      setLeakSaving(false);
+    }
+  };
 
   const commentActions = {
     setCommentText: hook.setCommentText,
@@ -99,6 +128,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                 onEdit: hook.openEditModal,
                 onArchive: hook.handleArchive,
                 onDelete: hook.handleDelete,
+                onAddLeak: learningVisible && userName ? (hand) => setAddLeakHand(hand) : undefined,
                 onRate: hook.handleRate,
                 onMarkReviewed: hook.handleMarkReviewed,
                 setHoverStarRating: hook.setHoverStarRating,
@@ -171,6 +201,18 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         onConfirm={hook.handleDiscardConfirm}
         {...hook.discardConfirmOptions}
       />
+
+      {addLeakHand && (
+        <AddLeakToSelfModal
+          open={true}
+          onClose={() => setAddLeakHand(null)}
+          handId={addLeakHand._id}
+          handTitle={addLeakHand.title}
+          userId={userName ?? null}
+          saving={leakSaving}
+          onSubmit={handleAddLeakToSelf}
+        />
+      )}
     </Box>
   );
 }

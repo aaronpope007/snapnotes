@@ -42,6 +42,7 @@ import { GeoPanel } from './components/GeoPanel';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
+import { useLearningVisibility, useSetLearningVisibility } from './context/LearningVisibilityContext';
 import { useDarkMode, useSetDarkMode } from './context/DarkModeContext';
 import { useUserCredentials } from './context/UserNameContext';
 import {
@@ -77,6 +78,12 @@ export default function App() {
   const setHorizontal = useSetHorizontalMode();
   const calcVisibility = useCalculatorVisibility();
   const setCalcVisibility = useSetCalculatorVisibility();
+  const learningVisible = useLearningVisibility();
+  const setLearningVisible = useSetLearningVisibility();
+
+  useEffect(() => {
+    if (!learningVisible) setShowLearning(false);
+  }, [learningVisible]);
   const darkMode = useDarkMode();
   const setDarkMode = useSetDarkMode();
   const { getAuthHeader } = useUserCredentials();
@@ -384,6 +391,13 @@ export default function App() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>RNG</Box>
           <Switch size="small" checked={calcVisibility.showRNG} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCalcVisibility({ showRNG: e.target.checked })} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
         </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SchoolIcon sx={{ fontSize: 18 }} />
+            Learning (Leaks &amp; Edge)
+          </Box>
+          <Switch size="small" checked={learningVisible} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLearningVisible(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
       </Menu>
       <input ref={backupFileInputRef} type="file" accept=".json" hidden onChange={handleRestoreFileChange} />
     </>
@@ -470,17 +484,19 @@ export default function App() {
             >
               Hands to Review
             </Button>
-            <Button
-              variant={showLearning ? 'contained' : 'outlined'}
-              size="small"
-              startIcon={<SchoolIcon />}
-              onClick={() => {
-                setShowLearning(!showLearning);
-                setShowHandsToReview(false);
-              }}
-            >
-              Learning
-            </Button>
+            {learningVisible && (
+              <Button
+                variant={showLearning ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<SchoolIcon />}
+                onClick={() => {
+                  setShowLearning(!showLearning);
+                  setShowHandsToReview(false);
+                }}
+              >
+                Learning
+              </Button>
+            )}
           </Box>
           {recentPlayers.length > 0 && (
             <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
@@ -626,22 +642,24 @@ export default function App() {
             >
               Hands to Review
             </Button>
-            <Button
-              variant={showLearning ? 'contained' : 'outlined'}
-              size="small"
-              startIcon={<SchoolIcon />}
-              onClick={() => {
-                setShowLearning(!showLearning);
-                setShowHandsToReview(false);
-              }}
-            >
-              Learning
-            </Button>
+            {learningVisible && (
+              <Button
+                variant={showLearning ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<SchoolIcon />}
+                onClick={() => {
+                  setShowLearning(!showLearning);
+                  setShowHandsToReview(false);
+                }}
+              >
+                Learning
+              </Button>
+            )}
           </Box>
         </Box>
         )}
 
-        {showLearning ? (
+        {learningVisible && showLearning ? (
           <Box>
             <Button
               variant="text"

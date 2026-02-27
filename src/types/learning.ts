@@ -2,11 +2,14 @@ export type LeakCategory =
   | 'preflop'
   | 'cbet'
   | 'river-sizing'
+  | 'sizing'
   | '3bet-defense'
   | 'bluff-frequency'
   | 'range-construction'
+  | 'positional'
   | 'mental-game'
   | 'exploitative-adjustment'
+  | 'study-process'
   | 'other';
 
 export type LeakStatus = 'identified' | 'working' | 'resolved';
@@ -26,6 +29,8 @@ export interface Leak {
   status: LeakStatus;
   linkedHandIds: string[];
   notes: LeakNote[];
+  playerId?: string;
+  playerUsername?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
@@ -38,6 +43,8 @@ export interface LeakCreate {
   description: string;
   category: LeakCategory;
   linkedHandIds?: string[];
+  playerId?: string;
+  playerUsername?: string;
 }
 
 export type EdgeCategory =

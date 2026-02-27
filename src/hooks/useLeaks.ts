@@ -18,8 +18,10 @@ export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
   const [leaks, setLeaks] = useState<Leak[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<LeakStatus | 'all'>('all');
+  const [filterPlayerId, setFilterPlayerId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addToPlayerModalOpen, setAddToPlayerModalOpen] = useState(false);
   const [editLeak, setEditLeak] = useState<Leak | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +34,7 @@ export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
     setLoading(true);
     try {
       const status = filterStatus === 'all' ? undefined : filterStatus;
-      const data = await fetchLeaks(userId, status);
+      const data = await fetchLeaks(userId, status, filterPlayerId);
       setLeaks(data ?? []);
     } catch (err) {
       setLeaks([]);
@@ -40,7 +42,7 @@ export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
     } finally {
       setLoading(false);
     }
-  }, [userId, filterStatus, onError]);
+  }, [userId, filterStatus, filterPlayerId, onError]);
 
   useEffect(() => {
     void loadLeaks();
@@ -124,10 +126,14 @@ export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
     loading,
     filterStatus,
     setFilterStatus,
+    filterPlayerId,
+    setFilterPlayerId,
     expandedId,
     setExpandedId,
     addModalOpen,
     setAddModalOpen,
+    addToPlayerModalOpen,
+    setAddToPlayerModalOpen,
     editLeak,
     setEditLeak,
     saving,

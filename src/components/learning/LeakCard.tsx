@@ -120,6 +120,11 @@ export function LeakCard({
         >
           {categoryLabel}
         </Box>
+        {leak.playerUsername && (
+          <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.7rem' }}>
+            {leak.playerUsername}
+          </Typography>
+        )}
         {linkedCount > 0 && (
           <Typography
             variant="caption"

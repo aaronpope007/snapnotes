@@ -4,11 +4,14 @@ export const LEAK_CATEGORIES = [
   'preflop',
   'cbet',
   'river-sizing',
+  'sizing',
   '3bet-defense',
   'bluff-frequency',
   'range-construction',
+  'positional',
   'mental-game',
   'exploitative-adjustment',
+  'study-process',
   'other',
 ] as const;
 
@@ -39,6 +42,8 @@ const leakSchema = new mongoose.Schema(
       default: 'identified',
     },
     linkedHandIds: { type: [String], default: [] },
+    playerId: { type: String, default: null },
+    playerUsername: { type: String, default: null },
     notes: { type: [leakNoteSchema], default: [] },
     resolvedAt: { type: Date, default: null },
     nextReviewAt: { type: Date, default: null },
@@ -49,5 +54,6 @@ const leakSchema = new mongoose.Schema(
 
 leakSchema.index({ userId: 1, status: 1, createdAt: -1 });
 leakSchema.index({ userId: 1, nextReviewAt: 1 });
+leakSchema.index({ userId: 1, playerId: 1 });
 
 export const Leak = mongoose.model('Leak', leakSchema);

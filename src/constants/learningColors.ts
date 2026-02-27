@@ -29,11 +29,14 @@ export const LEAK_CATEGORY_LABELS: Record<string, string> = {
   preflop: 'Preflop',
   cbet: 'C-bet',
   'river-sizing': 'River sizing',
+  sizing: 'Sizing',
   '3bet-defense': '3bet defense',
   'bluff-frequency': 'Bluff frequency',
   'range-construction': 'Range construction',
+  positional: 'Positional',
   'mental-game': 'Mental game',
   'exploitative-adjustment': 'Exploitative adjustment',
+  'study-process': 'Study & process',
   other: 'Other',
 };
 

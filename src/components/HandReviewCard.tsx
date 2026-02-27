@@ -13,6 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import BugReportIcon from '@mui/icons-material/BugReport';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandReviewCommentsSection } from './HandReviewCommentsSection';
 import { MDFPanel } from './MDFPanel';
@@ -39,6 +40,7 @@ export interface HandReviewCardActions {
   onEdit: (hand: HandToReview) => void;
   onArchive: (hand: HandToReview) => void;
   onDelete: (handId: string) => void;
+  onAddLeak?: (hand: HandToReview) => void;
   onRate: (handId: string, starRating?: number, spicyRating?: number) => void;
   onMarkReviewed?: (handId: string) => void;
   setHoverStarRating: (handId: string, value: number | null) => void;
@@ -83,6 +85,7 @@ export function HandReviewCard({
     onEdit,
     onArchive,
     onDelete,
+    onAddLeak,
     onRate,
     onMarkReviewed,
     setHoverStarRating,
@@ -235,6 +238,19 @@ export function HandReviewCard({
             by {hand.createdBy} • {new Date(hand.createdAt).toLocaleDateString()}
           </Typography>
 
+          {userName && onAddLeak && (
+            <Box sx={{ mb: compact ? 0.5 : 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<BugReportIcon />}
+                onClick={() => onAddLeak(hand)}
+                sx={{ textTransform: 'none', mr: 0.5 }}
+              >
+                Add leak to myself
+              </Button>
+            </Box>
+          )}
           {userName && (hasReviewed || canMarkReviewed) && (
             <Box sx={{ mb: compact ? 0.5 : 1 }}>
               {hasReviewed ? (

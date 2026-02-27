@@ -18,6 +18,7 @@ interface LearningTabsProps {
   onTabChange: (tab: LearningTabValue) => void;
   dueCount: number;
   onAddLeak?: () => void;
+  onAddLeakToPlayer?: () => void;
   onAddEdge?: () => void;
   onAddMental?: () => void;
 }
@@ -27,6 +28,7 @@ export function LearningTabs({
   onTabChange,
   dueCount,
   onAddLeak,
+  onAddLeakToPlayer,
   onAddEdge,
   onAddMental,
 }: LearningTabsProps) {
@@ -37,6 +39,8 @@ export function LearningTabs({
     else if (activeTab === 'edges') onAddEdge?.();
     else if (activeTab === 'mental') onAddMental?.();
   };
+
+  const showAddToPlayer = activeTab === 'leaks' && onAddLeakToPlayer;
 
   const showAdd =
     (activeTab === 'leaks' && onAddLeak) ||
@@ -91,14 +95,26 @@ export function LearningTabs({
           </ToggleButton>
         </ToggleButtonGroup>
         {showAdd && (
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={handleAdd}
-          >
-            Add
-          </Button>
+          <>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={handleAdd}
+            >
+              Add
+            </Button>
+            {showAddToPlayer && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={onAddLeakToPlayer}
+                sx={{ textTransform: 'none' }}
+              >
+                Add to player
+              </Button>
+            )}
+          </>
         )}
       </Box>
     </Box>

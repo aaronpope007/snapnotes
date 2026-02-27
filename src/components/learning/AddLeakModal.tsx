@@ -17,16 +17,20 @@ import { fetchHandsToReview } from '../../api/handsToReview';
 import type { HandToReview } from '../../types';
 import type { Leak, LeakCreate, LeakCategory } from '../../types/learning';
 import { LEAK_CATEGORY_LABELS } from '../../constants/learningColors';
+import { LEAK_PRESETS } from '../../constants/leakPresets';
 
 const LEAK_CATEGORIES: LeakCategory[] = [
   'preflop',
   'cbet',
   'river-sizing',
+  'sizing',
   '3bet-defense',
   'bluff-frequency',
   'range-construction',
+  'positional',
   'mental-game',
   'exploitative-adjustment',
+  'study-process',
   'other',
 ];
 
@@ -110,6 +114,24 @@ export function AddLeakModal({
           {editLeak ? 'Edit leak' : 'Add leak'}
         </DialogTitle>
         <DialogContent>
+          {!editLeak && (
+            <Autocomplete
+              options={LEAK_PRESETS}
+              getOptionLabel={(p) => p.title}
+              groupBy={(p) => LEAK_CATEGORY_LABELS[p.category] ?? p.category}
+              onChange={(_, preset) => {
+                if (preset) {
+                  setTitle(preset.title);
+                  setCategory(preset.category);
+                }
+              }}
+              size="small"
+              sx={{ mb: 1 }}
+              renderInput={(params) => (
+                <TextField {...params} placeholder="Pick from common leaks..." />
+              )}
+            />
+          )}
           <TextField
             autoFocus
             margin="dense"

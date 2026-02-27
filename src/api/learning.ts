@@ -16,18 +16,28 @@ const api = axios.create({
 });
 
 // Leaks
-export async function fetchLeaks(userId: string | null, status?: LeakStatus): Promise<Leak[]> {
+export async function fetchLeaks(
+  userId: string | null,
+  status?: LeakStatus,
+  playerId?: string | null
+): Promise<Leak[]> {
   const params: Record<string, string> = {};
   if (userId?.trim()) params.userId = userId.trim();
   if (status) params.status = status;
+  if (playerId?.trim()) params.playerId = playerId.trim();
   const { data } = await api.get<Leak[]>('/learning/leaks', { params });
   return data;
 }
 
 export async function createLeak(
-  payload: LeakCreate & { userId: string | null }
+  payload: LeakCreate & { userId: string | null; playerId?: string; playerUsername?: string }
 ): Promise<Leak> {
-  const body = { ...payload, userId: payload.userId ?? undefined };
+  const body = {
+    ...payload,
+    userId: payload.userId ?? undefined,
+    playerId: payload.playerId ?? undefined,
+    playerUsername: payload.playerUsername ?? undefined,
+  };
   const { data } = await api.post<Leak>('/learning/leaks', body);
   return data;
 }
