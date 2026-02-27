@@ -82,21 +82,35 @@ export default function App() {
   const showError = (msg: string) =>
     setSnackbar({ open: true, message: msg, severity: 'error' });
 
-  const loadPlayers = useCallback(async () => {
-    setLoading(true);
+  const loadPlayers = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const data = await fetchPlayers();
       setPlayers(Array.isArray(data) ? data : []);
     } catch (err) {
       setPlayers([]);
-      showError(getApiErrorMessage(err, 'Failed to load players'));
+      if (!opts?.silent) showError(getApiErrorMessage(err, 'Failed to load players'));
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadPlayers();
+  }, [loadPlayers]);
+
+  // Daily background refresh when app stays open (catches updates from other users)
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadPlayers({ silent: true });
+      const id = selectedRef.current?._id;
+      if (id) {
+        fetchPlayer(id).then(setSelected).catch(() => {});
+      }
+    }, 24 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [loadPlayers]);
 
   const handleSelectPlayer = async (p: PlayerListItem) => {
@@ -298,6 +312,10 @@ export default function App() {
           <RestoreIcon fontSize="small" sx={{ mr: 1 }} />
           Restore backup
         </MenuItem>
+        <MenuItem onClick={() => { setSettingsAnchorEl(null); void handleRefresh(); }} disabled={loading}>
+          <RefreshIcon fontSize="small" sx={{ mr: 1 }} />
+          Refresh
+        </MenuItem>
         <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ViewCompactIcon fontSize="small" />
@@ -366,9 +384,6 @@ export default function App() {
       {!selected && (
         <>
           <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-            <IconButton size="small" onClick={() => void handleRefresh()} aria-label="Refresh" disabled={loading}>
-              <RefreshIcon fontSize="small" />
-            </IconButton>
             <Button
               variant="outlined"
               size="small"
@@ -499,9 +514,6 @@ export default function App() {
                 </IconButton>
               </Box>
           <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-            <IconButton size="small" onClick={() => void handleRefresh()} aria-label="Refresh" disabled={loading}>
-              <RefreshIcon fontSize="small" />
-            </IconButton>
             <Button
               variant="outlined"
               size="small"
