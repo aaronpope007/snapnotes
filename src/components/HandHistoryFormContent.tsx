@@ -1,5 +1,6 @@
 import { useRef, useCallback, useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Collapse from '@mui/material/Collapse';
@@ -7,6 +8,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandHistoryCardPicker } from './HandHistoryCardPicker';
+import { ConfirmDialog } from './ConfirmDialog';
+import { HAND_TEMPLATES } from '../constants/handTemplates';
+import { useConfirm } from '../hooks/useConfirm';
 import { getUsedCardShorthands, getUsedUnknownCardCount } from '../utils/cardParser';
 
 const DEFAULT_CONTENT_LABEL = 'Content';
@@ -49,6 +53,57 @@ export function HandHistoryFormContent({
   const activeFieldRef = useRef<'content' | 'spoiler'>('content');
   const [spoilerSectionOpen, setSpoilerSectionOpen] = useState(false);
   const hasSpoiler = onSpoilerChange !== undefined;
+  const {
+    confirmOpen,
+    openConfirm,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+  } = useConfirm();
+
+  const contentIsExactlyTemplate = useCallback((text: string) => {
+    const trimmed = text.trim();
+    return HAND_TEMPLATES.find((t) => t.text.trim() === trimmed) ?? null;
+  }, []);
+
+  const applyTemplate = useCallback(
+    (templateText: string) => {
+      onContentChange(templateText);
+      contentSelectionRef.current = { start: templateText.length, end: templateText.length };
+      setTimeout(() => {
+        contentInputRef.current?.focus();
+        contentInputRef.current?.setSelectionRange(templateText.length, templateText.length);
+      }, 0);
+    },
+    [onContentChange]
+  );
+
+  const handleTemplateClick = useCallback(
+    (t: (typeof HAND_TEMPLATES)[number]) => {
+      const trimmed = content.trim();
+      const currentTemplate = contentIsExactlyTemplate(content);
+
+      if (trimmed === '' || (currentTemplate && currentTemplate.id === t.id)) {
+        applyTemplate(t.text);
+        return;
+      }
+      if (currentTemplate && currentTemplate.id !== t.id) {
+        applyTemplate(t.text);
+        return;
+      }
+      openConfirm(
+        () => applyTemplate(t.text),
+        {
+          title: 'Replace hand text?',
+          message: `You have added your own text. Replace with "${t.label}" template? Your current text will be lost.`,
+          confirmText: 'Replace',
+          cancelText: 'Cancel',
+          confirmDanger: false,
+        }
+      );
+    },
+    [content, contentIsExactlyTemplate, applyTemplate, openConfirm]
+  );
 
   const insertIntoContent = useCallback(
     (shorthand: string, wrapBackticks: boolean) => {
@@ -340,12 +395,32 @@ export function HandHistoryFormContent({
           )}
         </Box>
       </Box>
-      <HandHistoryCardPicker
-        onInsertCard={insertCardAtCursor}
-        onInsertText={insertTextAtCursor}
-        onRemoveCard={removeCardFromContent}
-        usedShorthands={usedShorthands}
-        usedUnknownCardCount={usedUnknownCardCount}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {HAND_TEMPLATES.map((t) => (
+            <Button
+              key={t.id}
+              variant="outlined"
+              size="small"
+              onClick={() => handleTemplateClick(t)}
+            >
+              {t.label}
+            </Button>
+          ))}
+        </Box>
+        <HandHistoryCardPicker
+          onInsertCard={insertCardAtCursor}
+          onInsertText={insertTextAtCursor}
+          onRemoveCard={removeCardFromContent}
+          usedShorthands={usedShorthands}
+          usedUnknownCardCount={usedUnknownCardCount}
+        />
+      </Box>
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={closeConfirm}
+        onConfirm={handleConfirm}
+        {...confirmOptions}
       />
     </Box>
   );

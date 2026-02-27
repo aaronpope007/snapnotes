@@ -11,6 +11,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { AppendNote } from './AppendNote';
+import { HAND_TEMPLATES } from '../constants/handTemplates';
 import type { NoteEntry } from '../types';
 
 interface NotesSectionProps {
@@ -131,7 +132,21 @@ export function NotesSection({
                         autoFocus
                         sx={{ fontSize: '0.9rem' }}
                       />
-                      <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
+                      <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+                        {HAND_TEMPLATES.map((t) => (
+                          <Button
+                            key={t.id}
+                            size="small"
+                            variant="outlined"
+                            onClick={() =>
+                              setEditValue((prev) =>
+                                prev.trim() ? `${prev}\n\n${t.text}` : t.text
+                              )
+                            }
+                          >
+                            {t.label}
+                          </Button>
+                        ))}
                         <Button
                           size="small"
                           variant="contained"
