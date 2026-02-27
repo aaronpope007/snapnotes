@@ -1,6 +1,8 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -16,12 +18,14 @@ interface EditHandModalProps {
   title: string;
   handText: string;
   spoilerText: string;
+  isPrivate: boolean;
   taggedReviewers: string[];
   reviewerOptions: string[];
   saving: boolean;
   onTitleChange: (v: string) => void;
   onHandTextChange: (v: string) => void;
   onSpoilerTextChange: (v: string) => void;
+  onIsPrivateChange: (v: boolean) => void;
   onTaggedReviewersChange: (v: string[]) => void;
   onSave: () => void;
   onDelete: () => void;
@@ -33,12 +37,14 @@ export function EditHandModal({
   title,
   handText,
   spoilerText,
+  isPrivate,
   taggedReviewers,
   reviewerOptions,
   saving,
   onTitleChange,
   onHandTextChange,
   onSpoilerTextChange,
+  onIsPrivateChange,
   onTaggedReviewersChange,
   onSave,
   onDelete,
@@ -66,6 +72,22 @@ export function EditHandModal({
           contentRequired
           cardSize="xs"
         />
+        <Box sx={{ mt: 1.5 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isPrivate}
+                onChange={(e) => onIsPrivateChange(e.target.checked)}
+                size="small"
+              />
+            }
+            label={
+              <Typography variant="caption" color="text.secondary">
+                Private (for my eyes only)
+              </Typography>
+            }
+          />
+        </Box>
         <Box sx={{ mt: 1.5 }}>
           <Typography
             variant="caption"

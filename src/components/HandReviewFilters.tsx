@@ -10,17 +10,20 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import LockIcon from '@mui/icons-material/Lock';
 import { ChiliIcon } from './ChiliIcon';
 import { STAR_COLOR } from '../constants/ratings';
 import { useCompactMode } from '../context/CompactModeContext';
-import type { HandToReviewStatus } from '../types';
+import type { HandReviewFilterTab } from '../types';
 
 interface HandReviewFiltersProps {
-  filter: 'all' | HandToReviewStatus;
-  onFilterChange: (v: 'all' | HandToReviewStatus) => void;
+  filter: HandReviewFilterTab;
+  onFilterChange: (v: HandReviewFilterTab) => void;
   filterForMe: boolean;
   onFilterForMeChange: (v: boolean) => void;
   forMeCount: number;
+  /** When set, show "My open private" and "My archived private" tabs. */
+  userName: string | null;
   sortBy: 'star' | 'spicy';
   onSortByChange: (v: 'star' | 'spicy') => void;
   sortOrder: 'asc' | 'desc';
@@ -35,6 +38,7 @@ export function HandReviewFilters({
   filterForMe,
   onFilterForMeChange,
   forMeCount,
+  userName,
   sortBy,
   onSortByChange,
   sortOrder,
@@ -67,11 +71,21 @@ export function HandReviewFilters({
           <ToggleButtonGroup
             value={filter}
             exclusive
-            onChange={(_, v) => v != null && onFilterChange(v)}
+            onChange={(_, v) => v != null && onFilterChange(v as HandReviewFilterTab)}
             size="small"
           >
             <ToggleButton value="open">Open</ToggleButton>
             <ToggleButton value="archived">Archived</ToggleButton>
+            {userName && (
+              <>
+                <ToggleButton value="my-open-private" sx={{ gap: 0.25 }}>
+                  <LockIcon sx={{ fontSize: 14 }} /> My open private
+                </ToggleButton>
+                <ToggleButton value="my-archived-private" sx={{ gap: 0.25 }}>
+                  <LockIcon sx={{ fontSize: 14 }} /> My archived private
+                </ToggleButton>
+              </>
+            )}
             <ToggleButton value="all">All</ToggleButton>
           </ToggleButtonGroup>
           {forMeCount > 0 && (

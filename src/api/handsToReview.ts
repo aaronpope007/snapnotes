@@ -7,9 +7,12 @@ const api = axios.create({
 });
 
 export async function fetchHandsToReview(
-  status?: HandToReviewStatus
+  status?: HandToReviewStatus,
+  createdBy?: string | null
 ): Promise<HandToReview[]> {
-  const params = status ? { status } : {};
+  const params: Record<string, string> = {};
+  if (status) params.status = status;
+  if (createdBy?.trim()) params.createdBy = createdBy.trim();
   const { data } = await api.get<HandToReview[]>('/hands-to-review', { params });
   return data;
 }
@@ -33,6 +36,7 @@ export async function updateHandToReview(
     handText?: string;
     spoilerText?: string;
     status?: HandToReviewStatus;
+    isPrivate?: boolean;
     taggedReviewerNames?: string[];
   }
 ): Promise<HandToReview> {

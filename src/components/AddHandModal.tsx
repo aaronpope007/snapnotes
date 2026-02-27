@@ -18,6 +18,7 @@ interface AddHandModalProps {
   title: string;
   handText: string;
   spoilerText: string;
+  isPrivate: boolean;
   initialComment: string;
   initialCommentPrivate: boolean;
   taggedReviewers: string[];
@@ -26,6 +27,7 @@ interface AddHandModalProps {
   onTitleChange: (v: string) => void;
   onHandTextChange: (v: string) => void;
   onSpoilerTextChange: (v: string) => void;
+  onIsPrivateChange: (v: boolean) => void;
   onInitialCommentChange: (v: string) => void;
   onInitialCommentPrivateChange: (v: boolean) => void;
   onTaggedReviewersChange: (v: string[]) => void;
@@ -38,6 +40,7 @@ export function AddHandModal({
   title,
   handText,
   spoilerText,
+  isPrivate,
   initialComment,
   initialCommentPrivate,
   taggedReviewers,
@@ -46,6 +49,7 @@ export function AddHandModal({
   onTitleChange,
   onHandTextChange,
   onSpoilerTextChange,
+  onIsPrivateChange,
   onInitialCommentChange,
   onInitialCommentPrivateChange,
   onTaggedReviewersChange,
@@ -74,6 +78,22 @@ export function AddHandModal({
           contentRequired
           cardSize="xs"
         />
+        <Box sx={{ mt: 1.5 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isPrivate}
+                onChange={(e) => onIsPrivateChange(e.target.checked)}
+                size="small"
+              />
+            }
+            label={
+              <Typography variant="caption" color="text.secondary">
+                Private (for my eyes only — only you see it; good for solver work to review later)
+              </Typography>
+            }
+          />
+        </Box>
         <Box sx={{ mt: 1.5 }}>
           <Typography
             variant="caption"

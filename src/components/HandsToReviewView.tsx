@@ -47,6 +47,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         filterForMe={hook.filterForMe}
         onFilterForMeChange={hook.setFilterForMe}
         forMeCount={hook.forMeCount}
+        userName={userName ?? null}
         sortBy={hook.sortBy}
         onSortByChange={hook.setSortBy}
         sortOrder={hook.sortOrder}
@@ -66,9 +67,13 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         </Typography>
       ) : hook.hands.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          {hook.filterForMe
-            ? 'No hands tagged for you to review.'
-            : 'No hands to review. Add one to get started.'}
+          {hook.filter === 'my-open-private'
+            ? 'No private open hands. Add a hand and check "Private" to save it here for later (e.g. solver work).'
+            : hook.filter === 'my-archived-private'
+              ? 'No private archived hands.'
+              : hook.filterForMe
+                ? 'No hands tagged for you to review.'
+                : 'No hands to review. Add one to get started.'}
         </Typography>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: compact ? 0.25 : 0.5 }}>
@@ -112,6 +117,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         title={hook.addTitle}
         handText={hook.addHandText}
         spoilerText={hook.addSpoilerText}
+        isPrivate={hook.addIsPrivate}
         initialComment={hook.addInitialComment}
         initialCommentPrivate={hook.addInitialCommentPrivate}
         taggedReviewers={hook.addTaggedReviewers}
@@ -120,6 +126,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         onTitleChange={hook.setAddTitle}
         onHandTextChange={hook.setAddHandText}
         onSpoilerTextChange={hook.setAddSpoilerText}
+        onIsPrivateChange={hook.setAddIsPrivate}
         onInitialCommentChange={hook.setAddInitialComment}
         onInitialCommentPrivateChange={hook.setAddInitialCommentPrivate}
         onTaggedReviewersChange={hook.setAddTaggedReviewers}
@@ -132,12 +139,14 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         title={hook.editTitle}
         handText={hook.editHandText}
         spoilerText={hook.editSpoilerText}
+        isPrivate={hook.editIsPrivate}
         taggedReviewers={hook.editTaggedReviewers}
         reviewerOptions={hook.reviewersList}
         saving={hook.editSaving}
         onTitleChange={hook.setEditTitle}
         onHandTextChange={hook.setEditHandText}
         onSpoilerTextChange={hook.setEditSpoilerText}
+        onIsPrivateChange={hook.setEditIsPrivate}
         onTaggedReviewersChange={hook.setEditTaggedReviewers}
         onSave={hook.handleEditSave}
         onDelete={() => hook.setDeleteHandConfirmOpen(true)}

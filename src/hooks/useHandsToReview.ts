@@ -14,7 +14,7 @@ import {
 } from '../api/handsToReview';
 import { fetchReviewers } from '../api/reviewers';
 import { getApiErrorMessage } from '../utils/apiError';
-import type { HandToReview, HandToReviewStatus } from '../types';
+import type { HandToReview, HandToReviewStatus, HandReviewFilterTab } from '../types';
 import { normalizeStarRating } from '../utils/handReviewUtils';
 import { DEFAULT_HAND_TITLE } from '../../shared/constants';
 
@@ -31,7 +31,7 @@ export function useHandsToReview({
 }: UseHandsToReviewOptions) {
   const [hands, setHands] = useState<HandToReview[]>([]);
   const [reviewersList, setReviewersList] = useState<string[]>([]);
-  const [filter, setFilter] = useState<'all' | HandToReviewStatus>('open');
+  const [filter, setFilter] = useState<HandReviewFilterTab>('open');
   const [filterForMe, setFilterForMe] = useState(false);
   const [sortBy, setSortBy] = useState<'star' | 'spicy'>('star');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -43,12 +43,14 @@ export function useHandsToReview({
   const [addSpoilerText, setAddSpoilerText] = useState('');
   const [addInitialComment, setAddInitialComment] = useState('');
   const [addInitialCommentPrivate, setAddInitialCommentPrivate] = useState(true);
+  const [addIsPrivate, setAddIsPrivate] = useState(false);
   const [addTaggedReviewers, setAddTaggedReviewers] = useState<string[]>([]);
   const [addSaving, setAddSaving] = useState(false);
   const [editHand, setEditHand] = useState<HandToReview | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editHandText, setEditHandText] = useState('');
   const [editSpoilerText, setEditSpoilerText] = useState('');
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
   const [editTaggedReviewers, setEditTaggedReviewers] = useState<string[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [revealedSpoilerIds, setRevealedSpoilerIds] = useState<Set<string>>(new Set());
@@ -81,8 +83,12 @@ export function useHandsToReview({
   const loadHands = useCallback(async () => {
     setLoading(true);
     try {
-      const status = filter === 'all' ? undefined : (filter as HandToReviewStatus);
-      const data = await fetchHandsToReview(status);
+      const status: HandToReviewStatus | undefined =
+        filter === 'all' ? undefined
+        : filter === 'my-open-private' ? 'open'
+        : filter === 'my-archived-private' ? 'archived'
+        : (filter as HandToReviewStatus);
+      const data = await fetchHandsToReview(status, userName ?? undefined);
       setHands(data);
     } catch (err) {
       setHands([]);
@@ -90,7 +96,7 @@ export function useHandsToReview({
     } finally {
       setLoading(false);
     }
-  }, [filter, onError]);
+  }, [filter, userName, onError]);
 
   useEffect(() => {
     loadHands();
@@ -108,7 +114,8 @@ export function useHandsToReview({
     addSpoilerText.trim() !== '' ||
     addInitialComment.trim() !== '' ||
     addTaggedReviewers.length > 0 ||
-    !addInitialCommentPrivate;
+    !addInitialCommentPrivate ||
+    addIsPrivate;
 
   const isEditModalDirty = () => {
     if (!editHand) return false;
@@ -119,6 +126,7 @@ export function useHandsToReview({
       editTitle !== (editHand.title ?? '') ||
       editHandText !== (editHand.handText ?? '') ||
       editSpoilerText !== (editHand.spoilerText ?? '') ||
+      editIsPrivate !== (editHand.isPrivate ?? false) ||
       !taggedSame
     );
   };
@@ -132,6 +140,7 @@ export function useHandsToReview({
         setAddSpoilerText('');
         setAddInitialComment('');
         setAddInitialCommentPrivate(true);
+        setAddIsPrivate(false);
         setAddTaggedReviewers([]);
       });
     } else {
@@ -141,6 +150,7 @@ export function useHandsToReview({
       setAddSpoilerText('');
       setAddInitialComment('');
       setAddInitialCommentPrivate(true);
+      setAddIsPrivate(false);
       setAddTaggedReviewers([]);
     }
   };
@@ -162,6 +172,7 @@ export function useHandsToReview({
         handText: addHandText.trim(),
         spoilerText: addSpoilerText.trim() || undefined,
         createdBy: userName || 'Anonymous',
+        isPrivate: addIsPrivate || undefined,
         taggedReviewerNames: addTaggedReviewers.length > 0 ? addTaggedReviewers : undefined,
         initialComment:
           addInitialComment.trim() && userName
@@ -179,6 +190,7 @@ export function useHandsToReview({
       setAddSpoilerText('');
       setAddInitialComment('');
       setAddInitialCommentPrivate(true);
+      setAddIsPrivate(false);
       setAddTaggedReviewers([]);
       setExpandedId(created._id);
       onSuccess?.('Hand added for review');
@@ -217,6 +229,7 @@ export function useHandsToReview({
     setEditTitle(hand.title || '');
     setEditHandText(hand.handText || '');
     setEditSpoilerText(hand.spoilerText ?? '');
+    setEditIsPrivate(hand.isPrivate ?? false);
     setEditTaggedReviewers(hand.taggedReviewerNames ?? []);
   };
 
@@ -228,6 +241,7 @@ export function useHandsToReview({
         title: editTitle.trim() || DEFAULT_HAND_TITLE,
         handText: editHandText.trim(),
         spoilerText: editSpoilerText.trim(),
+        isPrivate: editIsPrivate,
         taggedReviewerNames: editTaggedReviewers,
       });
       setHands((prev) => prev.map((h) => (h._id === editHand._id ? updated : h)));
@@ -422,6 +436,19 @@ export function useHandsToReview({
       )
     : hands;
 
+  if (filter === 'my-open-private' && userName) {
+    displayHands = displayHands.filter(
+      (h) => (h.isPrivate ?? false) && h.createdBy === userName && h.status === 'open'
+    );
+  } else if (filter === 'my-archived-private' && userName) {
+    displayHands = displayHands.filter(
+      (h) => (h.isPrivate ?? false) && h.createdBy === userName && h.status === 'archived'
+    );
+  } else if (filter === 'open' || filter === 'archived' || filter === 'all') {
+    // Private hands only appear in private tabs (my-open-private, my-archived-private)
+    displayHands = displayHands.filter((h) => !(h.isPrivate ?? false));
+  }
+
   if (filter === 'all') {
     displayHands = [...displayHands].sort((a, b) => {
       const aVal = sortBy === 'star' ? avgRating(a.starRatings) : avgRating(a.spicyRatings);
@@ -470,6 +497,8 @@ export function useHandsToReview({
     setAddInitialComment,
     addInitialCommentPrivate,
     setAddInitialCommentPrivate,
+    addIsPrivate,
+    setAddIsPrivate,
     addSaving,
     closeAddModal,
     handleAddHand,
@@ -480,6 +509,8 @@ export function useHandsToReview({
     setEditHandText,
     editSpoilerText,
     setEditSpoilerText,
+    editIsPrivate,
+    setEditIsPrivate,
     editSaving,
     closeEditModal,
     openEditModal,

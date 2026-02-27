@@ -11,6 +11,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { HandReviewCommentsSection } from './HandReviewCommentsSection';
@@ -168,6 +169,12 @@ export function HandReviewCard({
             </Typography>
           )}
         </Box>
+        {hand.isPrivate && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mr: 0.5 }} title="Private (only you see this)">
+            <LockIcon sx={{ fontSize: 14 }} />
+            Private
+          </Typography>
+        )}
         <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
           {hand.status === 'archived' ? 'Archived' : 'Open'}
         </Typography>

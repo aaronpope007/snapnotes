@@ -4,11 +4,18 @@ import { DEFAULT_HAND_TITLE } from '../constants.js';
 
 const router = Router();
 
-// GET /api/hands-to-review — list (optionally ?status=open|archived)
+// GET /api/hands-to-review — list (optionally ?status=open|archived, ?createdBy=name — include private hands for that user)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const status = req.query.status as string | undefined;
-    const filter = status && (status === 'open' || status === 'archived') ? { status } : {};
+    const createdBy = typeof req.query.createdBy === 'string' ? req.query.createdBy.trim() : undefined;
+    const filter: Record<string, unknown> = status && (status === 'open' || status === 'archived') ? { status } : {};
+    // Private hands are only visible to the author; include them when createdBy is provided
+    if (createdBy) {
+      filter.$or = [{ isPrivate: { $ne: true } }, { isPrivate: true, createdBy }];
+    } else {
+      filter.isPrivate = { $ne: true };
+    }
     const hands = await HandToReview.find(filter)
       .sort({ createdAt: -1 })
       .lean();
@@ -18,11 +25,15 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/hands-to-review/:id — single hand
+// GET /api/hands-to-review/:id — single hand (private hands only if ?createdBy=author)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const hand = await HandToReview.findById(req.params.id).lean();
     if (!hand) return res.status(404).json({ error: 'Hand not found' });
+    const createdBy = typeof req.query.createdBy === 'string' ? req.query.createdBy.trim() : undefined;
+    if ((hand as { isPrivate?: boolean }).isPrivate && (hand as { createdBy: string }).createdBy !== createdBy) {
+      return res.status(404).json({ error: 'Hand not found' });
+    }
     res.json(hand);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch hand' });
@@ -37,6 +48,7 @@ router.post('/', async (req: Request, res: Response) => {
       handText: string;
       spoilerText?: string;
       createdBy: string;
+      isPrivate?: boolean;
       taggedReviewerNames?: string[];
       initialComment?: { text: string; addedBy: string; authorOnly?: boolean };
     };
@@ -51,6 +63,7 @@ router.post('/', async (req: Request, res: Response) => {
       handText: body.handText.trim(),
       spoilerText: body.spoilerText?.trim() ?? '',
       createdBy: body.createdBy || 'Anonymous',
+      isPrivate: body.isPrivate === true,
       taggedReviewerNames,
     });
     await hand.save();
@@ -76,6 +89,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       title?: string;
       handText?: string;
       status?: 'open' | 'archived';
+      isPrivate?: boolean;
       taggedReviewerNames?: string[];
       markReviewed?: { userName: string };
       addComment?: { text: string; addedBy: string };
@@ -121,6 +135,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       } else {
         update.archivedAt = null;
       }
+    }
+    if (typeof body.isPrivate === 'boolean') {
+      update.isPrivate = body.isPrivate;
     }
 
     if (body.rateHand?.userName) {

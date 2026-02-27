@@ -93,6 +93,7 @@ export interface ImportPlayer {
 
 // Hands to Review
 export type HandToReviewStatus = 'open' | 'archived';
+export type HandReviewFilterTab = 'open' | 'archived' | 'all' | 'my-open-private' | 'my-archived-private';
 
 export interface HandToReviewComment {
   text: string;
@@ -116,6 +117,8 @@ export interface HandToReview {
   spoilerText?: string;
   status: HandToReviewStatus;
   createdBy: string;
+  /** When true, only the author (createdBy) sees this hand; for personal review/solver work. */
+  isPrivate?: boolean;
   comments: HandToReviewComment[];
   starRatings?: HandRatingEntry[];
   spicyRatings?: HandRatingEntry[];
@@ -131,6 +134,7 @@ export interface HandToReviewCreate {
   handText: string;
   spoilerText?: string;
   createdBy: string;
+  isPrivate?: boolean;
   taggedReviewerNames?: string[];
   initialComment?: { text: string; addedBy: string; authorOnly?: boolean };
 }

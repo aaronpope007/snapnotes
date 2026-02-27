@@ -35,6 +35,7 @@ const handToReviewSchema = new mongoose.Schema(
       default: 'open',
     },
     createdBy: { type: String, required: true },
+    isPrivate: { type: Boolean, default: false },
     comments: {
       type: [commentSchema],
       default: [],
