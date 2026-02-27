@@ -185,7 +185,7 @@ export function StakesSection({
           </FormControl>
         </Box>
       </Collapse>
-      {!expanded && (
+      {!expanded && !inline && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -0.5 }}>
           {summary}
         </Typography>
