@@ -73,7 +73,9 @@ router.post('/leaks', async (req: Request, res: Response) => {
     await leak.save();
     res.status(201).json(leak);
   } catch (err) {
-    res.status(400).json({ error: 'Failed to create leak' });
+    const message =
+      err instanceof Error ? err.message : 'Failed to create leak';
+    res.status(400).json({ error: message });
   }
 });
 

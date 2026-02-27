@@ -124,10 +124,12 @@ export function GeoPanel({ compact }: GeoPanelProps) {
           </FormControl>
         </Box>
 
-        {geoPct !== null && potNum > 0 && (
+        {geoPct !== null && potNum > 0 && geoSize !== null && (
           <Paper variant="outlined" sx={{ p: 1, bgcolor: 'action.hover' }}>
             <Typography variant="caption" color="text.secondary">Geo-size target</Typography>
-            <Typography variant="h6">{geoPct.toFixed(1)}% pot</Typography>
+            <Typography variant="h6">
+              {geoPct.toFixed(1)}% pot ({Math.round(geoSize * potNum)})
+            </Typography>
           </Paper>
         )}
       </Popover>
