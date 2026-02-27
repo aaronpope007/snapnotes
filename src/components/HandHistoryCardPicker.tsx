@@ -9,6 +9,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { CardImage } from './CardImage';
 import { MDFPanel } from './MDFPanel';
 import { FoldEquityPanel } from './FoldEquityPanel';
+import { useCalculatorVisibility } from '../context/CalculatorVisibilityContext';
 
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
 const SUITS = ['s', 'h', 'd', 'c'] as const;
@@ -94,6 +95,7 @@ export function HandHistoryCardPicker({
   usedUnknownCardCount = 0,
   onRemoveCard,
 }: HandHistoryCardPickerProps) {
+  const calcVisibility = useCalculatorVisibility();
   const [customPsbPercent, setCustomPsbPercent] = useState<string>('');
   const [betSizes, setBetSizes] = useState<number[]>(loadBetSizes);
   const [editAnchor, setEditAnchor] = useState<HTMLElement | null>(null);
@@ -193,8 +195,8 @@ export function HandHistoryCardPicker({
           mt: 1,
         }}
       >
-        <MDFPanel compact />
-        <FoldEquityPanel compact />
+        {calcVisibility.showMDF && <MDFPanel compact />}
+        {calcVisibility.showFE && <FoldEquityPanel compact />}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
           {betSizes.map((pct, i) => (
             <Button

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Popover from '@mui/material/Popover';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
+import ClearIcon from '@mui/icons-material/Clear';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
@@ -64,9 +66,19 @@ export function MDFPanel({ compact }: MDFPanelProps) {
           },
         }}
       >
-        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
-          Minimum Defense Frequency
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 1 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+            Minimum Defense Frequency
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => { setPot(''); setBet(''); }}
+            aria-label="Clear MDF inputs"
+            sx={{ p: 0.25 }}
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </Box>
 
         <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
           <TextField
@@ -75,7 +87,8 @@ export function MDFPanel({ compact }: MDFPanelProps) {
             type="number"
             value={pot}
             onChange={(e) => setPot(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
+            autoFocus
+            inputProps={{ min: 0, step: 1 }}
             sx={{ width: 90 }}
           />
           <TextField
@@ -84,7 +97,7 @@ export function MDFPanel({ compact }: MDFPanelProps) {
             type="number"
             value={bet}
             onChange={(e) => setBet(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
+            inputProps={{ min: 0, step: 1 }}
             sx={{ width: 90 }}
           />
         </Box>

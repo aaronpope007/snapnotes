@@ -97,7 +97,8 @@ export function GeoPanel({ compact }: GeoPanelProps) {
             type="number"
             value={effectiveStack}
             onChange={(e) => setEffectiveStack(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
+            autoFocus
+            inputProps={{ min: 0, step: 1 }}
             fullWidth
           />
           <TextField
@@ -106,7 +107,7 @@ export function GeoPanel({ compact }: GeoPanelProps) {
             type="number"
             value={currentPot}
             onChange={(e) => setCurrentPot(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
+            inputProps={{ min: 0, step: 1 }}
             fullWidth
           />
           <FormControl size="small" fullWidth>

@@ -16,8 +16,17 @@ export async function fetchPlayer(id: string): Promise<Player> {
   return data;
 }
 
-export async function createPlayer(player: PlayerCreate): Promise<Player> {
-  const { data } = await api.post<Player>('/players', player);
+function authHeaders(authHeader: string | null | undefined): { Authorization?: string } {
+  return authHeader ? { Authorization: authHeader } : {};
+}
+
+export async function createPlayer(
+  player: PlayerCreate,
+  authHeader?: string | null
+): Promise<Player> {
+  const { data } = await api.post<Player>('/players', player, {
+    headers: authHeaders(authHeader),
+  });
   return data;
 }
 
@@ -32,9 +41,12 @@ export async function updatePlayer(
     formats?: string[];
     origin?: string;
     exploitHandExamples?: string[];
-  }
+  },
+  authHeader?: string | null
 ): Promise<Player> {
-  const { data } = await api.put<Player>(`/players/${id}`, updates);
+  const { data } = await api.put<Player>(`/players/${id}`, updates, {
+    headers: authHeaders(authHeader),
+  });
   return data;
 }
 
@@ -43,11 +55,14 @@ export async function deletePlayer(id: string): Promise<void> {
 }
 
 export async function importPlayers(
-  players: ImportPlayer[]
+  players: ImportPlayer[],
+  authHeader?: string | null
 ): Promise<{ created: number; updated: number }> {
-  const { data } = await api.post<{ created: number; updated: number }>('/players/import', {
-    players,
-  });
+  const { data } = await api.post<{ created: number; updated: number }>(
+    '/players/import',
+    { players },
+    { headers: authHeaders(authHeader) }
+  );
   return data;
 }
 

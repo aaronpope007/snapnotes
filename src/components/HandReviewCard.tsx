@@ -31,6 +31,7 @@ import {
   getSpicyRatingLabel,
 } from '../utils/handReviewUtils';
 import { useCompactMode } from '../context/CompactModeContext';
+import { useCalculatorVisibility } from '../context/CalculatorVisibilityContext';
 import type { HandToReview } from '../types';
 
 export interface HandReviewCardActions {
@@ -90,6 +91,7 @@ export function HandReviewCard({
     commentActions,
   },
 }: HandReviewCardProps) {
+  const calcVisibility = useCalculatorVisibility();
   const [ratingsExpanded, setRatingsExpanded] = useState(false);
   const starAvg = avgRating(hand.starRatings);
   const spicyAvg = avgRating(hand.spicyRatings);
@@ -384,8 +386,8 @@ export function HandReviewCard({
           </Box>
 
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: compact ? 0.75 : 1 }}>
-            <MDFPanel compact={compact} />
-            <FoldEquityPanel compact={compact} />
+            {calcVisibility.showMDF && <MDFPanel compact={compact} />}
+            {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
           </Box>
 
           <Box

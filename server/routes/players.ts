@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { Player } from '../models/Player.js';
+import { assertCanUseClaimedName } from '../utils/claimedAuth.js';
 
 const router = Router();
 
@@ -127,6 +128,8 @@ router.post('/import', async (req: Request, res: Response) => {
     const results = { created: 0, updated: 0 };
 
     for (const p of imported) {
+      const canUse = await assertCanUseClaimedName(p.username, req, res);
+      if (!canUse) return;
       const existing = await Player.findOne({ username: p.username }).collation({
         locale: 'en',
         strength: 2,
@@ -355,6 +358,9 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const body = req.body as Record<string, unknown>;
+    const username = typeof body.username === 'string' ? body.username : '';
+    const canUse = await assertCanUseClaimedName(username, req, res);
+    if (!canUse) return;
     if (body.notes && Array.isArray(body.notes)) {
       body.notes = body.notes.map((n: { text: string; addedBy: string; addedAt: string }) => ({
         ...n,
@@ -373,6 +379,10 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const body = req.body as Record<string, unknown>;
+    if (typeof body.username === 'string') {
+      const canUse = await assertCanUseClaimedName(body.username, req, res);
+      if (!canUse) return;
+    }
     if (body.notes && Array.isArray(body.notes)) {
       body.notes = body.notes.map((n: { text: string; addedBy: string; addedAt: string }) => ({
         ...n,

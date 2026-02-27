@@ -20,6 +20,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
 import PersonIcon from '@mui/icons-material/Person';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -32,11 +33,14 @@ import { ImportModal } from './components/ImportModal';
 import { MergePlayerDialog } from './components/MergePlayerDialog';
 import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
 import { ChangeNameDialog } from './components/ChangeNameDialog';
+import { ImprovementNotesDialog } from './components/ImprovementNotesDialog';
 import { MDFPanel } from './components/MDFPanel';
 import { FoldEquityPanel } from './components/FoldEquityPanel';
 import { GeoPanel } from './components/GeoPanel';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
+import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
+import { useUserCredentials } from './context/UserNameContext';
 import {
   fetchPlayers,
   fetchPlayer,
@@ -68,6 +72,9 @@ export default function App() {
   const setCompact = useSetCompactMode();
   const horizontal = useHorizontalMode();
   const setHorizontal = useSetHorizontalMode();
+  const calcVisibility = useCalculatorVisibility();
+  const setCalcVisibility = useSetCalculatorVisibility();
+  const { getAuthHeader } = useUserCredentials();
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,6 +91,7 @@ export default function App() {
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const settingsOpen = Boolean(settingsAnchorEl);
   const [changeNameOpen, setChangeNameOpen] = useState(false);
+  const [improvementNotesOpen, setImprovementNotesOpen] = useState(false);
   const [rngValue, setRngValue] = useState<number | null>(null);
   const handleRngClick = () => setRngValue(Math.floor(Math.random() * 100) + 1);
   const [snackbar, setSnackbar] = useState<{
@@ -140,7 +148,7 @@ export default function App() {
 
   const handleUpdatePlayer = async (id: string, updates: Partial<Player>) => {
     try {
-      const updated = await updatePlayer(id, updates);
+      const updated = await updatePlayer(id, updates, getAuthHeader());
       setPlayers((prev) =>
         prev.map((p) =>
           p._id === id
@@ -179,7 +187,7 @@ export default function App() {
 
   const handleAddPlayer = async (player: PlayerCreate) => {
     try {
-      const created = await createPlayer(player);
+      const created = await createPlayer(player, getAuthHeader());
       setPlayers((prev) =>
         [...prev, { _id: created._id, username: created.username, playerType: created.playerType, gameTypes: created.gameTypes ?? [], stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold', updatedAt: created.updatedAt, createdAt: created.createdAt }].sort(
           (a, b) => a.username.localeCompare(b.username)
@@ -195,7 +203,7 @@ export default function App() {
 
   const handleImport = async (toImport: ImportPlayer[]) => {
     try {
-      const result = await importPlayers(toImport);
+      const result = await importPlayers(toImport, getAuthHeader());
       await loadPlayers();
       showSuccess(`Imported: ${result.created} new, ${result.updated} updated`);
       return result;
@@ -315,6 +323,10 @@ export default function App() {
           <PersonIcon fontSize="small" sx={{ mr: 1 }} />
           Change my name
         </MenuItem>
+        <MenuItem onClick={() => { setSettingsAnchorEl(null); setImprovementNotesOpen(true); }}>
+          <EditNoteIcon fontSize="small" sx={{ mr: 1 }} />
+          Improvement notes
+        </MenuItem>
         <MenuItem onClick={() => { setSettingsAnchorEl(null); setImportOpen(true); }}>
           <ImportExportIcon fontSize="small" sx={{ mr: 1 }} />
           Import
@@ -345,6 +357,18 @@ export default function App() {
           </Box>
           <Switch size="small" checked={horizontal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHorizontal(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
         </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>MDF</Box>
+          <Switch size="small" checked={calcVisibility.showMDF} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCalcVisibility({ showMDF: e.target.checked })} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>FE%</Box>
+          <Switch size="small" checked={calcVisibility.showFE} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCalcVisibility({ showFE: e.target.checked })} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>GEO</Box>
+          <Switch size="small" checked={calcVisibility.showGEO} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCalcVisibility({ showGEO: e.target.checked })} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
       </Menu>
       <input ref={backupFileInputRef} type="file" accept=".json" hidden onChange={handleRestoreFileChange} />
     </>
@@ -356,15 +380,16 @@ export default function App() {
         display: 'flex',
         flexDirection: 'column',
         gap: compact ? 1 : 1.5,
-        flexShrink: 0,
-        width: horizontal ? (compact ? 260 : 320) : undefined,
+        flexShrink: 1,
         minWidth: horizontal ? (compact ? 260 : 320) : undefined,
+        width: horizontal ? (compact ? 480 : 520) : undefined,
+        maxWidth: horizontal ? '100%' : undefined,
         alignSelf: 'flex-start',
         position: horizontal ? 'sticky' : undefined,
         top: horizontal ? (compact ? 1 : 2) : undefined,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'nowrap', minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
         <Box sx={{ width: 200, flexShrink: 0 }}>
           <SearchBar
             players={players}
@@ -376,9 +401,9 @@ export default function App() {
             selectedId={selected?._id}
           />
         </Box>
-        <MDFPanel compact={compact} />
-        <FoldEquityPanel compact={compact} />
-        <GeoPanel compact={compact} />
+        {calcVisibility.showMDF && <MDFPanel compact={compact} />}
+        {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
+        {calcVisibility.showGEO && <GeoPanel compact={compact} />}
         <Button
           variant="outlined"
           size="small"
@@ -506,7 +531,7 @@ export default function App() {
         <Box sx={{ flex: horizontal ? 1 : undefined, minWidth: horizontal ? 0 : undefined, display: 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
           {!horizontal && (
             <Box sx={{ mb: compact ? 1 : 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5, flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
                 <Box sx={{ width: 200, flexShrink: 0 }}>
                   <SearchBar
                     players={players}
@@ -518,9 +543,9 @@ export default function App() {
                     selectedId={selected?._id}
                   />
                 </Box>
-                <MDFPanel compact={compact} />
-                <FoldEquityPanel compact={compact} />
-                <GeoPanel compact={compact} />
+                {calcVisibility.showMDF && <MDFPanel compact={compact} />}
+                {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
+                {calcVisibility.showGEO && <GeoPanel compact={compact} />}
                 <Button
                   variant="outlined"
                   size="small"
@@ -594,7 +619,7 @@ export default function App() {
         ) : selected ? (
           <>
             {horizontal && (
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexShrink: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexShrink: 0, flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
                 <Box sx={{ width: 200, flexShrink: 0 }}>
                   <SearchBar
                     players={players}
@@ -606,9 +631,9 @@ export default function App() {
                     selectedId={selected?._id}
                   />
                 </Box>
-                <MDFPanel compact={compact} />
-                <FoldEquityPanel compact={compact} />
-                <GeoPanel compact={compact} />
+                {calcVisibility.showMDF && <MDFPanel compact={compact} />}
+                {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
+                {calcVisibility.showGEO && <GeoPanel compact={compact} />}
                 <Button
                   variant="outlined"
                   size="small"
@@ -771,6 +796,17 @@ export default function App() {
         open={changeNameOpen}
         onClose={() => setChangeNameOpen(false)}
         onSuccess={showSuccess}
+      />
+
+      <ImprovementNotesDialog
+        open={improvementNotesOpen}
+        onClose={() => setImprovementNotesOpen(false)}
+        onOpenChangeName={() => {
+          setImprovementNotesOpen(false);
+          setChangeNameOpen(true);
+        }}
+        onSuccess={showSuccess}
+        onError={showError}
       />
 
       <Snackbar

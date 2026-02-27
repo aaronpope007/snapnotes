@@ -87,7 +87,8 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
             type="number"
             value={pot}
             onChange={(e) => setPot(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
+            autoFocus
+            inputProps={{ min: 0, step: 1 }}
             fullWidth
           />
           <TextField
@@ -96,7 +97,7 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
             type="number"
             value={callAmount}
             onChange={(e) => setCallAmount(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
+            inputProps={{ min: 0, step: 1 }}
             fullWidth
           />
           <TextField
@@ -105,7 +106,7 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
             type="number"
             value={shoveTotal}
             onChange={(e) => setShoveTotal(e.target.value)}
-            inputProps={{ min: 0, step: 0.01 }}
+            inputProps={{ min: 0, step: 1 }}
             fullWidth
           />
           <TextField
