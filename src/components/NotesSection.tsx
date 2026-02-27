@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
+import { useConfirm } from '../hooks/useConfirm';
+import { ConfirmDialog } from './ConfirmDialog';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
@@ -43,6 +45,14 @@ export function NotesSection({
   const [expanded, setExpanded] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
+
+  const {
+    confirmOpen: deleteNoteConfirmOpen,
+    openConfirm: openDeleteNoteConfirm,
+    closeConfirm: closeDeleteNoteConfirm,
+    handleConfirm: handleConfirmDeleteNote,
+    confirmOptions: deleteNoteConfirmOptions,
+  } = useConfirm();
 
   return (
     <Box>
@@ -205,7 +215,15 @@ export function NotesSection({
                     {onDeleteNote && (
                       <IconButton
                         size="small"
-                        onClick={() => onDeleteNote(i)}
+                        onClick={() =>
+                          openDeleteNoteConfirm(() => onDeleteNote(i), {
+                            title: 'Delete note?',
+                            message:
+                              'Are you sure you want to delete this note? This cannot be undone.',
+                            confirmText: 'Delete',
+                            confirmDanger: true,
+                          })
+                        }
                         disabled={saving}
                         sx={{ p: 0.25, '&:hover': { opacity: 1 } }}
                         aria-label="Delete note"
@@ -227,6 +245,13 @@ export function NotesSection({
           </Box>
         )}
       </Collapse>
+
+      <ConfirmDialog
+        open={deleteNoteConfirmOpen}
+        onClose={closeDeleteNoteConfirm}
+        onConfirm={handleConfirmDeleteNote}
+        {...deleteNoteConfirmOptions}
+      />
     </Box>
   );
 }

@@ -127,7 +127,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                   hook.setExpandedId(hook.expandedId === id ? null : id),
                 onEdit: hook.openEditModal,
                 onArchive: hook.handleArchive,
-                onDelete: hook.handleDelete,
+                onDelete: (id) => hook.openDeleteHandConfirm(id),
                 onAddLeak: learningVisible && userName ? (hand) => setAddLeakHand(hand) : undefined,
                 onRate: hook.handleRate,
                 onMarkReviewed: hook.handleMarkReviewed,
@@ -179,12 +179,12 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         onIsPrivateChange={hook.setEditIsPrivate}
         onTaggedReviewersChange={hook.setEditTaggedReviewers}
         onSave={hook.handleEditSave}
-        onDelete={() => hook.setDeleteHandConfirmOpen(true)}
+        onDelete={() => hook.openDeleteHandConfirm(hook.editHand!._id)}
       />
 
       <DeleteHandConfirmDialog
         open={hook.deleteHandConfirmOpen}
-        onClose={() => hook.setDeleteHandConfirmOpen(false)}
+        onClose={hook.closeDeleteHandConfirm}
         onConfirm={hook.handleConfirmDeleteHandFromModal}
       />
 

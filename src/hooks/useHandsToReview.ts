@@ -71,6 +71,7 @@ export function useHandsToReview({
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [revealedPrivateComments, setRevealedPrivateComments] = useState<Set<string>>(new Set());
   const [deleteHandConfirmOpen, setDeleteHandConfirmOpen] = useState(false);
+  const [deleteHandId, setDeleteHandId] = useState<string | null>(null);
 
   const {
     confirmOpen: discardConfirmOpen,
@@ -398,11 +399,22 @@ export function useHandsToReview({
     setHoverSpicyRatingState((prev) => ({ ...prev, [handId]: value }));
   };
 
+  const openDeleteHandConfirm = (handId: string) => {
+    setDeleteHandId(handId);
+    setDeleteHandConfirmOpen(true);
+  };
+
+  const closeDeleteHandConfirm = () => {
+    setDeleteHandConfirmOpen(false);
+    setDeleteHandId(null);
+  };
+
   const handleConfirmDeleteHandFromModal = () => {
-    if (!editHand) return;
-    const id = editHand._id;
+    const id = deleteHandId ?? editHand?._id;
+    if (!id) return;
     setEditHand(null);
     setDeleteHandConfirmOpen(false);
+    setDeleteHandId(null);
     void handleDelete(id);
   };
 
@@ -544,7 +556,8 @@ export function useHandsToReview({
     setHoverSpicyRating,
     ratingSaving,
     deleteHandConfirmOpen,
-    setDeleteHandConfirmOpen,
+    openDeleteHandConfirm,
+    closeDeleteHandConfirm,
     handleMarkReviewed,
     handleConfirmDeleteHandFromModal,
     discardConfirmOpen,
