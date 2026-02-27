@@ -121,6 +121,15 @@ export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
     [handleUpdate]
   );
 
+  const handleResolve = useCallback(
+    async (leak: Leak) => {
+      if (leak.status === 'resolved') return;
+      await handleUpdate(leak._id, { status: 'resolved' });
+      onSuccess?.('Leak resolved');
+    },
+    [handleUpdate, onSuccess]
+  );
+
   return {
     leaks,
     loading,
@@ -142,5 +151,6 @@ export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
     handleUpdate,
     handleDelete,
     handleStatusCycle,
+    handleResolve,
   };
 }

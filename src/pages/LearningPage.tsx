@@ -5,13 +5,11 @@ import Button from '@mui/material/Button';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useUserName } from '../context/UserNameContext';
 import { useLeaks } from '../hooks/useLeaks';
-import { useEdges } from '../hooks/useEdges';
 import { useMentalGame } from '../hooks/useMentalGame';
 import { useDueReviews } from '../hooks/useDueReviews';
 import { fetchDueLeaks } from '../api/learning';
 import { LearningTabs, type LearningTabValue } from '../components/learning/LearningTabs';
 import { LeaksTab } from '../components/learning/LeaksTab';
-import { EdgesTab } from '../components/learning/EdgesTab';
 import { MentalTab } from '../components/learning/MentalTab';
 import { DueForReviewTab } from '../components/learning/DueForReviewTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -57,7 +55,6 @@ export function LearningPage({ onBack, onSuccess, onError }: LearningPageProps) 
   );
 
   const leaks = useLeaks({ userId: userName, onSuccess: handleLeakSuccess, onError });
-  const edges = useEdges({ userId: userName, onSuccess, onError });
   const mental = useMentalGame({ userId: userName, onSuccess, onError });
   const due = useDueReviews({ userId: userName, onSuccess: handleDueSuccess, onError });
 
@@ -84,20 +81,15 @@ export function LearningPage({ onBack, onSuccess, onError }: LearningPageProps) 
         dueCount={dueCount}
         onAddLeak={() => leaks.setAddModalOpen(true)}
         onAddLeakToPlayer={() => leaks.setAddToPlayerModalOpen(true)}
-        onAddEdge={() => edges.setAddModalOpen(true)}
         onAddMental={() => mental.setAddModalOpen(true)}
       />
       {!userName?.trim() ? (
         <Typography variant="body2" color="text.secondary">
-          Enter your name to use Leaks &amp; Edge.
+          Enter your name to use Leaks.
         </Typography>
       ) : activeTab === 'leaks' ? (
         <ErrorBoundary>
           <LeaksTab {...leaks} userId={userName} />
-        </ErrorBoundary>
-      ) : activeTab === 'edges' ? (
-        <ErrorBoundary>
-          <EdgesTab {...edges} userId={userName} />
         </ErrorBoundary>
       ) : activeTab === 'mental' ? (
         <ErrorBoundary>

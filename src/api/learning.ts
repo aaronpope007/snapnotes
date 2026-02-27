@@ -3,9 +3,6 @@ import type {
   Leak,
   LeakCreate,
   LeakStatus,
-  Edge,
-  EdgeCreate,
-  EdgeStatus,
   MentalGameEntry,
   MentalGameEntryCreate,
 } from '../types/learning';
@@ -57,35 +54,6 @@ export async function deleteLeak(id: string): Promise<void> {
 export async function advanceLeakReview(id: string, stillFixed: boolean): Promise<Leak> {
   const { data } = await api.patch<Leak>(`/learning/leaks/${id}/review`, { stillFixed });
   return data;
-}
-
-// Edges
-export async function fetchEdges(userId: string | null, status?: EdgeStatus): Promise<Edge[]> {
-  const params: Record<string, string> = {};
-  if (userId?.trim()) params.userId = userId.trim();
-  if (status) params.status = status;
-  const { data } = await api.get<Edge[]>('/learning/edges', { params });
-  return data;
-}
-
-export async function createEdge(
-  payload: EdgeCreate & { userId: string | null }
-): Promise<Edge> {
-  const body = { ...payload, userId: payload.userId ?? undefined };
-  const { data } = await api.post<Edge>('/learning/edges', body);
-  return data;
-}
-
-export async function updateEdge(
-  id: string,
-  updates: Partial<Pick<Edge, 'title' | 'description' | 'category' | 'status' | 'linkedHandIds' | 'notes'>>
-): Promise<Edge> {
-  const { data } = await api.patch<Edge>(`/learning/edges/${id}`, updates);
-  return data;
-}
-
-export async function deleteEdge(id: string): Promise<void> {
-  await api.delete(`/learning/edges/${id}`);
 }
 
 // Mental Game

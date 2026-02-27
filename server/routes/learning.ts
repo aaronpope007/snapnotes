@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Leak } from '../models/Leak.js';
-import { Edge } from '../models/Edge.js';
 import { MentalGameEntry } from '../models/MentalGameEntry.js';
 
 const router = Router();
@@ -158,102 +157,6 @@ router.patch('/leaks/:id/review', async (req: Request, res: Response) => {
     res.json(leak);
   } catch (err) {
     res.status(400).json({ error: 'Failed to update leak review' });
-  }
-});
-
-// ─── Edges ─────────────────────────────────────────────────────────────────
-router.get('/edges', async (req: Request, res: Response) => {
-  try {
-    const userId = getUserId(req);
-    if (!userId) return res.status(400).json({ error: 'userId query param required' });
-    const status = req.query.status as string | undefined;
-    const filter: Record<string, unknown> = { userId };
-    if (status && ['developing', 'active', 'archived'].includes(status)) {
-      filter.status = status;
-    }
-    const edges = await Edge.find(filter).sort({ createdAt: -1 }).lean();
-    res.json(edges);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch edges' });
-  }
-});
-
-router.post('/edges', async (req: Request, res: Response) => {
-  try {
-    const body = req.body as {
-      userId: string;
-      title: string;
-      description?: string;
-      category?: string;
-      linkedHandIds?: string[];
-    };
-    const userId = body.userId?.trim() || getUserId(req);
-    if (!userId) return res.status(400).json({ error: 'userId required' });
-    const linkedHandIds = Array.isArray(body.linkedHandIds)
-      ? body.linkedHandIds.filter((id): id is string => typeof id === 'string' && id.trim() !== '')
-      : [];
-    const edge = new Edge({
-      userId,
-      title: (body.title ?? '').trim() || 'Untitled edge',
-      description: (body.description ?? '').trim(),
-      category: body.category ?? 'other',
-      status: 'developing',
-      linkedHandIds,
-    });
-    await edge.save();
-    res.status(201).json(edge);
-  } catch (err) {
-    res.status(400).json({ error: 'Failed to create edge' });
-  }
-});
-
-router.patch('/edges/:id', async (req: Request, res: Response) => {
-  try {
-    const edge = await Edge.findById(req.params.id);
-    if (!edge) return res.status(404).json({ error: 'Edge not found' });
-    const body = req.body as {
-      title?: string;
-      description?: string;
-      category?: string;
-      status?: 'developing' | 'active' | 'archived';
-      linkedHandIds?: string[];
-      notes?: { _id?: string; content: string; createdAt?: Date }[];
-    };
-    if (body.title !== undefined) edge.title = body.title.trim() || 'Untitled edge';
-    if (body.description !== undefined) edge.description = body.description.trim();
-    if (body.category !== undefined) edge.category = body.category as string;
-    if (
-      body.status !== undefined &&
-      ['developing', 'active', 'archived'].includes(body.status)
-    ) {
-      edge.status = body.status;
-    }
-    if (Array.isArray(body.linkedHandIds)) {
-      edge.linkedHandIds = body.linkedHandIds.filter(
-        (id): id is string => typeof id === 'string' && id.trim() !== ''
-      );
-    }
-    if (Array.isArray(body.notes)) {
-      edge.notes = body.notes.map((n) => ({
-        _id: n._id ?? new mongoose.Types.ObjectId(),
-        content: (n.content ?? '').trim(),
-        createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
-      }));
-    }
-    await edge.save();
-    res.json(edge);
-  } catch (err) {
-    res.status(400).json({ error: 'Failed to update edge' });
-  }
-});
-
-router.delete('/edges/:id', async (req: Request, res: Response) => {
-  try {
-    const edge = await Edge.findByIdAndDelete(req.params.id);
-    if (!edge) return res.status(404).json({ error: 'Edge not found' });
-    res.status(204).send();
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to delete edge' });
   }
 });
 

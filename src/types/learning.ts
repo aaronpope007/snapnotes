@@ -47,43 +47,6 @@ export interface LeakCreate {
   playerUsername?: string;
 }
 
-export type EdgeCategory =
-  | 'pool-tendency'
-  | 'solver-deviation'
-  | 'live-read'
-  | 'sizing-exploit'
-  | 'positional-edge'
-  | 'meta-adjustment'
-  | 'other';
-
-export type EdgeStatus = 'developing' | 'active' | 'archived';
-
-export interface EdgeNote {
-  _id: string;
-  content: string;
-  createdAt: string;
-}
-
-export interface Edge {
-  _id: string;
-  userId: string;
-  title: string;
-  description: string;
-  category: EdgeCategory;
-  status: EdgeStatus;
-  linkedHandIds: string[];
-  notes: EdgeNote[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface EdgeCreate {
-  title: string;
-  description: string;
-  category: EdgeCategory;
-  linkedHandIds?: string[];
-}
-
 export interface MentalGameEntry {
   _id: string;
   userId: string;

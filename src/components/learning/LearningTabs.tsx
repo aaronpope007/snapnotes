@@ -5,13 +5,12 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import AddIcon from '@mui/icons-material/Add';
 import BugReportIcon from '@mui/icons-material/BugReport';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import Badge from '@mui/material/Badge';
 import { useCompactMode } from '../../context/CompactModeContext';
 
-export type LearningTabValue = 'leaks' | 'edges' | 'mental' | 'due';
+export type LearningTabValue = 'leaks' | 'mental' | 'due';
 
 interface LearningTabsProps {
   activeTab: LearningTabValue;
@@ -19,7 +18,6 @@ interface LearningTabsProps {
   dueCount: number;
   onAddLeak?: () => void;
   onAddLeakToPlayer?: () => void;
-  onAddEdge?: () => void;
   onAddMental?: () => void;
 }
 
@@ -29,14 +27,12 @@ export function LearningTabs({
   dueCount,
   onAddLeak,
   onAddLeakToPlayer,
-  onAddEdge,
   onAddMental,
 }: LearningTabsProps) {
   const compact = useCompactMode();
 
   const handleAdd = () => {
     if (activeTab === 'leaks') onAddLeak?.();
-    else if (activeTab === 'edges') onAddEdge?.();
     else if (activeTab === 'mental') onAddMental?.();
   };
 
@@ -44,7 +40,6 @@ export function LearningTabs({
 
   const showAdd =
     (activeTab === 'leaks' && onAddLeak) ||
-    (activeTab === 'edges' && onAddEdge) ||
     (activeTab === 'mental' && onAddMental);
 
   return (
@@ -62,7 +57,7 @@ export function LearningTabs({
         variant={compact ? 'subtitle1' : 'h6'}
         sx={{ fontWeight: 600, fontSize: compact ? '0.85rem' : undefined }}
       >
-        Leaks &amp; Edge
+        Leaks
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         <ToggleButtonGroup
@@ -74,10 +69,6 @@ export function LearningTabs({
           <ToggleButton value="leaks" aria-label="Leaks">
             <BugReportIcon sx={{ fontSize: 14, mr: 0.25 }} />
             Leaks
-          </ToggleButton>
-          <ToggleButton value="edges" aria-label="Edges">
-            <TrendingUpIcon sx={{ fontSize: 14, mr: 0.25 }} />
-            Edges
           </ToggleButton>
           <ToggleButton value="mental" aria-label="Mental">
             <PsychologyIcon sx={{ fontSize: 14, mr: 0.25 }} />

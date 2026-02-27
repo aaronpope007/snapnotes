@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Popover from '@mui/material/Popover';
@@ -30,10 +30,19 @@ interface FoldEquityPanelProps {
 
 export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [pot, setPot] = useState('100');
-  const [callAmount, setCallAmount] = useState('0');
-  const [shoveTotal, setShoveTotal] = useState('200');
-  const [equityPct, setEquityPct] = useState('36');
+  const [pot, setPot] = useState('');
+  const [callAmount, setCallAmount] = useState('');
+  const [shoveTotal, setShoveTotal] = useState('');
+  const [equityPct, setEquityPct] = useState('');
+
+  useEffect(() => {
+    if (anchorEl) {
+      setPot('');
+      setCallAmount('');
+      setShoveTotal('');
+      setEquityPct('');
+    }
+  }, [anchorEl]);
 
   const potNum = parseFloat(pot) || 0;
   const callNum = parseFloat(callAmount) || 0;
@@ -44,7 +53,7 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
   return (
     <>
       <Button
-        variant="outlined"
+        variant={anchorEl ? 'contained' : 'outlined'}
         size="small"
         onClick={(e) => setAnchorEl(e.currentTarget)}
         aria-label="Fold Equity Calculator"
@@ -88,7 +97,7 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
             value={pot}
             onChange={(e) => setPot(e.target.value)}
             autoFocus
-            inputProps={{ min: 0, step: 1 }}
+            inputProps={{ min: 0, step: 1, autoComplete: 'off' }}
             fullWidth
           />
           <TextField
@@ -97,7 +106,7 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
             type="number"
             value={callAmount}
             onChange={(e) => setCallAmount(e.target.value)}
-            inputProps={{ min: 0, step: 1 }}
+            inputProps={{ min: 0, step: 1, autoComplete: 'off' }}
             fullWidth
           />
           <TextField
@@ -106,7 +115,7 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
             type="number"
             value={shoveTotal}
             onChange={(e) => setShoveTotal(e.target.value)}
-            inputProps={{ min: 0, step: 1 }}
+            inputProps={{ min: 0, step: 1, autoComplete: 'off' }}
             fullWidth
           />
           <TextField
@@ -115,7 +124,7 @@ export function FoldEquityPanel({ compact }: FoldEquityPanelProps) {
             type="number"
             value={equityPct}
             onChange={(e) => setEquityPct(e.target.value)}
-            inputProps={{ min: 0, max: 100, step: 1 }}
+            inputProps={{ min: 0, max: 100, step: 1, autoComplete: 'off' }}
             fullWidth
           />
         </Box>

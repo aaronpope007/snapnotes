@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Popover from '@mui/material/Popover';
@@ -54,7 +54,7 @@ export function GeoPanel({ compact }: GeoPanelProps) {
   return (
     <>
       <Button
-        variant="outlined"
+        variant={anchorEl ? 'contained' : 'outlined'}
         size="small"
         onClick={(e) => setAnchorEl(e.currentTarget)}
         aria-label="Geometric bet sizing"
@@ -98,7 +98,7 @@ export function GeoPanel({ compact }: GeoPanelProps) {
             value={effectiveStack}
             onChange={(e) => setEffectiveStack(e.target.value)}
             autoFocus
-            inputProps={{ min: 0, step: 1 }}
+            inputProps={{ min: 0, step: 1, autoComplete: 'off' }}
             fullWidth
           />
           <TextField
@@ -107,7 +107,7 @@ export function GeoPanel({ compact }: GeoPanelProps) {
             type="number"
             value={currentPot}
             onChange={(e) => setCurrentPot(e.target.value)}
-            inputProps={{ min: 0, step: 1 }}
+            inputProps={{ min: 0, step: 1, autoComplete: 'off' }}
             fullWidth
           />
           <FormControl size="small" fullWidth>

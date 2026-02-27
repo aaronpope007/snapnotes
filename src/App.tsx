@@ -394,7 +394,7 @@ export default function App() {
         <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <SchoolIcon sx={{ fontSize: 18 }} />
-            Learning (Leaks &amp; Edge)
+            Learning (Leaks)
           </Box>
           <Switch size="small" checked={learningVisible} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLearningVisible(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
         </MenuItem>

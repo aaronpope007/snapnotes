@@ -10,10 +10,10 @@ export interface CalculatorVisibility {
 }
 
 const DEFAULT: CalculatorVisibility = {
-  showMDF: true,
-  showFE: true,
-  showGEO: true,
-  showRNG: true,
+  showMDF: false,
+  showFE: false,
+  showGEO: false,
+  showRNG: false,
 };
 
 interface CalculatorVisibilityContextValue {

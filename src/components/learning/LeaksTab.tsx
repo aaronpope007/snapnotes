@@ -1,6 +1,8 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
@@ -15,7 +17,7 @@ import { LeakCard } from './LeakCard';
 import { LeakChecklist } from './LeakChecklist';
 import { AddLeakModal } from './AddLeakModal';
 import { AddLeakToPlayerModal } from './AddLeakToPlayerModal';
-import type { Leak, LeakStatus } from '../../types/learning';
+import type { Leak } from '../../types/learning';
 import type { PlayerListItem } from '../../types';
 import { fetchPlayers } from '../../api/players';
 
@@ -45,10 +47,15 @@ export function LeaksTab({
   handleUpdate,
   handleDelete,
   handleStatusCycle,
+  handleResolve,
 }: LeaksTabProps) {
   const compact = useCompactMode();
   const checklist = useLeakChecklist(userId);
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
+
+  const activeLeaks = leaks.filter((l) => l.status !== 'resolved');
+  const resolvedLeaks = leaks.filter((l) => l.status === 'resolved');
+  const displayLeaks = filterStatus === 'resolved' ? resolvedLeaks : activeLeaks;
 
   useEffect(() => {
     fetchPlayers().then((list) => setPlayers(list ?? [])).catch(() => setPlayers([]));
@@ -82,19 +89,17 @@ export function LeaksTab({
           mb: compact ? 1 : 1.5,
         }}
       >
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={filterStatus}
-            label="Status"
-            onChange={(e) => setFilterStatus(e.target.value as LeakStatus | 'all')}
-          >
-            <MenuItem value="all">All</MenuItem>
-            <MenuItem value="identified">Identified</MenuItem>
-            <MenuItem value="working">Working</MenuItem>
-            <MenuItem value="resolved">Resolved</MenuItem>
-          </Select>
-        </FormControl>
+        <ToggleButtonGroup
+          value={filterStatus === 'resolved' ? 'resolved' : 'active'}
+          exclusive
+          onChange={(_, v) => v != null && setFilterStatus(v === 'resolved' ? 'resolved' : 'all')}
+          size="small"
+        >
+          <ToggleButton value="active">Active</ToggleButton>
+          <ToggleButton value="resolved">
+            Resolved{resolvedLeaks.length > 0 ? ` (${resolvedLeaks.length})` : ''}
+          </ToggleButton>
+        </ToggleButtonGroup>
         <FormControl size="small" sx={{ minWidth: 140 }}>
           <InputLabel>Player</InputLabel>
           <Select
@@ -135,19 +140,22 @@ export function LeaksTab({
         <Typography variant="body2" color="text.secondary">
           Loading...
         </Typography>
-      ) : leaks.length === 0 ? (
+      ) : displayLeaks.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No leaks. Add one to track spots you want to improve.
+          {filterStatus === 'resolved'
+            ? 'No resolved leaks.'
+            : 'No leaks. Add one to track spots you want to improve.'}
         </Typography>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: compact ? 0.25 : 0.5 }}>
-          {leaks.map((leak) => (
+          {displayLeaks.map((leak) => (
             <LeakCard
               key={leak._id}
               leak={leak}
               expanded={expandedId === leak._id}
               onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
               onStatusCycle={handleStatusCycle}
+              onResolve={handleResolve}
               onEdit={(l) => setEditLeak(l)}
               onDelete={handleDelete}
             />

@@ -30,7 +30,7 @@ const leakSchema = new mongoose.Schema(
   {
     userId: { type: String, required: true },
     title: { type: String, required: true, default: '' },
-    description: { type: String, required: true, default: '' },
+    description: { type: String, default: '' },
     category: {
       type: String,
       enum: LEAK_CATEGORIES,

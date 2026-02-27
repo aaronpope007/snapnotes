@@ -8,6 +8,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LinkIcon from '@mui/icons-material/Link';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { getLeakStatusColor, LEAK_CATEGORY_LABELS } from '../../constants/learningColors';
@@ -18,6 +19,7 @@ interface LeakCardProps {
   expanded: boolean;
   onToggleExpand: (id: string) => void;
   onStatusCycle: (leak: Leak) => void;
+  onResolve?: (leak: Leak) => void;
   onEdit: (leak: Leak) => void;
   onDelete: (id: string) => void;
   onLinkClick?: (leak: Leak) => void;
@@ -28,6 +30,7 @@ export function LeakCard({
   expanded,
   onToggleExpand,
   onStatusCycle,
+  onResolve,
   onEdit,
   onDelete,
   onLinkClick,
@@ -140,6 +143,20 @@ export function LeakCard({
             <LinkIcon sx={{ fontSize: 12 }} />
             {linkedCount}
           </Typography>
+        )}
+        {onResolve && leak.status !== 'resolved' && (
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onResolve(leak);
+            }}
+            sx={{ p: 0.25 }}
+            aria-label="Resolve"
+            title="Mark as resolved"
+          >
+            <CheckCircleIcon fontSize="small" color="success" />
+          </IconButton>
         )}
         <IconButton
           size="small"

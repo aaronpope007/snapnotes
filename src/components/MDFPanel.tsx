@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -30,6 +30,13 @@ export function MDFPanel({ compact }: MDFPanelProps) {
   const [pot, setPot] = useState('');
   const [bet, setBet] = useState('');
 
+  useEffect(() => {
+    if (anchorEl) {
+      setPot('');
+      setBet('');
+    }
+  }, [anchorEl]);
+
   const potNum = parseFloat(pot) || 0;
   const betNum = parseFloat(bet) || 0;
   const computedMDF = calcMDF(potNum, betNum);
@@ -37,7 +44,7 @@ export function MDFPanel({ compact }: MDFPanelProps) {
   return (
     <>
       <Button
-        variant="outlined"
+        variant={anchorEl ? 'contained' : 'outlined'}
         size="small"
         onClick={(e) => setAnchorEl(e.currentTarget)}
         aria-label="Minimum Defense Frequency"
@@ -88,7 +95,7 @@ export function MDFPanel({ compact }: MDFPanelProps) {
             value={pot}
             onChange={(e) => setPot(e.target.value)}
             autoFocus
-            inputProps={{ min: 0, step: 1 }}
+            inputProps={{ min: 0, step: 1, autoComplete: 'off' }}
             sx={{ width: 90 }}
           />
           <TextField
@@ -97,7 +104,7 @@ export function MDFPanel({ compact }: MDFPanelProps) {
             type="number"
             value={bet}
             onChange={(e) => setBet(e.target.value)}
-            inputProps={{ min: 0, step: 1 }}
+            inputProps={{ min: 0, step: 1, autoComplete: 'off' }}
             sx={{ width: 90 }}
           />
         </Box>
