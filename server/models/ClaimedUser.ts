@@ -15,6 +15,4 @@ const claimedUserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-claimedUserSchema.index({ name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
-
 export const ClaimedUser = mongoose.model('ClaimedUser', claimedUserSchema);

@@ -7,6 +7,4 @@ const reviewerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-reviewerSchema.index({ name: 1 });
-
 export const Reviewer = mongoose.model('Reviewer', reviewerSchema);

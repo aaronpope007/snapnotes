@@ -109,6 +109,4 @@ const playerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-playerSchema.index({ username: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
-
 export const Player = mongoose.model('Player', playerSchema);
