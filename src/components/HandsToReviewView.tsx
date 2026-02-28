@@ -17,11 +17,12 @@ import { createLeak } from '../api/learning';
 import { getApiErrorMessage } from '../utils/apiError';
 
 interface HandsToReviewViewProps {
+  initialHandId?: string | null;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
 }
 
-export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps) {
+export function HandsToReviewView({ initialHandId, onSuccess, onError }: HandsToReviewViewProps) {
   const userName = useUserName();
   const compact = useCompactMode();
   const learningVisible = useLearningVisibility();
@@ -29,9 +30,18 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
   const [leakSaving, setLeakSaving] = useState(false);
   const hook = useHandsToReview({
     userName: userName ?? null,
+    initialHandId,
     onSuccess,
     onError,
   });
+
+  const handleCopyLink = (handId: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?hand=${handId}`;
+    navigator.clipboard.writeText(url).then(
+      () => onSuccess?.('Link copied to clipboard'),
+      () => onError?.('Failed to copy link')
+    );
+  };
 
   const handleAddLeakToSelf = async (
     payload: { title: string; description?: string; category?: string; linkedHandIds?: string[] }
@@ -125,6 +135,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
               hoverSpicyRating={hook.hoverSpicyRating[hand._id] ?? null}
               actions={{
                 onToggleExpand: hook.handleToggleExpand,
+                onCopyLink: handleCopyLink,
                 onEdit: hook.openEditModal,
                 onArchive: hook.handleArchive,
                 onDelete: (id) => hook.openDeleteHandConfirm(id),

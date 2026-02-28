@@ -11,6 +11,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import LinkIcon from '@mui/icons-material/Link';
 import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import BugReportIcon from '@mui/icons-material/BugReport';
@@ -37,6 +38,7 @@ import type { HandToReview } from '../types';
 
 export interface HandReviewCardActions {
   onToggleExpand: (handId: string) => void;
+  onCopyLink: (handId: string) => void;
   onEdit: (hand: HandToReview) => void;
   onArchive: (hand: HandToReview) => void;
   onDelete: (handId: string) => void;
@@ -85,6 +87,7 @@ export function HandReviewCard({
   hoverSpicyRating,
   actions: {
     onToggleExpand,
+    onCopyLink,
     onEdit,
     onArchive,
     onDelete,
@@ -190,6 +193,18 @@ export function HandReviewCard({
         <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
           {hand.status === 'archived' ? 'Archived' : 'Open'}
         </Typography>
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopyLink(hand._id);
+          }}
+          sx={{ p: 0.25 }}
+          aria-label="Copy link"
+          title="Copy link to paste in Discord"
+        >
+          <LinkIcon fontSize="small" />
+        </IconButton>
         <IconButton
           size="small"
           onClick={(e) => {

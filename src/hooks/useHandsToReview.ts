@@ -21,12 +21,14 @@ import { DEFAULT_HAND_TITLE } from '../../shared/constants';
 
 export interface UseHandsToReviewOptions {
   userName: string | null;
+  initialHandId?: string | null;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
 }
 
 export function useHandsToReview({
   userName,
+  initialHandId = null,
   onSuccess,
   onError,
 }: UseHandsToReviewOptions) {
@@ -106,6 +108,12 @@ export function useHandsToReview({
   useEffect(() => {
     loadHands();
   }, [loadHands]);
+
+  useEffect(() => {
+    if (initialHandId && hands.some((h) => h._id === initialHandId)) {
+      setExpandedId(initialHandId);
+    }
+  }, [initialHandId, hands]);
 
   useEffect(() => {
     fetchReviewers()

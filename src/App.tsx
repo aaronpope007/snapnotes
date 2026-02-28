@@ -95,7 +95,14 @@ export default function App() {
   const [addOpen, setAddOpen] = useState(false);
   const [addInitialUsername, setAddInitialUsername] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
-  const [showHandsToReview, setShowHandsToReview] = useState(false);
+  const [showHandsToReview, setShowHandsToReview] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('hand');
+  });
+  const [initialHandId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('hand') ?? null;
+  });
   const [showLearning, setShowLearning] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeLoading, setMergeLoading] = useState(false);
@@ -698,6 +705,7 @@ export default function App() {
             </Button>
             <ErrorBoundary>
               <HandsToReviewView
+                initialHandId={initialHandId}
                 onSuccess={showSuccess}
                 onError={showError}
               />
