@@ -46,6 +46,7 @@ router.post('/', async (req: Request, res: Response) => {
     const body = req.body as {
       title?: string;
       handText: string;
+      rationale?: string;
       spoilerText?: string;
       createdBy: string;
       isPrivate?: boolean;
@@ -61,6 +62,7 @@ router.post('/', async (req: Request, res: Response) => {
     const hand = new HandToReview({
       title: body.title?.trim() || DEFAULT_HAND_TITLE,
       handText: body.handText.trim(),
+      rationale: body.rationale?.trim() ?? '',
       spoilerText: body.spoilerText?.trim() ?? '',
       createdBy: body.createdBy || 'Anonymous',
       isPrivate: body.isPrivate === true,
@@ -88,10 +90,13 @@ router.put('/:id', async (req: Request, res: Response) => {
     const body = req.body as {
       title?: string;
       handText?: string;
+      rationale?: string;
+      spoilerText?: string;
       status?: 'open' | 'archived';
       isPrivate?: boolean;
       taggedReviewerNames?: string[];
       markReviewed?: { userName: string };
+      markSeen?: { userName: string };
       addComment?: { text: string; addedBy: string };
       updateComment?: {
         commentIndex: number;
@@ -113,6 +118,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     if (body.title !== undefined) update.title = body.title.trim() || DEFAULT_HAND_TITLE;
     if (body.handText !== undefined) update.handText = body.handText.trim();
+    if (body.rationale !== undefined) update.rationale = body.rationale.trim();
     if (body.spoilerText !== undefined) update.spoilerText = body.spoilerText.trim();
     if (Array.isArray(body.taggedReviewerNames)) {
       update.taggedReviewerNames = body.taggedReviewerNames.filter(
@@ -125,6 +131,14 @@ router.put('/:id', async (req: Request, res: Response) => {
       if (!reviewedBy.includes(name)) {
         reviewedBy.push(name);
         update.reviewedBy = reviewedBy;
+      }
+    }
+    if (body.markSeen?.userName?.trim()) {
+      const name = body.markSeen.userName.trim();
+      const seenBy = [...(hand.seenBy || [])];
+      if (!seenBy.includes(name)) {
+        seenBy.push(name);
+        update.seenBy = seenBy;
       }
     }
 

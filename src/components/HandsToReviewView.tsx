@@ -120,11 +120,11 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
               revealedPrivateComments={hook.revealedPrivateComments}
               ratingSaving={hook.ratingSaving === hand._id}
               revealedSpoilerIds={hook.revealedSpoilerIds}
+              revealedRationaleIds={hook.revealedRationaleIds}
               hoverStarRating={hook.hoverStarRating[hand._id] ?? null}
               hoverSpicyRating={hook.hoverSpicyRating[hand._id] ?? null}
               actions={{
-                onToggleExpand: (id) =>
-                  hook.setExpandedId(hook.expandedId === id ? null : id),
+                onToggleExpand: hook.handleToggleExpand,
                 onEdit: hook.openEditModal,
                 onArchive: hook.handleArchive,
                 onDelete: (id) => hook.openDeleteHandConfirm(id),
@@ -134,6 +134,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
                 setHoverStarRating: hook.setHoverStarRating,
                 setHoverSpicyRating: hook.setHoverSpicyRating,
                 setRevealedSpoiler: hook.setRevealedSpoiler,
+                setRevealedRationale: hook.setRevealedRationale,
                 commentActions,
               }}
             />
@@ -146,6 +147,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         onClose={hook.closeAddModal}
         title={hook.addTitle}
         handText={hook.addHandText}
+        rationaleText={hook.addRationale}
         spoilerText={hook.addSpoilerText}
         isPrivate={hook.addIsPrivate}
         initialComment={hook.addInitialComment}
@@ -155,6 +157,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         saving={hook.addSaving}
         onTitleChange={hook.setAddTitle}
         onHandTextChange={hook.setAddHandText}
+        onRationaleTextChange={hook.setAddRationale}
         onSpoilerTextChange={hook.setAddSpoilerText}
         onIsPrivateChange={hook.setAddIsPrivate}
         onInitialCommentChange={hook.setAddInitialComment}
@@ -168,6 +171,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         onClose={hook.closeEditModal}
         title={hook.editTitle}
         handText={hook.editHandText}
+        rationaleText={hook.editRationale}
         spoilerText={hook.editSpoilerText}
         isPrivate={hook.editIsPrivate}
         taggedReviewers={hook.editTaggedReviewers}
@@ -175,6 +179,7 @@ export function HandsToReviewView({ onSuccess, onError }: HandsToReviewViewProps
         saving={hook.editSaving}
         onTitleChange={hook.setEditTitle}
         onHandTextChange={hook.setEditHandText}
+        onRationaleTextChange={hook.setEditRationale}
         onSpoilerTextChange={hook.setEditSpoilerText}
         onIsPrivateChange={hook.setEditIsPrivate}
         onTaggedReviewersChange={hook.setEditTaggedReviewers}

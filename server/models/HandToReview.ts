@@ -28,6 +28,7 @@ const handToReviewSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, default: DEFAULT_HAND_TITLE },
     handText: { type: String, required: true, default: '' },
+    rationale: { type: String, default: '' },
     spoilerText: { type: String, default: '' },
     status: {
       type: String,
@@ -44,6 +45,7 @@ const handToReviewSchema = new mongoose.Schema(
     spicyRatings: { type: [ratingEntrySchema], default: [] },
     archivedAt: { type: Date, default: null },
     taggedReviewerNames: { type: [String], default: [] },
+    seenBy: { type: [String], default: [] },
     reviewedBy: { type: [String], default: [] },
   },
   { timestamps: true }

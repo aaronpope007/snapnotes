@@ -17,6 +17,7 @@ interface EditHandModalProps {
   onClose: () => void;
   title: string;
   handText: string;
+  rationaleText: string;
   spoilerText: string;
   isPrivate: boolean;
   taggedReviewers: string[];
@@ -24,6 +25,7 @@ interface EditHandModalProps {
   saving: boolean;
   onTitleChange: (v: string) => void;
   onHandTextChange: (v: string) => void;
+  onRationaleTextChange: (v: string) => void;
   onSpoilerTextChange: (v: string) => void;
   onIsPrivateChange: (v: boolean) => void;
   onTaggedReviewersChange: (v: string[]) => void;
@@ -36,6 +38,7 @@ export function EditHandModal({
   onClose,
   title,
   handText,
+  rationaleText,
   spoilerText,
   isPrivate,
   taggedReviewers,
@@ -43,6 +46,7 @@ export function EditHandModal({
   saving,
   onTitleChange,
   onHandTextChange,
+  onRationaleTextChange,
   onSpoilerTextChange,
   onIsPrivateChange,
   onTaggedReviewersChange,
@@ -65,6 +69,8 @@ export function EditHandModal({
           onTitleChange={onTitleChange}
           content={handText}
           onContentChange={onHandTextChange}
+          rationaleValue={rationaleText}
+          onRationaleChange={onRationaleTextChange}
           spoilerValue={spoilerText}
           onSpoilerChange={onSpoilerTextChange}
           contentLabel="Hand text"

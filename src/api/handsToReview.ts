@@ -34,6 +34,7 @@ export async function updateHandToReview(
   updates: {
     title?: string;
     handText?: string;
+    rationale?: string;
     spoilerText?: string;
     status?: HandToReviewStatus;
     isPrivate?: boolean;
@@ -47,6 +48,13 @@ export async function updateHandToReview(
 export async function markHandReviewed(id: string, userName: string): Promise<HandToReview> {
   const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
     markReviewed: { userName },
+  });
+  return data;
+}
+
+export async function markHandSeen(id: string, userName: string): Promise<HandToReview> {
+  const { data } = await api.put<HandToReview>(`/hands-to-review/${id}`, {
+    markSeen: { userName },
   });
   return data;
 }

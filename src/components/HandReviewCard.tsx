@@ -46,6 +46,7 @@ export interface HandReviewCardActions {
   setHoverStarRating: (handId: string, value: number | null) => void;
   setHoverSpicyRating: (handId: string, value: number | null) => void;
   setRevealedSpoiler: (handId: string, revealed: boolean) => void;
+  setRevealedRationale: (handId: string, revealed: boolean) => void;
   commentActions: HandReviewCommentsSectionActions;
 }
 
@@ -61,6 +62,7 @@ interface HandReviewCardProps {
   revealedPrivateComments: Set<string>;
   ratingSaving: boolean;
   revealedSpoilerIds: Set<string>;
+  revealedRationaleIds: Set<string>;
   hoverStarRating: number | null;
   hoverSpicyRating: number | null;
   actions: HandReviewCardActions;
@@ -78,6 +80,7 @@ export function HandReviewCard({
   revealedPrivateComments,
   ratingSaving,
   revealedSpoilerIds,
+  revealedRationaleIds,
   hoverStarRating,
   hoverSpicyRating,
   actions: {
@@ -91,6 +94,7 @@ export function HandReviewCard({
     setHoverStarRating,
     setHoverSpicyRating,
     setRevealedSpoiler,
+    setRevealedRationale,
     commentActions,
   },
 }: HandReviewCardProps) {
@@ -107,6 +111,7 @@ export function HandReviewCard({
     ]),
   ].sort();
   const spoilerRevealed = revealedSpoilerIds.has(hand._id);
+  const rationaleRevealed = revealedRationaleIds.has(hand._id);
   const hasReviewed = userName && (hand.reviewedBy ?? []).includes(userName);
   const canMarkReviewed = userName && !hasReviewed && onMarkReviewed;
   const compact = useCompactMode();
@@ -235,8 +240,35 @@ export function HandReviewCard({
           }}
         >
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-            by {hand.createdBy} • {new Date(hand.createdAt).toLocaleDateString()}
+            by {hand.createdBy} • {new Date(hand.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
           </Typography>
+
+          {((hand.taggedReviewerNames ?? []).length > 0) && (
+            <Box sx={{ mb: compact ? 0.5 : 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
+                Pending reviewers
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {(hand.taggedReviewerNames ?? []).map((name) => {
+                  const hasActivity =
+                    (hand.starRatings ?? []).some((r) => r.user === name) ||
+                    (hand.spicyRatings ?? []).some((r) => r.user === name) ||
+                    (hand.comments ?? []).some((c) => c.addedBy === name);
+                  const hasSeen = (hand.seenBy ?? []).includes(name);
+                  const color = hasActivity ? 'success.main' : hasSeen ? 'warning.main' : 'error.main';
+                  return (
+                    <Typography
+                      key={name}
+                      variant="caption"
+                      sx={{ color, fontWeight: 600 }}
+                    >
+                      {name}
+                    </Typography>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
 
           {userName && onAddLeak && (
             <Box sx={{ mb: compact ? 0.5 : 1 }}>
@@ -422,6 +454,55 @@ export function HandReviewCard({
               </Typography>
             )}
           </Box>
+
+          {(hand.rationale ?? '').trim() !== '' && (
+            <Box sx={{ mb: compact ? 1 : 1.5 }}>
+              <Box
+                component="button"
+                type="button"
+                onClick={() => setRevealedRationale(hand._id, !rationaleRevealed)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  p: 0,
+                  color: 'text.secondary',
+                  fontSize: '0.75rem',
+                  '&:hover': { color: 'text.primary' },
+                }}
+                aria-expanded={rationaleRevealed}
+              >
+                {rationaleRevealed ? (
+                  <ExpandLessIcon sx={{ fontSize: 16 }} />
+                ) : (
+                  <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                )}
+                <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                  {rationaleRevealed ? 'Hide rationale' : 'Show rationale'}
+                </Typography>
+              </Box>
+              <Collapse in={rationaleRevealed}>
+                <Box
+                  sx={{
+                    mt: 0.5,
+                    p: compact ? 0.375 : 1,
+                    borderRadius: 0.5,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'action.hover',
+                    fontSize: compact ? '0.7rem' : '0.85rem',
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  <RichNoteRenderer text={hand.rationale ?? ''} cardSize={compact ? 'xxxs' : 'sm'} />
+                </Box>
+              </Collapse>
+            </Box>
+          )}
 
           {(hand.spoilerText ?? '').trim() !== '' && (
             <Box sx={{ mb: compact ? 1 : 1.5 }}>

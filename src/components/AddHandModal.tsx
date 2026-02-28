@@ -17,6 +17,7 @@ interface AddHandModalProps {
   onClose: () => void;
   title: string;
   handText: string;
+  rationaleText: string;
   spoilerText: string;
   isPrivate: boolean;
   initialComment: string;
@@ -26,6 +27,7 @@ interface AddHandModalProps {
   saving: boolean;
   onTitleChange: (v: string) => void;
   onHandTextChange: (v: string) => void;
+  onRationaleTextChange: (v: string) => void;
   onSpoilerTextChange: (v: string) => void;
   onIsPrivateChange: (v: boolean) => void;
   onInitialCommentChange: (v: string) => void;
@@ -39,6 +41,7 @@ export function AddHandModal({
   onClose,
   title,
   handText,
+  rationaleText,
   spoilerText,
   isPrivate,
   initialComment,
@@ -48,6 +51,7 @@ export function AddHandModal({
   saving,
   onTitleChange,
   onHandTextChange,
+  onRationaleTextChange,
   onSpoilerTextChange,
   onIsPrivateChange,
   onInitialCommentChange,
@@ -71,6 +75,8 @@ export function AddHandModal({
           onTitleChange={onTitleChange}
           content={handText}
           onContentChange={onHandTextChange}
+          rationaleValue={rationaleText}
+          onRationaleChange={onRationaleTextChange}
           spoilerValue={spoilerText}
           onSpoilerChange={onSpoilerTextChange}
           contentLabel="Hand text"

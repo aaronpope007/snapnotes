@@ -11,6 +11,7 @@ import {
   deleteHandToReview,
   rateHand,
   markHandReviewed,
+  markHandSeen,
 } from '../api/handsToReview';
 import { fetchReviewers } from '../api/reviewers';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -40,6 +41,7 @@ export function useHandsToReview({
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addTitle, setAddTitle] = useState('');
   const [addHandText, setAddHandText] = useState('');
+  const [addRationale, setAddRationale] = useState('');
   const [addSpoilerText, setAddSpoilerText] = useState('');
   const [addInitialComment, setAddInitialComment] = useState('');
   const [addInitialCommentPrivate, setAddInitialCommentPrivate] = useState(true);
@@ -49,11 +51,13 @@ export function useHandsToReview({
   const [editHand, setEditHand] = useState<HandToReview | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editHandText, setEditHandText] = useState('');
+  const [editRationale, setEditRationale] = useState('');
   const [editSpoilerText, setEditSpoilerText] = useState('');
   const [editIsPrivate, setEditIsPrivate] = useState(false);
   const [editTaggedReviewers, setEditTaggedReviewers] = useState<string[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [revealedSpoilerIds, setRevealedSpoilerIds] = useState<Set<string>>(new Set());
+  const [revealedRationaleIds, setRevealedRationaleIds] = useState<Set<string>>(new Set());
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [commentSaving, setCommentSaving] = useState<string | null>(null);
   const [ratingSaving, setRatingSaving] = useState<string | null>(null);
@@ -112,6 +116,7 @@ export function useHandsToReview({
   const isAddModalDirty = () =>
     addTitle.trim() !== '' ||
     addHandText.trim() !== '' ||
+    addRationale.trim() !== '' ||
     addSpoilerText.trim() !== '' ||
     addInitialComment.trim() !== '' ||
     addTaggedReviewers.length > 0 ||
@@ -126,6 +131,7 @@ export function useHandsToReview({
     return (
       editTitle !== (editHand.title ?? '') ||
       editHandText !== (editHand.handText ?? '') ||
+      editRationale !== (editHand.rationale ?? '') ||
       editSpoilerText !== (editHand.spoilerText ?? '') ||
       editIsPrivate !== (editHand.isPrivate ?? false) ||
       !taggedSame
@@ -138,6 +144,7 @@ export function useHandsToReview({
         setAddModalOpen(false);
         setAddTitle('');
         setAddHandText('');
+        setAddRationale('');
         setAddSpoilerText('');
         setAddInitialComment('');
         setAddInitialCommentPrivate(true);
@@ -148,6 +155,7 @@ export function useHandsToReview({
       setAddModalOpen(false);
       setAddTitle('');
       setAddHandText('');
+      setAddRationale('');
       setAddSpoilerText('');
       setAddInitialComment('');
       setAddInitialCommentPrivate(true);
@@ -171,6 +179,7 @@ export function useHandsToReview({
       const created = await createHandToReview({
         title: addTitle.trim() || DEFAULT_HAND_TITLE,
         handText: addHandText.trim(),
+        rationale: addRationale.trim() || undefined,
         spoilerText: addSpoilerText.trim() || undefined,
         createdBy: userName || 'Anonymous',
         isPrivate: addIsPrivate || undefined,
@@ -188,6 +197,7 @@ export function useHandsToReview({
       setAddModalOpen(false);
       setAddTitle('');
       setAddHandText('');
+      setAddRationale('');
       setAddSpoilerText('');
       setAddInitialComment('');
       setAddInitialCommentPrivate(true);
@@ -229,6 +239,7 @@ export function useHandsToReview({
     setEditHand(hand);
     setEditTitle(hand.title || '');
     setEditHandText(hand.handText || '');
+    setEditRationale(hand.rationale ?? '');
     setEditSpoilerText(hand.spoilerText ?? '');
     setEditIsPrivate(hand.isPrivate ?? false);
     setEditTaggedReviewers(hand.taggedReviewerNames ?? []);
@@ -241,6 +252,7 @@ export function useHandsToReview({
       const updated = await updateHandToReview(editHand._id, {
         title: editTitle.trim() || DEFAULT_HAND_TITLE,
         handText: editHandText.trim(),
+        rationale: editRationale.trim(),
         spoilerText: editSpoilerText.trim(),
         isPrivate: editIsPrivate,
         taggedReviewerNames: editTaggedReviewers,
@@ -391,6 +403,15 @@ export function useHandsToReview({
     });
   };
 
+  const setRevealedRationale = (handId: string, revealed: boolean) => {
+    setRevealedRationaleIds((prev) => {
+      const next = new Set(prev);
+      if (revealed) next.add(handId);
+      else next.delete(handId);
+      return next;
+    });
+  };
+
   const setHoverStarRating = (handId: string, value: number | null) => {
     setHoverStarRatingState((prev) => ({ ...prev, [handId]: value }));
   };
@@ -426,6 +447,20 @@ export function useHandsToReview({
       onSuccess?.('Marked as reviewed');
     } catch {
       onError?.('Failed to mark as reviewed');
+    }
+  };
+
+  const handleToggleExpand = (handId: string) => {
+    const nextId = expandedId === handId ? null : handId;
+    setExpandedId(nextId);
+    if (nextId === handId && userName) {
+      const hand = hands.find((h) => h._id === handId);
+      const tagged = hand?.taggedReviewerNames ?? [];
+      const seen = hand?.seenBy ?? [];
+      if (tagged.includes(userName) && !seen.includes(userName)) {
+        void markHandSeen(handId, userName)
+          .then((updated) => setHands((prev) => prev.map((h) => (h._id === handId ? updated : h))));
+      }
     }
   };
 
@@ -497,12 +532,15 @@ export function useHandsToReview({
     setSortOrder,
     expandedId,
     setExpandedId,
+    handleToggleExpand,
     addModalOpen,
     setAddModalOpen,
     addTitle,
     setAddTitle,
     addHandText,
     setAddHandText,
+    addRationale,
+    setAddRationale,
     addSpoilerText,
     setAddSpoilerText,
     addInitialComment,
@@ -519,6 +557,8 @@ export function useHandsToReview({
     setEditTitle,
     editHandText,
     setEditHandText,
+    editRationale,
+    setEditRationale,
     editSpoilerText,
     setEditSpoilerText,
     editIsPrivate,
@@ -550,6 +590,8 @@ export function useHandsToReview({
     handleConfirmDeleteComment,
     revealedSpoilerIds,
     setRevealedSpoiler,
+    revealedRationaleIds,
+    setRevealedRationale,
     hoverStarRating,
     hoverSpicyRating,
     setHoverStarRating,

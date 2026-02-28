@@ -29,6 +29,9 @@ export interface HandHistoryFormContentProps {
   contentRequired?: boolean;
   /** Card size in the preview */
   cardSize?: 'xxs' | 'xs' | 'sm' | 'md';
+  /** Optional rationale text; when provided with onRationaleChange, rationale field is shown above spoiler */
+  rationaleValue?: string;
+  onRationaleChange?: (value: string) => void;
   /** Optional spoiler text; when provided with onSpoilerChange, spoiler section is shown and card picker inserts into focused field */
   spoilerValue?: string;
   onSpoilerChange?: (value: string) => void;
@@ -43,6 +46,8 @@ export function HandHistoryFormContent({
   placeholder = DEFAULT_PLACEHOLDER,
   contentRequired = false,
   cardSize = 'xs',
+  rationaleValue = '',
+  onRationaleChange,
   spoilerValue = '',
   onSpoilerChange,
 }: HandHistoryFormContentProps) {
@@ -329,7 +334,36 @@ export function HandHistoryFormContent({
             }}
           />
 
-          {hasSpoiler && (
+          {onRationaleChange !== undefined && (
+            <TextField
+              fullWidth
+              label="Rationale (optional)"
+              placeholder="e.g. Why you played this hand, what you were thinking"
+              multiline
+              minRows={2}
+              maxRows={4}
+              value={rationaleValue}
+              onChange={(e) => onRationaleChange(e.target.value)}
+              margin="normal"
+              size="small"
+              sx={{ mt: 1 }}
+              slotProps={{
+                input: { 'aria-label': 'Hand rationale' },
+              }}
+            />
+          )}
+
+          {hasSpoiler && spoilerValue.trim() === '' && !spoilerSectionOpen && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setSpoilerSectionOpen(true)}
+              sx={{ mt: 1 }}
+            >
+              Add spoiler (optional)
+            </Button>
+          )}
+          {hasSpoiler && (spoilerValue.trim() !== '' || spoilerSectionOpen) && (
             <Box sx={{ mt: 1 }}>
               <Box
                 component="button"
@@ -354,7 +388,7 @@ export function HandHistoryFormContent({
                   <ExpandMoreIcon fontSize="small" />
                 )}
                 <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                  Spoiler (optional)
+                  {spoilerValue.trim() !== '' ? 'Spoiler' : 'Spoiler (optional)'}
                 </Typography>
               </Box>
               <Collapse in={spoilerSectionOpen}>

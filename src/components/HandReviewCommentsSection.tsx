@@ -54,46 +54,51 @@ export function HandReviewCommentsSection({
   },
 }: HandReviewCommentsSectionProps) {
   const allComments = (hand.comments ?? []).map((c, i) => ({ c, i }));
+  const hasComments = allComments.length > 0;
 
   return (
     <>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-        Comments ({allComments.length})
-      </Typography>
-      <Box sx={{ mt: 0.5, mb: 1 }}>
-        {allComments.map(({ c, i }) => {
-          const key = commentKey(hand._id, i);
-          const isPrivateHiddenForReviewer =
-            !!c.authorOnly && hand.createdBy !== userName && !revealedPrivateComments.has(key);
-          const isEditing =
-            editingComment?.handId === hand._id && editingComment?.commentIndex === i;
-          const expanded = expandedComments.has(key);
-          return (
-            <HandReviewCommentRow
-              key={i}
-              comment={c}
-              commentIndex={i}
-              handId={hand._id}
-              handCreatedBy={hand.createdBy}
-              userName={userName}
-              isPrivateHiddenForReviewer={isPrivateHiddenForReviewer}
-              expanded={expanded}
-              isEditing={isEditing}
-              editingText={editingCommentText}
-              commentSaving={commentSaving}
-              onToggleExpanded={() => onToggleExpanded(key)}
-              onShowInitialComment={onShowInitialComment(hand._id, i)}
-              onEditingTextChange={onEditingTextChange}
-              onStartEdit={() => onStartEdit(hand._id, i, c.text)}
-              onCancelEdit={onCancelEdit}
-              onSaveEdit={onSaveEdit}
-              onTogglePrivate={() => onTogglePrivate(hand._id, i, !!c.authorOnly)}
-              onDelete={() => onDeleteClick(hand._id, i)}
-            />
-          );
-        })}
-      </Box>
-      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+      {hasComments && (
+        <>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+            Comments ({allComments.length})
+          </Typography>
+          <Box sx={{ mt: 0.5, mb: 1 }}>
+            {allComments.map(({ c, i }) => {
+              const key = commentKey(hand._id, i);
+              const isPrivateHiddenForReviewer =
+                !!c.authorOnly && hand.createdBy !== userName && !revealedPrivateComments.has(key);
+              const isEditing =
+                editingComment?.handId === hand._id && editingComment?.commentIndex === i;
+              const expanded = expandedComments.has(key);
+              return (
+                <HandReviewCommentRow
+                  key={i}
+                  comment={c}
+                  commentIndex={i}
+                  handId={hand._id}
+                  handCreatedBy={hand.createdBy}
+                  userName={userName}
+                  isPrivateHiddenForReviewer={isPrivateHiddenForReviewer}
+                  expanded={expanded}
+                  isEditing={isEditing}
+                  editingText={editingCommentText}
+                  commentSaving={commentSaving}
+                  onToggleExpanded={() => onToggleExpanded(key)}
+                  onShowInitialComment={onShowInitialComment(hand._id, i)}
+                  onEditingTextChange={onEditingTextChange}
+                  onStartEdit={() => onStartEdit(hand._id, i, c.text)}
+                  onCancelEdit={onCancelEdit}
+                  onSaveEdit={onSaveEdit}
+                  onTogglePrivate={() => onTogglePrivate(hand._id, i, !!c.authorOnly)}
+                  onDelete={() => onDeleteClick(hand._id, i)}
+                />
+              );
+            })}
+          </Box>
+        </>
+      )}
+      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start', mt: hasComments ? 0 : 0 }}>
         <TextField
           fullWidth
           size="small"

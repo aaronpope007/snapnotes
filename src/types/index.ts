@@ -114,6 +114,7 @@ export interface HandToReview {
   _id: string;
   title: string;
   handText: string;
+  rationale?: string;
   spoilerText?: string;
   status: HandToReviewStatus;
   createdBy: string;
@@ -124,6 +125,8 @@ export interface HandToReview {
   spicyRatings?: HandRatingEntry[];
   archivedAt: string | null;
   taggedReviewerNames?: string[];
+  /** Reviewer names who have expanded/opened the hand. */
+  seenBy?: string[];
   reviewedBy?: string[];
   createdAt: string;
   updatedAt: string;
@@ -132,6 +135,7 @@ export interface HandToReview {
 export interface HandToReviewCreate {
   title?: string;
   handText: string;
+  rationale?: string;
   spoilerText?: string;
   createdBy: string;
   isPrivate?: boolean;
