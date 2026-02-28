@@ -1,8 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
-import List from '@mui/material/List';
-import ListItemButton from '@mui/material/ListItemButton';
-import Paper from '@mui/material/Paper';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
 import type { PlayerListItem } from '../types';
@@ -14,82 +12,50 @@ interface SearchBarProps {
   selectedId?: string | null;
 }
 
-export function SearchBar({ players, onSelect, onNoMatchCreate, selectedId }: SearchBarProps) {
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
+export function SearchBar({ players, onSelect, onNoMatchCreate }: SearchBarProps) {
+  const [inputValue, setInputValue] = useState('');
 
-  const filtered = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return players.filter((p) => p.username.toLowerCase().includes(q));
-  }, [players, query]);
-
-  const handleSelect = (p: PlayerListItem) => {
-    onSelect(p);
-    setQuery('');
-    setOpen(false);
+  const handleChange = (_: React.SyntheticEvent, value: PlayerListItem | string | null) => {
+    if (typeof value === 'string') {
+      if (value.trim() && onNoMatchCreate) onNoMatchCreate(value.trim());
+    } else if (value) {
+      onSelect(value);
+    }
+    setInputValue('');
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <TextField
-        fullWidth
-        size="small"
-        placeholder="Search players..."
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Tab' || e.key === 'Enter') {
-            if (filtered.length >= 1) {
-              e.preventDefault();
-              handleSelect(filtered[0]);
-            } else if (filtered.length === 0 && query.trim() && onNoMatchCreate) {
-              e.preventDefault();
-              onNoMatchCreate(query.trim());
-              setQuery('');
-              setOpen(false);
-            }
-          }
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon fontSize="small" />
-            </InputAdornment>
-          ),
-        }}
-      />
-      {open && filtered.length > 0 && (
-        <Paper
-          sx={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            maxHeight: 200,
-            overflow: 'auto',
-            mt: 0.5,
+    <Autocomplete
+      options={players}
+      getOptionLabel={(p) => (typeof p === 'string' ? p : p.username)}
+      inputValue={inputValue}
+      onInputChange={(_, v) => setInputValue(v)}
+      onChange={handleChange}
+      freeSolo={!!onNoMatchCreate}
+      size="small"
+      forcePopupIcon={false}
+      filterOptions={(opts, { inputValue: q }) => {
+        if (!q.trim()) return [];
+        const lower = q.toLowerCase();
+        return opts.filter((p) => p.username.toLowerCase().includes(lower)).slice(0, 15);
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          placeholder="Search players..."
+          InputProps={{
+            ...params.InputProps,
+            startAdornment: (
+              <>
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+                {params.InputProps.startAdornment}
+              </>
+            ),
           }}
-        >
-          <List dense disablePadding>
-            {filtered.slice(0, 15).map((p) => (
-              <ListItemButton
-                key={p._id}
-                selected={p._id === selectedId}
-                onClick={() => handleSelect(p)}
-              >
-                {p.username}
-              </ListItemButton>
-            ))}
-          </List>
-        </Paper>
+        />
       )}
-    </div>
+    />
   );
 }
