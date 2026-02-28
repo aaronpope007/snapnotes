@@ -22,6 +22,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
 import PersonIcon from '@mui/icons-material/Person';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import TuneIcon from '@mui/icons-material/Tune';
 import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -36,6 +37,7 @@ import { MergePlayerDialog } from './components/MergePlayerDialog';
 import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
 import { ChangeNameDialog } from './components/ChangeNameDialog';
 import { ImprovementNotesDialog } from './components/ImprovementNotesDialog';
+import { DefaultStakesDialog } from './components/DefaultStakesDialog';
 import { MDFPanel } from './components/MDFPanel';
 import { FoldEquityPanel } from './components/FoldEquityPanel';
 import { GeoPanel } from './components/GeoPanel';
@@ -105,6 +107,7 @@ export default function App() {
   const settingsOpen = Boolean(settingsAnchorEl);
   const [changeNameOpen, setChangeNameOpen] = useState(false);
   const [improvementNotesOpen, setImprovementNotesOpen] = useState(false);
+  const [defaultStakesDialogOpen, setDefaultStakesDialogOpen] = useState(false);
   const [rngValue, setRngValue] = useState<number | null>(null);
   const handleRngClick = () => setRngValue(Math.floor(Math.random() * 100) + 1);
   const [snackbar, setSnackbar] = useState<{
@@ -340,6 +343,10 @@ export default function App() {
         <MenuItem onClick={() => { setSettingsAnchorEl(null); setImprovementNotesOpen(true); }}>
           <EditNoteIcon fontSize="small" sx={{ mr: 1 }} />
           Improvement notes
+        </MenuItem>
+        <MenuItem onClick={() => { setSettingsAnchorEl(null); setDefaultStakesDialogOpen(true); }}>
+          <TuneIcon fontSize="small" sx={{ mr: 1 }} />
+          Default stakes for new players
         </MenuItem>
         <MenuItem onClick={() => { setSettingsAnchorEl(null); setImportOpen(true); }}>
           <ImportExportIcon fontSize="small" sx={{ mr: 1 }} />
@@ -893,6 +900,11 @@ export default function App() {
         }}
         onSuccess={showSuccess}
         onError={showError}
+      />
+
+      <DefaultStakesDialog
+        open={defaultStakesDialogOpen}
+        onClose={() => setDefaultStakesDialogOpen(false)}
       />
 
       <Snackbar

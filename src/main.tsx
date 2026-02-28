@@ -8,6 +8,7 @@ import { UserNameProvider } from './context/UserNameContext';
 import { CompactModeProvider } from './context/CompactModeContext';
 import { HorizontalModeProvider } from './context/HorizontalModeContext';
 import { CalculatorVisibilityProvider } from './context/CalculatorVisibilityContext';
+import { DefaultStakesProvider } from './context/DefaultStakesContext';
 import { LearningVisibilityProvider } from './context/LearningVisibilityContext';
 import App from './App.tsx';
 import './index.css';
@@ -27,9 +28,11 @@ createRoot(document.getElementById('root')!).render(
         <CompactModeProvider>
           <HorizontalModeProvider>
             <CalculatorVisibilityProvider>
+              <DefaultStakesProvider>
               <LearningVisibilityProvider>
                 <App />
               </LearningVisibilityProvider>
+              </DefaultStakesProvider>
             </CalculatorVisibilityProvider>
           </HorizontalModeProvider>
         </CompactModeProvider>

@@ -15,6 +15,7 @@ import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import { useUserName } from '../context/UserNameContext';
+import { useDefaultStakes } from '../context/DefaultStakesContext';
 import {
   PLAYER_TYPE_KEYS,
   getPlayerTypeColor,
@@ -32,6 +33,7 @@ interface AddPlayerModalProps {
 
 export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: AddPlayerModalProps) {
   const userName = useUserName();
+  const defaultStakes = useDefaultStakes();
   const [username, setUsername] = useState('');
   const [playerType, setPlayerType] = useState<PlayerTypeKey>('unknown');
   const [gameTypes, setGameTypes] = useState<string[]>([]);
@@ -52,10 +54,14 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     rawNote.trim() !== '';
 
   useEffect(() => {
-    if (open && initialUsername) {
-      setUsername(initialUsername);
+    if (open) {
+      if (initialUsername) setUsername(initialUsername);
+      setGameTypes(defaultStakes.gameTypes);
+      setStakesSeenAt(defaultStakes.stakesSeenAt);
+      setFormats(defaultStakes.formats);
+      setOrigin(defaultStakes.origin);
     }
-  }, [open, initialUsername]);
+  }, [open, initialUsername, defaultStakes.gameTypes, defaultStakes.stakesSeenAt, defaultStakes.formats, defaultStakes.origin]);
 
   const reset = () => {
     setUsername('');
