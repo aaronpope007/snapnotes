@@ -100,10 +100,7 @@ export default function App() {
   const [addOpen, setAddOpen] = useState(false);
   const [addInitialUsername, setAddInitialUsername] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
-  const [showHandsToReview, setShowHandsToReview] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.has('hand');
-  });
+  const [showHandsToReview, setShowHandsToReview] = useState(false);
   const [initialHandId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('hand') ?? null;
