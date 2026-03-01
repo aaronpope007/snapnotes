@@ -20,8 +20,8 @@ interface TempNoteModalProps {
   onCopySuccess?: () => void;
   onCopyError?: (msg: string) => void;
   onAppendToPlayer?: (playerId: string, noteText: string) => Promise<void>;
-  onAddHandForReview?: (handText: string) => Promise<void>;
-  onAppendAndAddHand?: (playerId: string, noteText: string) => Promise<void>;
+  onAddHandForReview?: (handText: string, title?: string) => Promise<void>;
+  onAppendAndAddHand?: (playerId: string, noteText: string, title?: string) => Promise<void>;
 }
 
 export function TempNoteModal({
@@ -36,6 +36,7 @@ export function TempNoteModal({
   onAppendAndAddHand,
 }: TempNoteModalProps) {
   const [text, setText] = useState('');
+  const [handTitle, setHandTitle] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerListItem | null>(null);
   const [highlightedOption, setHighlightedOption] = useState<PlayerListItem | null>(null);
   const [playerSearch, setPlayerSearch] = useState('');
@@ -60,6 +61,7 @@ export function TempNoteModal({
 
   const handleClear = () => {
     setText('');
+    setHandTitle('');
   };
 
   const filteredPlayers = filterPlayers(players, playerSearch);
@@ -86,12 +88,13 @@ export function TempNoteModal({
     if (!text.trim() || !onAddHandForReview) return;
     setAddHandSaving(true);
     try {
-      await onAddHandForReview(text.trim());
+      await onAddHandForReview(text.trim(), handTitle.trim() || undefined);
       setText('');
+      setHandTitle('');
     } finally {
       setAddHandSaving(false);
     }
-  }, [text, onAddHandForReview]);
+  }, [text, handTitle, onAddHandForReview]);
 
   const handleAppendAndAddHand = useCallback(
     async (player?: PlayerListItem) => {
@@ -99,15 +102,16 @@ export function TempNoteModal({
       if (!p || !text.trim() || !onAppendAndAddHand) return;
       setAppendAndAddSaving(true);
       try {
-        await onAppendAndAddHand(p._id, text.trim());
+        await onAppendAndAddHand(p._id, text.trim(), handTitle.trim() || undefined);
         setText('');
+        setHandTitle('');
         setSelectedPlayer(null);
         setPlayerSearch('');
       } finally {
         setAppendAndAddSaving(false);
       }
     },
-    [selectedPlayer, text, onAppendAndAddHand]
+    [selectedPlayer, text, handTitle, onAppendAndAddHand]
   );
 
   const appendBusy = appending || appendAndAddSaving;
@@ -127,6 +131,17 @@ export function TempNoteModal({
           variant="outlined"
           sx={{ mt: 0.5 }}
         />
+        {(onAddHandForReview || onAppendAndAddHand) && userName && (
+          <TextField
+            fullWidth
+            size="small"
+            label="Hand title (optional)"
+            placeholder="Title for hand for review"
+            value={handTitle}
+            onChange={(e) => setHandTitle(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+        )}
         {onAppendToPlayer && userName && (
           <Box sx={{ mt: 2 }}>
             <Box

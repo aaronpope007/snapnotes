@@ -176,7 +176,7 @@ export default function App() {
     }
   };
 
-  const handleAddHandFromTempNote = async (handText: string) => {
+  const handleAddHandFromTempNote = async (handText: string, title?: string) => {
     if (!userName?.trim()) {
       showError('Enter your name to add hands for review');
       return;
@@ -184,6 +184,7 @@ export default function App() {
     try {
       await createHandToReview({
         handText: handText.trim(),
+        title: title?.trim() || undefined,
         createdBy: userName.trim(),
       });
       setTempNoteOpen(false);
@@ -197,14 +198,18 @@ export default function App() {
     }
   };
 
-  const handleAppendAndAddHandFromTempNote = async (playerId: string, noteText: string) => {
+  const handleAppendAndAddHandFromTempNote = async (
+    playerId: string,
+    noteText: string,
+    title?: string
+  ) => {
     if (!userName?.trim()) {
       showError('Enter your name to append notes');
       return;
     }
     try {
       await handleAppendTempNoteToPlayer(playerId, noteText);
-      await handleAddHandFromTempNote(noteText);
+      await handleAddHandFromTempNote(noteText, title);
     } catch {
       // Errors shown by individual handlers
     }
