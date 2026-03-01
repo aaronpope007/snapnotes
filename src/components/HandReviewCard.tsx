@@ -137,6 +137,7 @@ export function HandReviewCard({
           alignItems: 'center',
           gap: compact ? 0.25 : 0.5,
           width: '100%',
+          minWidth: 0,
           p: compact ? 0.375 : 1,
           minHeight: compact ? 28 : undefined,
           border: 'none',
@@ -147,17 +148,20 @@ export function HandReviewCard({
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <IconButton size="small" sx={{ p: 0 }}>
+        <IconButton size="small" sx={{ p: 0, flexShrink: 0 }}>
           {expanded ? (
             <ExpandLessIcon fontSize="small" />
           ) : (
             <ExpandMoreIcon fontSize="small" />
           )}
         </IconButton>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <Typography
             variant={compact ? 'caption' : 'body2'}
+            component="span"
+            title={hand.title || DEFAULT_HAND_TITLE}
             sx={{
+              display: 'block',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -185,12 +189,12 @@ export function HandReviewCard({
           )}
         </Box>
         {hand.isPrivate && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mr: 0.5 }} title="Private (only you see this)">
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mr: 0.5, flexShrink: 0 }} title="Private (only you see this)">
             <LockIcon sx={{ fontSize: 14 }} />
             Private
           </Typography>
         )}
-        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, flexShrink: 0 }}>
           {hand.status === 'archived' ? 'Archived' : 'Open'}
         </Typography>
         <IconButton
@@ -199,7 +203,7 @@ export function HandReviewCard({
             e.stopPropagation();
             onCopyLink(hand._id);
           }}
-          sx={{ p: 0.25 }}
+          sx={{ p: 0.25, flexShrink: 0 }}
           aria-label="Copy link"
           title="Copy link to paste in Discord"
         >
@@ -211,7 +215,7 @@ export function HandReviewCard({
             e.stopPropagation();
             onEdit(hand);
           }}
-          sx={{ p: 0.25 }}
+          sx={{ p: 0.25, flexShrink: 0 }}
           aria-label="Edit"
         >
           <EditIcon fontSize="small" />
@@ -222,7 +226,7 @@ export function HandReviewCard({
             e.stopPropagation();
             onArchive(hand);
           }}
-          sx={{ p: 0.25 }}
+          sx={{ p: 0.25, flexShrink: 0 }}
           aria-label={hand.status === 'archived' ? 'Unarchive' : 'Archive'}
         >
           {hand.status === 'archived' ? (
@@ -237,7 +241,7 @@ export function HandReviewCard({
             e.stopPropagation();
             onDelete(hand._id);
           }}
-          sx={{ p: 0.25 }}
+          sx={{ p: 0.25, flexShrink: 0 }}
           aria-label="Delete"
         >
           <DeleteIcon fontSize="small" />

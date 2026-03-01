@@ -59,6 +59,7 @@ export function LeakCard({
           alignItems: 'center',
           gap: compact ? 0.25 : 0.5,
           width: '100%',
+          minWidth: 0,
           p: compact ? 0.375 : 1,
           minHeight: compact ? 28 : undefined,
           border: 'none',
@@ -69,17 +70,20 @@ export function LeakCard({
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <IconButton size="small" sx={{ p: 0 }}>
+        <IconButton size="small" sx={{ p: 0, flexShrink: 0 }}>
           {expanded ? (
             <ExpandLessIcon fontSize="small" />
           ) : (
             <ExpandMoreIcon fontSize="small" />
           )}
         </IconButton>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <Typography
             variant={compact ? 'caption' : 'body2'}
+            component="span"
+            title={leak.title || 'Untitled leak'}
             sx={{
+              display: 'block',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -105,6 +109,7 @@ export function LeakCard({
             color: 'rgba(0,0,0,0.7)',
             cursor: 'pointer',
             textTransform: 'capitalize',
+            flexShrink: 0,
           }}
           title="Click to cycle status"
         >
@@ -119,12 +124,13 @@ export function LeakCard({
             fontSize: '0.7rem',
             bgcolor: 'action.selected',
             color: 'text.secondary',
+            flexShrink: 0,
           }}
         >
           {categoryLabel}
         </Box>
         {leak.playerUsername && (
-          <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.7rem' }}>
+          <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.7rem', flexShrink: 0 }}>
             {leak.playerUsername}
           </Typography>
         )}
@@ -137,7 +143,7 @@ export function LeakCard({
               e.stopPropagation();
               onLinkClick?.(leak);
             }}
-            sx={{ cursor: onLinkClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 0.25 }}
+            sx={{ cursor: onLinkClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}
             title={`${linkedCount} hand${linkedCount !== 1 ? 's' : ''} linked`}
           >
             <LinkIcon sx={{ fontSize: 12 }} />
@@ -151,7 +157,7 @@ export function LeakCard({
               e.stopPropagation();
               onResolve(leak);
             }}
-            sx={{ p: 0.25 }}
+            sx={{ p: 0.25, flexShrink: 0 }}
             aria-label="Resolve"
             title="Mark as resolved"
           >
@@ -164,7 +170,7 @@ export function LeakCard({
             e.stopPropagation();
             onEdit(leak);
           }}
-          sx={{ p: 0.25 }}
+          sx={{ p: 0.25, flexShrink: 0 }}
           aria-label="Edit"
         >
           <EditIcon fontSize="small" />
@@ -175,7 +181,7 @@ export function LeakCard({
             e.stopPropagation();
             onDelete(leak._id);
           }}
-          sx={{ p: 0.25 }}
+          sx={{ p: 0.25, flexShrink: 0 }}
           aria-label="Delete"
         >
           <DeleteIcon fontSize="small" />
