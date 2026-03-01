@@ -195,7 +195,10 @@ export default function App() {
       setPlayers((prev) =>
         prev.map((p) => (p._id === playerId ? { ...p, updatedAt: updated.updatedAt } : p))
       );
-      if (selected?._id === playerId) setSelected(updated);
+      setTempNoteOpen(false);
+      setShowHandsToReview(false);
+      setShowLearning(false);
+      setSelected(updated);
       showSuccess('Note appended to ' + full.username);
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to append note'));
