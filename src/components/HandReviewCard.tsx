@@ -122,6 +122,24 @@ export function HandReviewCard({
   const canMarkReviewed = userName && !hasReviewed && onMarkReviewed;
   const compact = useCompactMode();
 
+  const tagged = hand.taggedReviewerNames ?? [];
+  const isOwner = userName === hand.createdBy;
+  const allReviewedAndCommented =
+    tagged.length > 0 &&
+    tagged.every((name) => {
+      const inReviewed = (hand.reviewedBy ?? []).includes(name);
+      const hasComment = (hand.comments ?? []).some((c) => c.addedBy === name);
+      return inReviewed && hasComment;
+    });
+  const hasTaggedPending = tagged.length > 0 && !allReviewedAndCommented;
+
+  const listRowBorderLeft =
+    isOwner && allReviewedAndCommented
+      ? { borderLeft: '4px solid', borderLeftColor: 'success.main' }
+      : isOwner && hasTaggedPending
+        ? { borderLeft: '4px solid', borderLeftColor: 'error.main' }
+        : undefined;
+
   return (
     <Paper
       variant="outlined"
@@ -130,6 +148,7 @@ export function HandReviewCard({
         borderColor: 'divider',
         borderRadius: 1,
         overflow: 'hidden',
+        ...listRowBorderLeft,
       }}
     >
       <Box

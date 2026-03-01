@@ -7,6 +7,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RateReviewIcon from '@mui/icons-material/RateReview';
@@ -20,8 +21,18 @@ interface TempNoteModalProps {
   onCopySuccess?: () => void;
   onCopyError?: (msg: string) => void;
   onAppendToPlayer?: (playerId: string, noteText: string) => Promise<void>;
-  onAddHandForReview?: (handText: string, title?: string) => Promise<void>;
-  onAppendAndAddHand?: (playerId: string, noteText: string, title?: string) => Promise<void>;
+  onAddHandForReview?: (
+    handText: string,
+    title?: string,
+    taggedReviewerNames?: string[]
+  ) => Promise<void>;
+  onAppendAndAddHand?: (
+    playerId: string,
+    noteText: string,
+    title?: string,
+    taggedReviewerNames?: string[]
+  ) => Promise<void>;
+  reviewerOptions?: string[];
 }
 
 export function TempNoteModal({
@@ -34,9 +45,11 @@ export function TempNoteModal({
   onAppendToPlayer,
   onAddHandForReview,
   onAppendAndAddHand,
+  reviewerOptions = [],
 }: TempNoteModalProps) {
   const [text, setText] = useState('');
   const [handTitle, setHandTitle] = useState('');
+  const [taggedReviewers, setTaggedReviewers] = useState<string[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerListItem | null>(null);
   const [highlightedOption, setHighlightedOption] = useState<PlayerListItem | null>(null);
   const [playerSearch, setPlayerSearch] = useState('');
@@ -62,6 +75,7 @@ export function TempNoteModal({
   const handleClear = () => {
     setText('');
     setHandTitle('');
+    setTaggedReviewers([]);
   };
 
   const filteredPlayers = filterPlayers(players, playerSearch);
@@ -88,13 +102,18 @@ export function TempNoteModal({
     if (!text.trim() || !onAddHandForReview) return;
     setAddHandSaving(true);
     try {
-      await onAddHandForReview(text.trim(), handTitle.trim() || undefined);
+      await onAddHandForReview(
+        text.trim(),
+        handTitle.trim() || undefined,
+        taggedReviewers.length > 0 ? taggedReviewers : undefined
+      );
       setText('');
       setHandTitle('');
+      setTaggedReviewers([]);
     } finally {
       setAddHandSaving(false);
     }
-  }, [text, handTitle, onAddHandForReview]);
+  }, [text, handTitle, taggedReviewers, onAddHandForReview]);
 
   const handleAppendAndAddHand = useCallback(
     async (player?: PlayerListItem) => {
@@ -102,16 +121,22 @@ export function TempNoteModal({
       if (!p || !text.trim() || !onAppendAndAddHand) return;
       setAppendAndAddSaving(true);
       try {
-        await onAppendAndAddHand(p._id, text.trim(), handTitle.trim() || undefined);
+        await onAppendAndAddHand(
+          p._id,
+          text.trim(),
+          handTitle.trim() || undefined,
+          taggedReviewers.length > 0 ? taggedReviewers : undefined
+        );
         setText('');
         setHandTitle('');
+        setTaggedReviewers([]);
         setSelectedPlayer(null);
         setPlayerSearch('');
       } finally {
         setAppendAndAddSaving(false);
       }
     },
-    [selectedPlayer, text, handTitle, onAppendAndAddHand]
+    [selectedPlayer, text, handTitle, taggedReviewers, onAppendAndAddHand]
   );
 
   const appendBusy = appending || appendAndAddSaving;
@@ -132,15 +157,41 @@ export function TempNoteModal({
           sx={{ mt: 0.5 }}
         />
         {(onAddHandForReview || onAppendAndAddHand) && userName && (
-          <TextField
-            fullWidth
-            size="small"
-            label="Hand title (optional)"
-            placeholder="Title for hand for review"
-            value={handTitle}
-            onChange={(e) => setHandTitle(e.target.value)}
-            sx={{ mt: 2 }}
-          />
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Hand title (optional)"
+              placeholder="Title for hand for review"
+              value={handTitle}
+              onChange={(e) => setHandTitle(e.target.value)}
+            />
+            {reviewerOptions.length > 0 && (
+              <Box sx={{ mt: 1.5 }}>
+                <Box
+                  component="span"
+                  sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+                >
+                  Tag reviewers (optional)
+                </Box>
+                <Autocomplete
+                  multiple
+                  size="small"
+                  options={reviewerOptions}
+                  value={taggedReviewers}
+                  onChange={(_, v) => setTaggedReviewers(v)}
+                  renderInput={(params) => (
+                    <TextField {...params} placeholder="Select who should review" />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip label={option} size="small" {...getTagProps({ index })} key={option} />
+                    ))
+                  }
+                />
+              </Box>
+            )}
+          </Box>
         )}
         {onAppendToPlayer && userName && (
           <Box sx={{ mt: 2 }}>

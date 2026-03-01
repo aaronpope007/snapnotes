@@ -61,6 +61,7 @@ import {
 } from './api/players';
 import { exportBackup, restoreBackup, type BackupPayload } from './api/backup';
 import { createHandToReview, fetchHandsToReview } from './api/handsToReview';
+import { fetchReviewers } from './api/reviewers';
 import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
@@ -120,6 +121,7 @@ export default function App() {
   const [rngValue, setRngValue] = useState<number | null>(null);
   const handleRngClick = () => setRngValue(Math.floor(Math.random() * 100) + 1);
   const [tempNoteOpen, setTempNoteOpen] = useState(false);
+  const [reviewersList, setReviewersList] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -152,6 +154,10 @@ export default function App() {
   useEffect(() => {
     loadPlayers();
   }, [loadPlayers]);
+
+  useEffect(() => {
+    fetchReviewers().then(setReviewersList).catch(() => setReviewersList([]));
+  }, []);
 
   useEffect(() => {
     if (!userName?.trim()) return;
@@ -205,7 +211,11 @@ export default function App() {
     }
   };
 
-  const handleAddHandFromTempNote = async (handText: string, title?: string) => {
+  const handleAddHandFromTempNote = async (
+    handText: string,
+    title?: string,
+    taggedReviewerNames?: string[]
+  ) => {
     if (!userName?.trim()) {
       showError('Enter your name to add hands for review');
       return;
@@ -214,6 +224,8 @@ export default function App() {
       await createHandToReview({
         handText: handText.trim(),
         title: title?.trim() || undefined,
+        taggedReviewerNames:
+          taggedReviewerNames?.length ? taggedReviewerNames : undefined,
         createdBy: userName.trim(),
       });
       setTempNoteOpen(false);
@@ -230,7 +242,8 @@ export default function App() {
   const handleAppendAndAddHandFromTempNote = async (
     playerId: string,
     noteText: string,
-    title?: string
+    title?: string,
+    taggedReviewerNames?: string[]
   ) => {
     if (!userName?.trim()) {
       showError('Enter your name to append notes');
@@ -238,7 +251,7 @@ export default function App() {
     }
     try {
       await handleAppendTempNoteToPlayer(playerId, noteText);
-      await handleAddHandFromTempNote(noteText, title);
+      await handleAddHandFromTempNote(noteText, title, taggedReviewerNames);
     } catch {
       // Errors shown by individual handlers
     }
@@ -1062,6 +1075,7 @@ export default function App() {
         onAppendToPlayer={handleAppendTempNoteToPlayer}
         onAddHandForReview={handleAddHandFromTempNote}
         onAppendAndAddHand={handleAppendAndAddHandFromTempNote}
+        reviewerOptions={reviewersList}
       />
 
       <Snackbar
