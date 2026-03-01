@@ -32,7 +32,16 @@ export function TempNoteModal({
 }: TempNoteModalProps) {
   const [text, setText] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerListItem | null>(null);
+  const [playerSearch, setPlayerSearch] = useState('');
   const [appending, setAppending] = useState(false);
+
+  const filterPlayers = (opts: PlayerListItem[], inputValue: string) => {
+    if (!inputValue.trim()) return [];
+    const lower = inputValue.toLowerCase();
+    return opts
+      .filter((p) => p.username.toLowerCase().includes(lower))
+      .slice(0, 15);
+  };
 
   const handleCopyAll = () => {
     navigator.clipboard.writeText(text || '').then(
@@ -52,6 +61,7 @@ export function TempNoteModal({
       await onAppendToPlayer(selectedPlayer._id, text.trim());
       setText('');
       setSelectedPlayer(null);
+      setPlayerSearch('');
     } finally {
       setAppending(false);
     }
@@ -85,18 +95,30 @@ export function TempNoteModal({
                 options={players}
                 getOptionLabel={(p) => p.username}
                 value={selectedPlayer}
-                onChange={(_, v) => setSelectedPlayer(v)}
+                onChange={(_, v) => {
+                  setSelectedPlayer(v);
+                  setPlayerSearch(v?.username ?? '');
+                }}
+                inputValue={playerSearch}
+                onInputChange={(_, v) => setPlayerSearch(v)}
                 size="small"
                 sx={{ flex: 1, minWidth: 0 }}
-                filterOptions={(opts, { inputValue }) => {
-                  if (!inputValue.trim()) return [];
-                  const lower = inputValue.toLowerCase();
-                  return opts
-                    .filter((p) => p.username.toLowerCase().includes(lower))
-                    .slice(0, 15);
-                }}
+                filterOptions={(opts, { inputValue }) => filterPlayers(opts, inputValue)}
                 renderInput={(params) => (
-                  <TextField {...params} placeholder="Search player..." />
+                  <TextField
+                    {...params}
+                    placeholder="Search player..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Tab' && !e.shiftKey) {
+                        const filtered = filterPlayers(players, playerSearch);
+                        if (filtered.length === 1) {
+                          e.preventDefault();
+                          setSelectedPlayer(filtered[0]);
+                          setPlayerSearch(filtered[0].username);
+                        }
+                      }
+                    }}
+                  />
                 )}
               />
               <Button

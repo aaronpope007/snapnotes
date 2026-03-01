@@ -12,6 +12,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { RichNoteRenderer } from './RichNoteRenderer';
+import { useCompactMode } from '../context/CompactModeContext';
 import { AppendNote } from './AppendNote';
 import { HAND_TEMPLATES } from '../constants/handTemplates';
 import type { NoteEntry } from '../types';
@@ -42,6 +43,7 @@ export function NotesSection({
   userName,
   saving = false,
 }: NotesSectionProps) {
+  const compact = useCompactMode();
   const [expanded, setExpanded] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -183,7 +185,7 @@ export function NotesSection({
                     </Box>
                   ) : (
                     <Box sx={{ pl: 0.5 }}>
-                      <RichNoteRenderer text={entry.text} />
+                      <RichNoteRenderer text={entry.text} cardSize={compact ? 'xxxs' : 'sm'} />
                     </Box>
                   )}
                 </Box>

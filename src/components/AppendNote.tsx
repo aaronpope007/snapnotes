@@ -5,12 +5,14 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import { RichNoteRenderer } from './RichNoteRenderer';
+import { useCompactMode } from '../context/CompactModeContext';
 
 interface AppendNoteProps {
   onAppend: (text: string) => Promise<void>;
 }
 
 export function AppendNote({ onAppend }: AppendNoteProps) {
+  const compact = useCompactMode();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,7 +63,7 @@ export function AppendNote({ onAppend }: AppendNoteProps) {
         Preview
       </Typography>
       <Box sx={{ fontSize: '0.9rem', lineHeight: 1.6, minHeight: 24, mb: 1 }}>
-        {value ? <RichNoteRenderer text={value} /> : null}
+        {value ? <RichNoteRenderer text={value} cardSize={compact ? 'xxxs' : 'sm'} /> : null}
       </Box>
       <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
         <Button
