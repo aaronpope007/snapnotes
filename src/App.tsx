@@ -60,7 +60,7 @@ import {
   mergePlayers,
 } from './api/players';
 import { exportBackup, restoreBackup, type BackupPayload } from './api/backup';
-import { createHandToReview } from './api/handsToReview';
+import { createHandToReview, fetchHandsToReview } from './api/handsToReview';
 import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
@@ -128,6 +128,11 @@ export default function App() {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+  const [handsToReviewLoadToast, setHandsToReviewLoadToast] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
 
   const showSuccess = (msg: string) =>
     setSnackbar({ open: true, message: msg, severity: 'success' });
@@ -150,6 +155,33 @@ export default function App() {
   useEffect(() => {
     loadPlayers();
   }, [loadPlayers]);
+
+  useEffect(() => {
+    if (!userName?.trim()) return;
+    let cancelled = false;
+    fetchHandsToReview('open', userName)
+      .then((hands) => {
+        if (cancelled) return;
+        const forMeCount = hands.filter(
+          (h) =>
+            (h.taggedReviewerNames ?? []).includes(userName) &&
+            !(h.reviewedBy ?? []).includes(userName) &&
+            h.status !== 'archived'
+        ).length;
+        setHandsToReviewLoadToast({
+          open: true,
+          message:
+            forMeCount === 0
+              ? 'No hands to review'
+              : `${forMeCount} hand${forMeCount !== 1 ? 's' : ''} to review`,
+          severity: forMeCount === 0 ? 'success' : 'error',
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [userName]);
 
   // Daily background refresh when app stays open (catches updates from other users)
   const selectedRef = useRef(selected);
@@ -1046,6 +1078,19 @@ export default function App() {
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
         >
           {snackbar.message}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={handsToReviewLoadToast.open}
+        autoHideDuration={4000}
+        onClose={() => setHandsToReviewLoadToast((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          severity={handsToReviewLoadToast.severity}
+          onClose={() => setHandsToReviewLoadToast((s) => ({ ...s, open: false }))}
+        >
+          {handsToReviewLoadToast.message}
         </Alert>
       </Snackbar>
     </Box>
