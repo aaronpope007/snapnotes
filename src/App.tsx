@@ -41,6 +41,7 @@ import { DefaultStakesDialog } from './components/DefaultStakesDialog';
 import { MDFPanel } from './components/MDFPanel';
 import { FoldEquityPanel } from './components/FoldEquityPanel';
 import { GeoPanel } from './components/GeoPanel';
+import { TopNotificationBar } from './components/TopNotificationBar';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
@@ -573,6 +574,13 @@ export default function App() {
         overflowX: 'hidden',
       }}
     >
+      <TopNotificationBar
+        onReviewClick={() => {
+          setShowHandsToReview(true);
+          setShowLearning(false);
+          setSelected(null);
+        }}
+      />
       {menuAndInput}
       <Box
         sx={{
