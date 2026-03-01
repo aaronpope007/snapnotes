@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
+import Tooltip from '@mui/material/Tooltip';
 import Collapse from '@mui/material/Collapse';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -156,11 +157,11 @@ export function HandReviewCard({
           )}
         </IconButton>
         <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-          <Typography
-            variant={compact ? 'caption' : 'body2'}
-            component="span"
-            title={hand.title || DEFAULT_HAND_TITLE}
-            sx={{
+          <Tooltip title={hand.title || DEFAULT_HAND_TITLE} enterDelay={0}>
+            <Typography
+              variant={compact ? 'caption' : 'body2'}
+              component="span"
+              sx={{
               display: 'block',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -168,9 +169,10 @@ export function HandReviewCard({
               fontWeight: 500,
               color: 'text.primary',
             }}
-          >
-            {hand.title || DEFAULT_HAND_TITLE}
-          </Typography>
+            >
+              {hand.title || DEFAULT_HAND_TITLE}
+            </Typography>
+          </Tooltip>
           {(starAvg != null || spicyAvg != null) && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
               {starAvg != null && (

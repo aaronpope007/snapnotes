@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
@@ -78,21 +79,22 @@ export function LeakCard({
           )}
         </IconButton>
         <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-          <Typography
-            variant={compact ? 'caption' : 'body2'}
-            component="span"
-            title={leak.title || 'Untitled leak'}
-            sx={{
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontWeight: 500,
-              color: 'text.primary',
-            }}
-          >
-            {leak.title || 'Untitled leak'}
-          </Typography>
+          <Tooltip title={leak.title || 'Untitled leak'} enterDelay={0}>
+            <Typography
+              variant={compact ? 'caption' : 'body2'}
+              component="span"
+              sx={{
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontWeight: 500,
+                color: 'text.primary',
+              }}
+            >
+              {leak.title || 'Untitled leak'}
+            </Typography>
+          </Tooltip>
         </Box>
         <Box
           component="span"
