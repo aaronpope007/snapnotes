@@ -171,59 +171,46 @@ export function HandHistoryFormContent({
 
   const removeCardFromContent = useCallback(
     (shorthand: string) => {
-      const needle = `\`${shorthand}\``;
+      const needles = [`\`${shorthand}\``, `'${shorthand}'`];
+      const findBest = (str: string, cursor: number): { index: number; len: number } | null => {
+        let best: { index: number; len: number } | null = null;
+        let bestDist = Infinity;
+        for (const needle of needles) {
+          let idx = str.indexOf(needle);
+          while (idx !== -1) {
+            const dist = Math.min(
+              Math.abs(cursor - idx),
+              Math.abs(cursor - (idx + needle.length))
+            );
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = { index: idx, len: needle.length };
+            }
+            idx = str.indexOf(needle, idx + 1);
+          }
+        }
+        return best;
+      };
       if (activeFieldRef.current === 'spoiler' && hasSpoiler) {
         const cursor = spoilerSelectionRef.current.start;
-        let index = spoilerValue.indexOf(needle);
-        if (index === -1) return;
-        let bestIndex = index;
-        let bestDist = Math.min(
-          Math.abs(cursor - index),
-          Math.abs(cursor - (index + needle.length))
-        );
-        while (index !== -1) {
-          const dist = Math.min(
-            Math.abs(cursor - index),
-            Math.abs(cursor - (index + needle.length))
-          );
-          if (dist < bestDist) {
-            bestDist = dist;
-            bestIndex = index;
-          }
-          index = spoilerValue.indexOf(needle, index + 1);
-        }
-        onSpoilerChange!(spoilerValue.slice(0, bestIndex) + spoilerValue.slice(bestIndex + needle.length));
-        spoilerSelectionRef.current = { start: bestIndex, end: bestIndex };
+        const best = findBest(spoilerValue, cursor);
+        if (!best) return;
+        onSpoilerChange!(spoilerValue.slice(0, best.index) + spoilerValue.slice(best.index + best.len));
+        spoilerSelectionRef.current = { start: best.index, end: best.index };
         setTimeout(() => {
           spoilerInputRef.current?.focus();
-          spoilerInputRef.current?.setSelectionRange(bestIndex, bestIndex);
+          spoilerInputRef.current?.setSelectionRange(best.index, best.index);
         }, 0);
       } else {
         const cursor = contentSelectionRef.current.start;
-        let index = content.indexOf(needle);
-        if (index === -1) return;
-        let bestIndex = index;
-        let bestDist = Math.min(
-          Math.abs(cursor - index),
-          Math.abs(cursor - (index + needle.length))
-        );
-        while (index !== -1) {
-          const dist = Math.min(
-            Math.abs(cursor - index),
-            Math.abs(cursor - (index + needle.length))
-          );
-          if (dist < bestDist) {
-            bestDist = dist;
-            bestIndex = index;
-          }
-          index = content.indexOf(needle, index + 1);
-        }
-        const next = content.slice(0, bestIndex) + content.slice(bestIndex + needle.length);
+        const best = findBest(content, cursor);
+        if (!best) return;
+        const next = content.slice(0, best.index) + content.slice(best.index + best.len);
         onContentChange(next);
-        contentSelectionRef.current = { start: bestIndex, end: bestIndex };
+        contentSelectionRef.current = { start: best.index, end: best.index };
         setTimeout(() => {
           contentInputRef.current?.focus();
-          contentInputRef.current?.setSelectionRange(bestIndex, bestIndex);
+          contentInputRef.current?.setSelectionRange(best.index, best.index);
         }, 0);
       }
     },

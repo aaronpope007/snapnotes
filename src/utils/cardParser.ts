@@ -1,6 +1,6 @@
 /**
  * Token types for card shorthand parsing in poker notes.
- * Cards only render when wrapped in backticks: `kd`, `kdac2s`
+ * Cards render when wrapped in backticks or single quotes: `kd`, 'kd', `As' (can mix)
  */
 
 export type CardToken =
@@ -8,7 +8,7 @@ export type CardToken =
   | { type: 'unknown_card' }
   | { type: 'text'; value: string };
 
-// Regex for parsing inside backticks - consecutive cards (no spaces): kdac2s -> Kd, Ac, 2s
+// Regex for parsing inside delimiters - consecutive cards (no spaces): kdac2s -> Kd, Ac, 2s
 const INNER_CARD_REGEX = /([AKQJT2-9])(c|d|h|s)\2|([AKQJT2-9])(c|d|h|s)|x([cdhs]*)/gi;
 
 function parseBacktickContent(content: string): CardToken[] {
@@ -49,16 +49,24 @@ function parseBacktickContent(content: string): CardToken[] {
   return tokens;
 }
 
+function indexOfDelimiter(text: string, fromIndex: number): number {
+  const idx = text.indexOf('`', fromIndex);
+  const idx2 = text.indexOf("'", fromIndex);
+  if (idx === -1) return idx2;
+  if (idx2 === -1) return idx;
+  return Math.min(idx, idx2);
+}
+
 /**
- * Splits a note string into typed tokens. Cards ONLY render inside backticks.
- * e.g. `kd` -> King of diamonds, `kdac2s` -> Kd + Ac + 2s
+ * Splits a note string into typed tokens. Cards render inside ` or ' (can mix).
+ * e.g. `kd`, 'kd', `As' -> King of diamonds
  */
 export function parseNoteTokens(text: string): CardToken[] {
   const tokens: CardToken[] = [];
   let i = 0;
 
   while (i < text.length) {
-    const open = text.indexOf('`', i);
+    const open = indexOfDelimiter(text, i);
     if (open === -1) {
       if (i < text.length) tokens.push({ type: 'text', value: text.slice(i) });
       break;
@@ -68,7 +76,7 @@ export function parseNoteTokens(text: string): CardToken[] {
       tokens.push({ type: 'text', value: text.slice(i, open) });
     }
 
-    const close = text.indexOf('`', open + 1);
+    const close = indexOfDelimiter(text, open + 1);
     if (close === -1) {
       tokens.push({ type: 'text', value: text.slice(open) });
       break;
@@ -83,7 +91,7 @@ export function parseNoteTokens(text: string): CardToken[] {
 }
 
 /**
- * Returns the set of card shorthands already used in note text (inside backticks).
+ * Returns the set of card shorthands already used in note text (inside ` or ').
  * Used to grey out those cards in the picker. Unknown cards are not added here;
  * use getUsedUnknownCardCount for the count of `x` unknown cards.
  */
@@ -99,7 +107,7 @@ export function getUsedCardShorthands(text: string): Set<string> {
 }
 
 /**
- * Returns how many unknown-card tokens (`x`) are in the note text (inside backticks).
+ * Returns how many unknown-card tokens (`x`) are in the note text (inside ` or ').
  */
 export function getUsedUnknownCardCount(text: string): number {
   const tokens = parseNoteTokens(text);

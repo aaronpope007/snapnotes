@@ -56,6 +56,22 @@ describe('parseNoteTokens', () => {
     const tokens = parseNoteTokens('flop `Kd');
     expect(tokens.map((t) => (t.type === 'text' ? t.value : '')).join('')).toBe('flop `Kd');
   });
+
+  it('parses single-quote cards', () => {
+    const tokens = parseNoteTokens("'kd'");
+    expect(tokens).toEqual([
+      { type: 'card', rank: 'K', suit: 'd', backdoor: false },
+    ]);
+  });
+
+  it('parses mixed ` and \' delimiters', () => {
+    const tokens = parseNoteTokens('`As\' and \'Kd`');
+    expect(tokens).toEqual([
+      { type: 'card', rank: 'A', suit: 's', backdoor: false },
+      { type: 'text', value: ' and ' },
+      { type: 'card', rank: 'K', suit: 'd', backdoor: false },
+    ]);
+  });
 });
 
 describe('getUsedCardShorthands', () => {
@@ -69,10 +85,10 @@ describe('getUsedCardShorthands', () => {
     expect(used.size).toBe(5);
   });
 
-  it('includes x for unknown cards', () => {
+  it('does not include x in shorthands (use getUsedUnknownCardCount)', () => {
     const used = getUsedCardShorthands('turn `x`');
-    expect(used.has('x')).toBe(true);
-    expect(used.size).toBe(1);
+    expect(used.has('x')).toBe(false);
+    expect(used.size).toBe(0);
   });
 
   it('ignores text outside backticks', () => {
