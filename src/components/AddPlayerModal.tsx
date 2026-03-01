@@ -75,7 +75,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
   };
 
   const handleClose = () => {
-    if (isDirty) {
+    if (isDirty && username.trim()) {
       setConfirmCloseOpen(true);
       return;
     }

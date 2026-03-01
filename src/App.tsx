@@ -61,6 +61,7 @@ import {
 } from './api/players';
 import { exportBackup, restoreBackup, type BackupPayload } from './api/backup';
 import { getApiErrorMessage } from './utils/apiError';
+import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
 
@@ -183,7 +184,7 @@ export default function App() {
       const full = await fetchPlayer(playerId);
       const currentNotes = full.notes ?? [];
       const newEntry: NoteEntry = {
-        text: noteText,
+        text: toNoteOneLiner(noteText),
         addedBy: userName.trim(),
         addedAt: new Date().toISOString(),
       };

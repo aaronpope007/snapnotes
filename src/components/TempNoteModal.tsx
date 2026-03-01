@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -32,6 +32,7 @@ export function TempNoteModal({
 }: TempNoteModalProps) {
   const [text, setText] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerListItem | null>(null);
+  const [highlightedOption, setHighlightedOption] = useState<PlayerListItem | null>(null);
   const [playerSearch, setPlayerSearch] = useState('');
   const [appending, setAppending] = useState(false);
 
@@ -54,18 +55,25 @@ export function TempNoteModal({
     setText('');
   };
 
-  const handleAppendToPlayerClick = async () => {
-    if (!selectedPlayer || !text.trim() || !onAppendToPlayer) return;
-    setAppending(true);
-    try {
-      await onAppendToPlayer(selectedPlayer._id, text.trim());
-      setText('');
-      setSelectedPlayer(null);
-      setPlayerSearch('');
-    } finally {
-      setAppending(false);
-    }
-  };
+  const filteredPlayers = filterPlayers(players, playerSearch);
+  const toSelect = highlightedOption ?? (filteredPlayers.length === 1 ? filteredPlayers[0] : null);
+
+  const handleAppendToPlayerClick = useCallback(
+    async (player?: PlayerListItem) => {
+      const p = player ?? selectedPlayer;
+      if (!p || !text.trim() || !onAppendToPlayer) return;
+      setAppending(true);
+      try {
+        await onAppendToPlayer(p._id, text.trim());
+        setText('');
+        setSelectedPlayer(null);
+        setPlayerSearch('');
+      } finally {
+        setAppending(false);
+      }
+    },
+    [selectedPlayer, text, onAppendToPlayer]
+  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -101,6 +109,7 @@ export function TempNoteModal({
                 }}
                 inputValue={playerSearch}
                 onInputChange={(_, v) => setPlayerSearch(v)}
+                onHighlightChange={(_, option) => setHighlightedOption(option)}
                 size="small"
                 sx={{ flex: 1, minWidth: 0 }}
                 filterOptions={(opts, { inputValue }) => filterPlayers(opts, inputValue)}
@@ -110,12 +119,14 @@ export function TempNoteModal({
                     placeholder="Search player..."
                     onKeyDown={(e) => {
                       if (e.key === 'Tab' && !e.shiftKey) {
-                        const filtered = filterPlayers(players, playerSearch);
-                        if (filtered.length === 1) {
+                        if (toSelect) {
                           e.preventDefault();
-                          setSelectedPlayer(filtered[0]);
-                          setPlayerSearch(filtered[0].username);
+                          setSelectedPlayer(toSelect);
+                          setPlayerSearch(toSelect.username);
                         }
+                      } else if (e.key === 'Enter' && toSelect && text.trim()) {
+                        e.preventDefault();
+                        void handleAppendToPlayerClick(toSelect);
                       }
                     }}
                   />

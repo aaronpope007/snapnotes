@@ -29,6 +29,7 @@ import {
   getPlayerTypeColor,
   getPlayerTypeLabel,
 } from '../constants/playerTypes';
+import { toNoteOneLiner } from '../utils/noteUtils';
 import type { Player, PlayerListItem, PlayerTypeKey, NoteEntry } from '../types';
 
 interface PlayerCardProps {
@@ -115,7 +116,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
   const handleAppendNote = async (text: string, addedBy: string) => {
     const currentNotes = player.notes || [];
     const newEntry: NoteEntry = {
-      text,
+      text: toNoteOneLiner(text),
       addedBy,
       addedAt: new Date().toISOString(),
     };

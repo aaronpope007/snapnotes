@@ -17,11 +17,8 @@ export function AppendNote({ onAppend }: AppendNoteProps) {
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const toOneLiner = (s: string) =>
-    s.replace(/\r?\n+/g, ' /// ').trim();
-
   const handleSubmit = async () => {
-    const text = toOneLiner(value.trim());
+    const text = value.trim();
     if (!text) {
       setOpen(false);
       setValue('');
