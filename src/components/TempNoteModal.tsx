@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 import type { PlayerListItem } from '../types';
 
 interface TempNoteModalProps {
@@ -19,6 +20,8 @@ interface TempNoteModalProps {
   onCopySuccess?: () => void;
   onCopyError?: (msg: string) => void;
   onAppendToPlayer?: (playerId: string, noteText: string) => Promise<void>;
+  onAddHandForReview?: (handText: string) => Promise<void>;
+  onAppendAndAddHand?: (playerId: string, noteText: string) => Promise<void>;
 }
 
 export function TempNoteModal({
@@ -29,12 +32,16 @@ export function TempNoteModal({
   onCopySuccess,
   onCopyError,
   onAppendToPlayer,
+  onAddHandForReview,
+  onAppendAndAddHand,
 }: TempNoteModalProps) {
   const [text, setText] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerListItem | null>(null);
   const [highlightedOption, setHighlightedOption] = useState<PlayerListItem | null>(null);
   const [playerSearch, setPlayerSearch] = useState('');
   const [appending, setAppending] = useState(false);
+  const [appendAndAddSaving, setAppendAndAddSaving] = useState(false);
+  const [addHandSaving, setAddHandSaving] = useState(false);
 
   const filterPlayers = (opts: PlayerListItem[], inputValue: string) => {
     if (!inputValue.trim()) return [];
@@ -74,6 +81,36 @@ export function TempNoteModal({
     },
     [selectedPlayer, text, onAppendToPlayer]
   );
+
+  const handleAddHandForReview = useCallback(async () => {
+    if (!text.trim() || !onAddHandForReview) return;
+    setAddHandSaving(true);
+    try {
+      await onAddHandForReview(text.trim());
+      setText('');
+    } finally {
+      setAddHandSaving(false);
+    }
+  }, [text, onAddHandForReview]);
+
+  const handleAppendAndAddHand = useCallback(
+    async (player?: PlayerListItem) => {
+      const p = player ?? selectedPlayer;
+      if (!p || !text.trim() || !onAppendAndAddHand) return;
+      setAppendAndAddSaving(true);
+      try {
+        await onAppendAndAddHand(p._id, text.trim());
+        setText('');
+        setSelectedPlayer(null);
+        setPlayerSearch('');
+      } finally {
+        setAppendAndAddSaving(false);
+      }
+    },
+    [selectedPlayer, text, onAppendAndAddHand]
+  );
+
+  const appendBusy = appending || appendAndAddSaving;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -137,11 +174,23 @@ export function TempNoteModal({
                 size="small"
                 startIcon={<PersonAddIcon />}
                 onClick={() => void handleAppendToPlayerClick()}
-                disabled={!selectedPlayer || !text.trim() || appending}
+                disabled={!selectedPlayer || !text.trim() || appendBusy}
                 sx={{ flexShrink: 0 }}
               >
                 {appending ? 'Appending...' : 'Append'}
               </Button>
+              {onAppendAndAddHand && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<RateReviewIcon />}
+                  onClick={() => void handleAppendAndAddHand()}
+                  disabled={!selectedPlayer || !text.trim() || appendBusy}
+                  sx={{ flexShrink: 0 }}
+                >
+                  {appendAndAddSaving ? 'Appending & adding...' : 'Append & add hand'}
+                </Button>
+              )}
             </Box>
           </Box>
         )}
@@ -150,6 +199,17 @@ export function TempNoteModal({
         <Button onClick={handleClear} disabled={!text.trim()}>
           Clear
         </Button>
+        {onAddHandForReview && userName && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<RateReviewIcon />}
+            onClick={() => void handleAddHandForReview()}
+            disabled={!text.trim() || addHandSaving}
+          >
+            {addHandSaving ? 'Adding...' : 'Add hand for review'}
+          </Button>
+        )}
         <Button
           variant="contained"
           startIcon={<ContentCopyIcon />}

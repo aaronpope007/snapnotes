@@ -60,6 +60,7 @@ import {
   mergePlayers,
 } from './api/players';
 import { exportBackup, restoreBackup, type BackupPayload } from './api/backup';
+import { createHandToReview } from './api/handsToReview';
 import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
@@ -172,6 +173,40 @@ export default function App() {
       setSelected(full);
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to load player'));
+    }
+  };
+
+  const handleAddHandFromTempNote = async (handText: string) => {
+    if (!userName?.trim()) {
+      showError('Enter your name to add hands for review');
+      return;
+    }
+    try {
+      await createHandToReview({
+        handText: handText.trim(),
+        createdBy: userName.trim(),
+      });
+      setTempNoteOpen(false);
+      setShowHandsToReview(true);
+      setShowLearning(false);
+      setSelected(null);
+      showSuccess('Hand added for review');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to add hand for review'));
+      throw err;
+    }
+  };
+
+  const handleAppendAndAddHandFromTempNote = async (playerId: string, noteText: string) => {
+    if (!userName?.trim()) {
+      showError('Enter your name to append notes');
+      return;
+    }
+    try {
+      await handleAppendTempNoteToPlayer(playerId, noteText);
+      await handleAddHandFromTempNote(noteText);
+    } catch {
+      // Errors shown by individual handlers
     }
   };
 
@@ -991,6 +1026,8 @@ export default function App() {
         onCopySuccess={() => showSuccess('Copied to clipboard')}
         onCopyError={showError}
         onAppendToPlayer={handleAppendTempNoteToPlayer}
+        onAddHandForReview={handleAddHandFromTempNote}
+        onAppendAndAddHand={handleAppendAndAddHandFromTempNote}
       />
 
       <Snackbar
