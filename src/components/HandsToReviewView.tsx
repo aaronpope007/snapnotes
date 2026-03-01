@@ -13,6 +13,7 @@ import { DeleteHandConfirmDialog } from './DeleteHandConfirmDialog';
 import { DeleteCommentConfirmDialog } from './DeleteCommentConfirmDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AddLeakToSelfModal } from './learning/AddLeakToSelfModal';
+import { AddLeakForAuthorModal } from './learning/AddLeakForAuthorModal';
 import { createLeak } from '../api/learning';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -27,6 +28,11 @@ export function HandsToReviewView({ initialHandId, onSuccess, onError }: HandsTo
   const compact = useCompactMode();
   const learningVisible = useLearningVisibility();
   const [addLeakHand, setAddLeakHand] = useState<{ _id: string; title?: string } | null>(null);
+  const [addLeakForAuthorHand, setAddLeakForAuthorHand] = useState<{
+    _id: string;
+    title?: string;
+    createdBy: string;
+  } | null>(null);
   const [leakSaving, setLeakSaving] = useState(false);
   const hook = useHandsToReview({
     userName: userName ?? null,
@@ -41,6 +47,26 @@ export function HandsToReviewView({ initialHandId, onSuccess, onError }: HandsTo
       () => onSuccess?.('Link copied to clipboard'),
       () => onError?.('Failed to copy link')
     );
+  };
+
+  const handleAddLeakForAuthor = async (title: string) => {
+    if (!addLeakForAuthorHand) return;
+    setLeakSaving(true);
+    try {
+      await createLeak({
+        title,
+        description: '',
+        category: 'other',
+        linkedHandIds: [addLeakForAuthorHand._id],
+        userId: addLeakForAuthorHand.createdBy,
+      });
+      setAddLeakForAuthorHand(null);
+      onSuccess?.('Leak added for ' + addLeakForAuthorHand.createdBy);
+    } catch (err) {
+      onError?.(getApiErrorMessage(err, 'Failed to add leak'));
+    } finally {
+      setLeakSaving(false);
+    }
   };
 
   const handleAddLeakToSelf = async (
@@ -140,6 +166,9 @@ export function HandsToReviewView({ initialHandId, onSuccess, onError }: HandsTo
                 onArchive: hook.handleArchive,
                 onDelete: (id) => hook.openDeleteHandConfirm(id),
                 onAddLeak: learningVisible && userName ? (hand) => setAddLeakHand(hand) : undefined,
+                onAddLeakForAuthor: learningVisible && userName
+                  ? (hand) => setAddLeakForAuthorHand({ _id: hand._id, title: hand.title, createdBy: hand.createdBy })
+                  : undefined,
                 onRate: hook.handleRate,
                 onMarkReviewed: hook.handleMarkReviewed,
                 setHoverStarRating: hook.setHoverStarRating,
@@ -227,6 +256,17 @@ export function HandsToReviewView({ initialHandId, onSuccess, onError }: HandsTo
           userId={userName ?? null}
           saving={leakSaving}
           onSubmit={handleAddLeakToSelf}
+        />
+      )}
+
+      {addLeakForAuthorHand && (
+        <AddLeakForAuthorModal
+          open={true}
+          onClose={() => setAddLeakForAuthorHand(null)}
+          authorName={addLeakForAuthorHand.createdBy}
+          handTitle={addLeakForAuthorHand.title}
+          saving={leakSaving}
+          onSubmit={handleAddLeakForAuthor}
         />
       )}
     </Box>

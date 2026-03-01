@@ -44,6 +44,7 @@ export interface HandReviewCardActions {
   onArchive: (hand: HandToReview) => void;
   onDelete: (handId: string) => void;
   onAddLeak?: (hand: HandToReview) => void;
+  onAddLeakForAuthor?: (hand: HandToReview) => void;
   onRate: (handId: string, starRating?: number, spicyRating?: number) => void;
   onMarkReviewed?: (handId: string) => void;
   setHoverStarRating: (handId: string, value: number | null) => void;
@@ -93,6 +94,7 @@ export function HandReviewCard({
     onArchive,
     onDelete,
     onAddLeak,
+    onAddLeakForAuthor,
     onRate,
     onMarkReviewed,
     setHoverStarRating,
@@ -291,17 +293,30 @@ export function HandReviewCard({
             </Box>
           )}
 
-          {userName && onAddLeak && (
-            <Box sx={{ mb: compact ? 0.5 : 1 }}>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<BugReportIcon />}
-                onClick={() => onAddLeak(hand)}
-                sx={{ textTransform: 'none', mr: 0.5 }}
-              >
-                Add leak to myself
-              </Button>
+          {userName && (onAddLeak || onAddLeakForAuthor) && (
+            <Box sx={{ mb: compact ? 0.5 : 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {onAddLeak && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<BugReportIcon />}
+                  onClick={() => onAddLeak(hand)}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Add leak to myself
+                </Button>
+              )}
+              {onAddLeakForAuthor && userName !== hand.createdBy && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<BugReportIcon />}
+                  onClick={() => onAddLeakForAuthor(hand)}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Add leak for {hand.createdBy}
+                </Button>
+              )}
             </Box>
           )}
           {userName && (hasReviewed || canMarkReviewed) && (
