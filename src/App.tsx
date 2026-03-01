@@ -25,6 +25,7 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import TuneIcon from '@mui/icons-material/Tune';
 import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
+import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
@@ -42,6 +43,7 @@ import { MDFPanel } from './components/MDFPanel';
 import { FoldEquityPanel } from './components/FoldEquityPanel';
 import { GeoPanel } from './components/GeoPanel';
 import { TopNotificationBar } from './components/TopNotificationBar';
+import { TempNoteModal } from './components/TempNoteModal';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
@@ -60,7 +62,7 @@ import {
 import { exportBackup, restoreBackup, type BackupPayload } from './api/backup';
 import { getApiErrorMessage } from './utils/apiError';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
-import type { Player, PlayerListItem, PlayerCreate, ImportPlayer } from './types';
+import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
 
 /** Interpolate background color: 1 = reddest, 99–100 = passive grey. */
 function getRngButtonBgColor(value: number | null): string | undefined {
@@ -89,7 +91,7 @@ export default function App() {
   }, [learningVisible]);
   const darkMode = useDarkMode();
   const setDarkMode = useSetDarkMode();
-  const { getAuthHeader } = useUserCredentials();
+  const { getAuthHeader, userName } = useUserCredentials();
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,6 +120,7 @@ export default function App() {
   const [defaultStakesDialogOpen, setDefaultStakesDialogOpen] = useState(false);
   const [rngValue, setRngValue] = useState<number | null>(null);
   const handleRngClick = () => setRngValue(Math.floor(Math.random() * 100) + 1);
+  const [tempNoteOpen, setTempNoteOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -168,6 +171,35 @@ export default function App() {
       setSelected(full);
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to load player'));
+    }
+  };
+
+  const handleAppendTempNoteToPlayer = async (playerId: string, noteText: string) => {
+    if (!userName?.trim()) {
+      showError('Enter your name to append notes');
+      return;
+    }
+    try {
+      const full = await fetchPlayer(playerId);
+      const currentNotes = full.notes ?? [];
+      const newEntry: NoteEntry = {
+        text: noteText,
+        addedBy: userName.trim(),
+        addedAt: new Date().toISOString(),
+      };
+      const updated = await updatePlayer(
+        playerId,
+        { notes: [...currentNotes, newEntry] },
+        getAuthHeader()
+      );
+      setPlayers((prev) =>
+        prev.map((p) => (p._id === playerId ? { ...p, updatedAt: updated.updatedAt } : p))
+      );
+      if (selected?._id === playerId) setSelected(updated);
+      showSuccess('Note appended to ' + full.username);
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to append note'));
+      throw err;
     }
   };
 
@@ -468,6 +500,14 @@ export default function App() {
         )}
         <IconButton
           size="small"
+          onClick={() => setTempNoteOpen(true)}
+          aria-label="Temp note"
+          title="Temp note (scratchpad, nothing saved)"
+        >
+          <NoteAddIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
           onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
           aria-label="Settings"
           aria-controls={settingsOpen ? 'settings-menu' : undefined}
@@ -635,6 +675,14 @@ export default function App() {
                 )}
                 <IconButton
                   size="small"
+                  onClick={() => setTempNoteOpen(true)}
+                  aria-label="Temp note"
+                  title="Temp note (scratchpad, nothing saved)"
+                >
+                  <NoteAddIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
                   aria-label="Settings"
                   aria-controls={settingsOpen ? 'settings-menu' : undefined}
@@ -759,6 +807,14 @@ export default function App() {
                     {rngValue ?? 'RNG'}
                   </Button>
                 )}
+                <IconButton
+                  size="small"
+                  onClick={() => setTempNoteOpen(true)}
+                  aria-label="Temp note"
+                  title="Temp note (scratchpad, nothing saved)"
+                >
+                  <NoteAddIcon fontSize="small" />
+                </IconButton>
                 <IconButton
                   size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -921,6 +977,16 @@ export default function App() {
       <DefaultStakesDialog
         open={defaultStakesDialogOpen}
         onClose={() => setDefaultStakesDialogOpen(false)}
+      />
+
+      <TempNoteModal
+        open={tempNoteOpen}
+        onClose={() => setTempNoteOpen(false)}
+        players={players}
+        userName={userName}
+        onCopySuccess={() => showSuccess('Copied to clipboard')}
+        onCopyError={showError}
+        onAppendToPlayer={handleAppendTempNoteToPlayer}
       />
 
       <Snackbar
