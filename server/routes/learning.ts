@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Leak } from '../models/Leak.js';
 import { MentalGameEntry } from '../models/MentalGameEntry.js';
+import { StudyTodo } from '../models/StudyTodo.js';
 
 const router = Router();
 const REVIEW_INTERVALS_DAYS = [7, 30, 90];
@@ -214,6 +215,58 @@ router.delete('/mental/:id', async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete mental game entry' });
+  }
+});
+
+// ─── Study to-do list ───────────────────────────────────────────────────────
+router.get('/study-todos', async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(400).json({ error: 'userId query param required' });
+    const todos = await StudyTodo.find({ userId }).sort({ createdAt: -1 }).lean();
+    res.json(todos);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch study todos' });
+  }
+});
+
+router.post('/study-todos', async (req: Request, res: Response) => {
+  try {
+    const body = req.body as { userId?: string; text: string };
+    const userId = body.userId?.trim() || getUserId(req);
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const text = (body.text ?? '').trim();
+    if (!text) return res.status(400).json({ error: 'text required' });
+    const todo = new StudyTodo({ userId, text });
+    await todo.save();
+    res.status(201).json(todo);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to create study todo';
+    res.status(400).json({ error: message });
+  }
+});
+
+router.patch('/study-todos/:id', async (req: Request, res: Response) => {
+  try {
+    const todo = await StudyTodo.findById(req.params.id);
+    if (!todo) return res.status(404).json({ error: 'Study todo not found' });
+    const body = req.body as { text?: string; done?: boolean };
+    if (body.text !== undefined) todo.text = body.text.trim() || todo.text;
+    if (typeof body.done === 'boolean') todo.done = body.done;
+    await todo.save();
+    res.json(todo);
+  } catch (err) {
+    res.status(400).json({ error: 'Failed to update study todo' });
+  }
+});
+
+router.delete('/study-todos/:id', async (req: Request, res: Response) => {
+  try {
+    const todo = await StudyTodo.findByIdAndDelete(req.params.id);
+    if (!todo) return res.status(404).json({ error: 'Study todo not found' });
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete study todo' });
   }
 });
 

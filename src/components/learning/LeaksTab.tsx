@@ -23,6 +23,9 @@ import { fetchPlayers } from '../../api/players';
 
 interface LeaksTabProps extends ReturnType<typeof import('../../hooks/useLeaks').useLeaks> {
   userId: string | null;
+  /** When set, open the add-leak modal with this as initial title (e.g. from Study To-Do "Add to Leaks") */
+  initialAddLeakText?: string | null;
+  onClearInitialAddLeakText?: () => void;
 }
 
 export function LeaksTab({
@@ -48,10 +51,18 @@ export function LeaksTab({
   handleDelete,
   handleStatusCycle,
   handleResolve,
+  initialAddLeakText,
+  onClearInitialAddLeakText,
 }: LeaksTabProps) {
   const compact = useCompactMode();
   const checklist = useLeakChecklist(userId);
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
+
+  useEffect(() => {
+    if (initialAddLeakText?.trim()) {
+      setAddModalOpen(true);
+    }
+  }, [initialAddLeakText, setAddModalOpen]);
 
   const activeLeaks = leaks.filter((l) => l.status !== 'resolved');
   const resolvedLeaks = leaks.filter((l) => l.status === 'resolved');
@@ -173,8 +184,13 @@ export function LeaksTab({
 
       <AddLeakModal
         open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
+        onClose={() => {
+          setAddModalOpen(false);
+          onClearInitialAddLeakText?.();
+        }}
         userId={userId}
+        initialTitle={initialAddLeakText ?? undefined}
+        initialDescription={initialAddLeakText ?? undefined}
         editLeak={null}
         saving={saving}
         onSubmit={handleAddSubmit}

@@ -5,6 +5,7 @@ import type {
   LeakStatus,
   MentalGameEntry,
   MentalGameEntryCreate,
+  StudyTodo,
 } from '../types/learning';
 
 const api = axios.create({
@@ -82,4 +83,35 @@ export async function fetchDueLeaks(userId: string | null): Promise<Leak[]> {
   if (userId?.trim()) params.userId = userId.trim();
   const { data } = await api.get<Leak[]>('/learning/due', { params });
   return data;
+}
+
+// Study to-do list
+export async function fetchStudyTodos(userId: string | null): Promise<StudyTodo[]> {
+  const params: Record<string, string> = {};
+  if (userId?.trim()) params.userId = userId.trim();
+  const { data } = await api.get<StudyTodo[]>('/learning/study-todos', { params });
+  return data;
+}
+
+export async function createStudyTodo(
+  userId: string | null,
+  text: string
+): Promise<StudyTodo> {
+  const { data } = await api.post<StudyTodo>('/learning/study-todos', {
+    userId: userId ?? undefined,
+    text: text.trim(),
+  });
+  return data;
+}
+
+export async function updateStudyTodo(
+  id: string,
+  updates: Partial<Pick<StudyTodo, 'text' | 'done'>>
+): Promise<StudyTodo> {
+  const { data } = await api.patch<StudyTodo>(`/learning/study-todos/${id}`, updates);
+  return data;
+}
+
+export async function deleteStudyTodo(id: string): Promise<void> {
+  await api.delete(`/learning/study-todos/${id}`);
 }

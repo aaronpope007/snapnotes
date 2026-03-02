@@ -67,3 +67,16 @@ export interface MentalGameEntryCreate {
   fatigueAffected: boolean;
   confidenceAffected: boolean;
 }
+
+export interface StudyTodo {
+  _id: string;
+  userId: string;
+  text: string;
+  done: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudyTodoCreate {
+  text: string;
+}

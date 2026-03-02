@@ -7,17 +7,17 @@ import AddIcon from '@mui/icons-material/Add';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import ScheduleIcon from '@mui/icons-material/Schedule';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import Badge from '@mui/material/Badge';
 import { useCompactMode } from '../../context/CompactModeContext';
 
-export type LearningTabValue = 'leaks' | 'mental' | 'due';
+export type LearningTabValue = 'leaks' | 'mental' | 'due' | 'todo';
 
 interface LearningTabsProps {
   activeTab: LearningTabValue;
   onTabChange: (tab: LearningTabValue) => void;
   dueCount: number;
   onAddLeak?: () => void;
-  onAddLeakToPlayer?: () => void;
   onAddMental?: () => void;
 }
 
@@ -26,7 +26,6 @@ export function LearningTabs({
   onTabChange,
   dueCount,
   onAddLeak,
-  onAddLeakToPlayer,
   onAddMental,
 }: LearningTabsProps) {
   const compact = useCompactMode();
@@ -36,11 +35,10 @@ export function LearningTabs({
     else if (activeTab === 'mental') onAddMental?.();
   };
 
-  const showAddToPlayer = activeTab === 'leaks' && onAddLeakToPlayer;
-
   const showAdd =
     (activeTab === 'leaks' && onAddLeak) ||
     (activeTab === 'mental' && onAddMental);
+  // To-do tab has its own inline Add, no header button
 
   return (
     <Box
@@ -84,6 +82,10 @@ export function LearningTabs({
             </Badge>
             Due
           </ToggleButton>
+          <ToggleButton value="todo" aria-label="Study to-do">
+            <PlaylistAddCheckIcon sx={{ fontSize: 14, mr: 0.25 }} />
+            To-Do
+          </ToggleButton>
         </ToggleButtonGroup>
         {showAdd && (
           <>
@@ -95,16 +97,6 @@ export function LearningTabs({
             >
               Add
             </Button>
-            {showAddToPlayer && (
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={onAddLeakToPlayer}
-                sx={{ textTransform: 'none' }}
-              >
-                Add to player
-              </Button>
-            )}
           </>
         )}
       </Box>

@@ -675,7 +675,6 @@ export default function App() {
               </Button>
               <ErrorBoundary>
                 <LearningPage
-                  onBack={() => setShowLearning(false)}
                   onSuccess={showSuccess}
                   onError={showError}
                 />
@@ -871,7 +870,6 @@ export default function App() {
             </Button>
             <ErrorBoundary>
               <LearningPage
-                onBack={() => setShowLearning(false)}
                 onSuccess={showSuccess}
                 onError={showError}
               />
