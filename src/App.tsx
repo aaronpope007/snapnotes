@@ -171,12 +171,15 @@ export default function App() {
             !(h.reviewedBy ?? []).includes(userName) &&
             h.status !== 'archived'
         ).length;
+        const message =
+          forMeCount === 0
+            ? 'Hey, nice job, no hands to review'
+            : forMeCount >= 5
+              ? `Hey slacker, there are ${forMeCount} hands to review, get to it.`
+              : `Hey pal, there are ${forMeCount} hand${forMeCount !== 1 ? 's' : ''} to review.`;
         setHandsToReviewLoadToast({
           open: true,
-          message:
-            forMeCount === 0
-              ? 'No hands to review'
-              : `${forMeCount} hand${forMeCount !== 1 ? 's' : ''} to review`,
+          message,
           severity: forMeCount === 0 ? 'success' : 'error',
         });
       })
@@ -639,7 +642,47 @@ export default function App() {
               </Button>
             )}
           </Box>
-          {recentPlayers.length > 0 && (
+          {showHandsToReview && (
+            <>
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => setShowHandsToReview(false)}
+                sx={{ alignSelf: 'flex-start', mb: 0.5 }}
+              >
+                Back to players
+              </Button>
+              <ErrorBoundary>
+                <HandsToReviewView
+                  initialHandId={initialHandId}
+                  onSuccess={showSuccess}
+                  onError={showError}
+                />
+              </ErrorBoundary>
+            </>
+          )}
+          {learningVisible && showLearning && (
+            <>
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => setShowLearning(false)}
+                sx={{ alignSelf: 'flex-start', mb: 0.5 }}
+              >
+                Back to players
+              </Button>
+              <ErrorBoundary>
+                <LearningPage
+                  onBack={() => setShowLearning(false)}
+                  onSuccess={showSuccess}
+                  onError={showError}
+                />
+              </ErrorBoundary>
+            </>
+          )}
+          {recentPlayers.length > 0 && !showHandsToReview && !showLearning && (
             <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: compact ? 0.5 : 1, fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
                 Recent players
@@ -815,7 +858,7 @@ export default function App() {
         </Box>
         )}
 
-        {learningVisible && showLearning ? (
+        {learningVisible && showLearning && !horizontal ? (
           <Box>
             <Button
               variant="text"
@@ -834,7 +877,7 @@ export default function App() {
               />
             </ErrorBoundary>
           </Box>
-        ) : showHandsToReview ? (
+        ) : learningVisible && showLearning && horizontal ? null : showHandsToReview && !horizontal ? (
           <Box>
             <Button
               variant="text"
@@ -853,7 +896,7 @@ export default function App() {
               />
             </ErrorBoundary>
           </Box>
-        ) : loading && !players.length ? (
+        ) : showHandsToReview && horizontal ? null : loading && !players.length ? (
           <Box sx={{ py: compact ? 2 : 4, textAlign: 'center', color: 'text.secondary' }}>
             Loading...
           </Box>
@@ -1096,10 +1139,19 @@ export default function App() {
         autoHideDuration={4000}
         onClose={() => setHandsToReviewLoadToast((s) => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{ '& .MuiSnackbar-content': { minWidth: 480, py: 3 } }}
       >
         <Alert
           severity={handsToReviewLoadToast.severity}
           onClose={() => setHandsToReviewLoadToast((s) => ({ ...s, open: false }))}
+          sx={{
+            py: 3,
+            px: 4,
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            '& .MuiAlert-message': { fontSize: '1.5rem', fontWeight: 700 },
+            '& .MuiAlert-icon': { fontSize: 32 },
+          }}
         >
           {handsToReviewLoadToast.message}
         </Alert>
