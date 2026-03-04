@@ -570,7 +570,7 @@ export default function App() {
         flexShrink: showResults ? 0 : 1,
         flex: horizontal && showResults ? 1 : undefined,
         minWidth: horizontal ? (showResults ? 0 : (compact ? 260 : 320)) : undefined,
-        width: horizontal && !showResults ? (compact ? 480 : 520) : undefined,
+        width: horizontal && !showResults ? (compact ? 520 : 560) : undefined,
         maxWidth: horizontal ? '100%' : undefined,
         alignSelf: 'flex-start',
         position: horizontal && !showResults ? 'sticky' : undefined,
@@ -631,7 +631,7 @@ export default function App() {
       </Box>
       {!selected && (
         <>
-          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto' }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto', minWidth: 0 }}>
             <Button
               variant="outlined"
               size="small"
@@ -883,7 +883,7 @@ export default function App() {
                   <SettingsIcon fontSize="small" />
                 </IconButton>
               </Box>
-          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto' }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto', minWidth: 0 }}>
             <Button
               variant="outlined"
               size="small"
