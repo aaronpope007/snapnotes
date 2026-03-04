@@ -8,6 +8,7 @@ import reviewersRouter from './routes/reviewers.js';
 import backupRouter from './routes/backup.js';
 import meRouter from './routes/me.js';
 import learningRouter from './routes/learning.js';
+import resultsRouter from './routes/results.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.use('/api/reviewers', reviewersRouter);
 app.use('/api/backup', backupRouter);
 app.use('/api/me', meRouter);
 app.use('/api/learning', learningRouter);
+app.use('/api/results', resultsRouter);
 
 const start = async () => {
   const uri = process.env.MONGODB_URI;

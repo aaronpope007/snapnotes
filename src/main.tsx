@@ -10,6 +10,7 @@ import { HorizontalModeProvider } from './context/HorizontalModeContext';
 import { CalculatorVisibilityProvider } from './context/CalculatorVisibilityContext';
 import { DefaultStakesProvider } from './context/DefaultStakesContext';
 import { LearningVisibilityProvider } from './context/LearningVisibilityContext';
+import { ResultsVisibilityProvider } from './context/ResultsVisibilityContext';
 import App from './App.tsx';
 import './index.css';
 
@@ -30,7 +31,9 @@ createRoot(document.getElementById('root')!).render(
             <CalculatorVisibilityProvider>
               <DefaultStakesProvider>
               <LearningVisibilityProvider>
-                <App />
+                <ResultsVisibilityProvider>
+                  <App />
+                </ResultsVisibilityProvider>
               </LearningVisibilityProvider>
               </DefaultStakesProvider>
             </CalculatorVisibilityProvider>

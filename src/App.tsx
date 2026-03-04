@@ -26,12 +26,14 @@ import TuneIcon from '@mui/icons-material/Tune';
 import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
 import { HandHistoryPanel } from './components/HandHistoryPanel';
 import { HandsToReviewView } from './components/HandsToReviewView';
 import { LearningPage } from './pages/LearningPage';
+import { ResultsPage } from './pages/ResultsPage';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import { MergePlayerDialog } from './components/MergePlayerDialog';
@@ -48,6 +50,7 @@ import { useCompactMode, useSetCompactMode } from './context/CompactModeContext'
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
 import { useLearningVisibility, useSetLearningVisibility } from './context/LearningVisibilityContext';
+import { useResultsVisibility, useSetResultsVisibility } from './context/ResultsVisibilityContext';
 import { useDarkMode, useSetDarkMode } from './context/DarkModeContext';
 import { useUserCredentials } from './context/UserNameContext';
 import {
@@ -66,6 +69,9 @@ import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
+
+/** Fixed height for Add Player / Hands to Review / Learning / Results nav buttons. Do not change. */
+const NAV_BUTTON_HEIGHT = 38;
 
 /** Interpolate background color: 1 = reddest, 99–100 = passive grey. */
 function getRngButtonBgColor(value: number | null): string | undefined {
@@ -88,10 +94,15 @@ export default function App() {
   const setCalcVisibility = useSetCalculatorVisibility();
   const learningVisible = useLearningVisibility();
   const setLearningVisible = useSetLearningVisibility();
+  const resultsVisible = useResultsVisibility();
+  const setResultsVisible = useSetResultsVisibility();
 
   useEffect(() => {
     if (!learningVisible) setShowLearning(false);
   }, [learningVisible]);
+  useEffect(() => {
+    if (!resultsVisible) setShowResults(false);
+  }, [resultsVisible]);
   const darkMode = useDarkMode();
   const setDarkMode = useSetDarkMode();
   const { getAuthHeader, userName } = useUserCredentials();
@@ -107,6 +118,7 @@ export default function App() {
     return params.get('hand') ?? null;
   });
   const [showLearning, setShowLearning] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeLoading, setMergeLoading] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
@@ -207,6 +219,7 @@ export default function App() {
     try {
       setShowHandsToReview(false);
       setShowLearning(false);
+      setShowResults(false);
       const full = await fetchPlayer(p._id);
       setSelected(full);
     } catch (err) {
@@ -234,6 +247,7 @@ export default function App() {
       setTempNoteOpen(false);
       setShowHandsToReview(true);
       setShowLearning(false);
+      setShowResults(false);
       setSelected(null);
       showSuccess('Hand added for review');
     } catch (err) {
@@ -284,6 +298,7 @@ export default function App() {
       setTempNoteOpen(false);
       setShowHandsToReview(false);
       setShowLearning(false);
+      setShowResults(false);
       setSelected(updated);
       showSuccess('Note appended to ' + full.username);
     } catch (err) {
@@ -534,6 +549,13 @@ export default function App() {
           </Box>
           <Switch size="small" checked={learningVisible} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLearningVisible(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
         </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <BarChartIcon sx={{ fontSize: 18 }} />
+            Results
+          </Box>
+          <Switch size="small" checked={resultsVisible} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setResultsVisible(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
       </Menu>
       <input ref={backupFileInputRef} type="file" accept=".json" hidden onChange={handleRestoreFileChange} />
     </>
@@ -545,13 +567,14 @@ export default function App() {
         display: 'flex',
         flexDirection: 'column',
         gap: compact ? 1 : 1.5,
-        flexShrink: 1,
-        minWidth: horizontal ? (compact ? 260 : 320) : undefined,
-        width: horizontal ? (compact ? 480 : 520) : undefined,
+        flexShrink: showResults ? 0 : 1,
+        flex: horizontal && showResults ? 1 : undefined,
+        minWidth: horizontal ? (showResults ? 0 : (compact ? 260 : 320)) : undefined,
+        width: horizontal && !showResults ? (compact ? 480 : 520) : undefined,
         maxWidth: horizontal ? '100%' : undefined,
         alignSelf: 'flex-start',
-        position: horizontal ? 'sticky' : undefined,
-        top: horizontal ? (compact ? 1 : 2) : undefined,
+        position: horizontal && !showResults ? 'sticky' : undefined,
+        top: horizontal && !showResults ? (compact ? 1 : 2) : undefined,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'nowrap', minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
@@ -608,12 +631,13 @@ export default function App() {
       </Box>
       {!selected && (
         <>
-          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto' }}>
             <Button
               variant="outlined"
               size="small"
               startIcon={<AddIcon />}
               onClick={() => setAddOpen(true)}
+              sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               Add Player
             </Button>
@@ -624,7 +648,9 @@ export default function App() {
               onClick={() => {
                 setShowHandsToReview(!showHandsToReview);
                 setShowLearning(false);
+                setShowResults(false);
               }}
+              sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               Hands to Review
             </Button>
@@ -636,9 +662,26 @@ export default function App() {
                 onClick={() => {
                   setShowLearning(!showLearning);
                   setShowHandsToReview(false);
+                  setShowResults(false);
                 }}
+                sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 Learning
+              </Button>
+            )}
+            {resultsVisible && (
+              <Button
+                variant={showResults ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<BarChartIcon />}
+                onClick={() => {
+                  setShowResults(!showResults);
+                  setShowHandsToReview(false);
+                  setShowLearning(false);
+                }}
+                sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                Results
               </Button>
             )}
           </Box>
@@ -681,7 +724,26 @@ export default function App() {
               </ErrorBoundary>
             </>
           )}
-          {recentPlayers.length > 0 && !showHandsToReview && !showLearning && (
+          {resultsVisible && showResults && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => setShowResults(false)}
+                sx={{ alignSelf: 'flex-start', mb: 0.5, flexShrink: 0 }}
+              >
+                Back to players
+              </Button>
+              <ErrorBoundary>
+                <ResultsPage
+                  onSuccess={showSuccess}
+                  onError={showError}
+                />
+              </ErrorBoundary>
+            </Box>
+          )}
+          {recentPlayers.length > 0 && !showHandsToReview && !showLearning && !showResults && (
             <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: compact ? 0.5 : 1, fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
                 Recent players
@@ -746,6 +808,7 @@ export default function App() {
         onReviewClick={() => {
           setShowHandsToReview(true);
           setShowLearning(false);
+          setShowResults(false);
           setSelected(null);
         }}
       />
@@ -765,7 +828,7 @@ export default function App() {
         }}
       >
         {horizontal && !selected && leftSidebar}
-        <Box sx={{ flex: horizontal ? 1 : undefined, minWidth: horizontal ? 0 : undefined, display: 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
+        <Box sx={{ flex: horizontal && !showResults ? 1 : (horizontal && showResults ? 0 : undefined), minWidth: horizontal ? 0 : undefined, display: horizontal && showResults ? 'none' : 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
           {!horizontal && (
             <Box sx={{ mb: compact ? 1 : 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5, flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
@@ -820,12 +883,13 @@ export default function App() {
                   <SettingsIcon fontSize="small" />
                 </IconButton>
               </Box>
-          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto' }}>
             <Button
               variant="outlined"
               size="small"
               startIcon={<AddIcon />}
               onClick={() => setAddOpen(true)}
+              sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               Add Player
             </Button>
@@ -836,7 +900,9 @@ export default function App() {
               onClick={() => {
                 setShowHandsToReview(!showHandsToReview);
                 setShowLearning(false);
+                setShowResults(false);
               }}
+              sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               Hands to Review
             </Button>
@@ -848,9 +914,26 @@ export default function App() {
                 onClick={() => {
                   setShowLearning(!showLearning);
                   setShowHandsToReview(false);
+                  setShowResults(false);
                 }}
+                sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 Learning
+              </Button>
+            )}
+            {resultsVisible && (
+              <Button
+                variant={showResults ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<BarChartIcon />}
+                onClick={() => {
+                  setShowResults(!showResults);
+                  setShowHandsToReview(false);
+                  setShowLearning(false);
+                }}
+                sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                Results
               </Button>
             )}
           </Box>

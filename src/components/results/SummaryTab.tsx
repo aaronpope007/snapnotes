@@ -1,0 +1,441 @@
+import { useMemo, useState } from 'react';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import SettingsIcon from '@mui/icons-material/Settings';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
+import { useCompactMode } from '../../context/CompactModeContext';
+import { useDarkMode } from '../../context/DarkModeContext';
+import type { SessionResult } from '../../types/results';
+import { FunFactsBento } from './FunFactsBento';
+
+export type ChartInterval =
+  | 'weekly'
+  | 'monthly'
+  | 'yearly'
+  | { perHand: number };
+
+const PER_HAND_OPTIONS = [5000, 10000, 25000, 50000, 100000];
+
+function formatIntervalLabel(interval: ChartInterval): string {
+  if (typeof interval === 'object') return `Per ${interval.perHand.toLocaleString()} hands`;
+  return interval.charAt(0).toUpperCase() + interval.slice(1);
+}
+
+interface SummaryTabProps {
+  sessions: SessionResult[];
+  loading: boolean;
+}
+
+export function SummaryTab({ sessions, loading }: SummaryTabProps) {
+  const compact = useCompactMode();
+  const darkMode = useDarkMode();
+  const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
+  const axisStroke = darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
+  const gridStroke = darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  const [interval, setInterval] = useState<ChartInterval>('monthly');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const stats = useMemo(() => {
+    const sorted = [...sessions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const totalHours = sorted.reduce(
+      (sum, s) => sum + (s.totalTime ?? 0),
+      0
+    );
+    const totalHands = sorted.reduce((sum, s) => sum + (s.hands ?? 0), 0);
+    const totalProfit = sorted.reduce(
+      (sum, s) => sum + (s.dailyNet ?? 0),
+      0
+    );
+    const startDate =
+      sorted.length > 0 ? new Date(sorted[0].date) : null;
+    const profitPerHand = totalHands > 0 ? totalProfit / totalHands : 0;
+    const avgHandsPerHour = totalHours > 0 ? totalHands / totalHours : 0;
+    const profitPerHour = totalHours > 0 ? totalProfit / totalHours : 0;
+
+    return {
+      startDate,
+      totalHours,
+      totalHands,
+      totalProfit,
+      profitPerHand,
+      avgHandsPerHour,
+      profitPerHour,
+    };
+  }, [sessions]);
+
+  const byStake = useMemo(() => {
+    const groups = new Map<number, SessionResult[]>();
+    for (const s of sessions) {
+      const stake = s.stake ?? 0;
+      if (!groups.has(stake)) groups.set(stake, []);
+      groups.get(stake)!.push(s);
+    }
+    return [...groups.entries()]
+      .filter(([stake]) => stake > 0)
+      .sort(([a], [b]) => a - b)
+      .map(([stake, sess]) => {
+        const sorted = [...sess].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        const totalHours = sorted.reduce((sum, s) => sum + (s.totalTime ?? 0), 0);
+        const totalHands = sorted.reduce((sum, s) => sum + (s.hands ?? 0), 0);
+        const totalProfit = sorted.reduce((sum, s) => sum + (s.dailyNet ?? 0), 0);
+        const startDate = sorted.length > 0 ? new Date(sorted[0].date) : null;
+        const profitPerHand = totalHands > 0 ? totalProfit / totalHands : 0;
+        const avgHandsPerHour = totalHours > 0 ? totalHands / totalHours : 0;
+        const profitPerHour = totalHours > 0 ? totalProfit / totalHours : 0;
+        const bb = stake / 100;
+        const bbPer100 = totalHands > 0 && bb > 0
+          ? (totalProfit / totalHands) * 100 / bb
+          : null;
+        return {
+          stake,
+          startDate,
+          totalHours,
+          totalHands,
+          totalProfit,
+          profitPerHand,
+          avgHandsPerHour,
+          profitPerHour,
+          bbPer100,
+        };
+      });
+  }, [sessions]);
+
+  const chartData = useMemo(() => {
+    const sorted = [...sessions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    if (sorted.length === 0) return [];
+
+    const isPerHand = typeof interval === 'object';
+    const points: { label: string; value: number; cumulativeHands: number }[] = [];
+    let cumulativeProfit = 0;
+    let cumulativeHands = 0;
+
+    if (isPerHand) {
+      points.push({ label: 'Start', value: 0, cumulativeHands: 0 });
+      const step = interval.perHand;
+      let nextHands = step;
+      for (const s of sorted) {
+        const hands = s.hands ?? 0;
+        const net = s.dailyNet ?? 0;
+        cumulativeHands += hands;
+        cumulativeProfit += net;
+        while (cumulativeHands >= nextHands) {
+          points.push({
+            label: `${(nextHands / 1000).toFixed(0)}k hands`,
+            value: cumulativeProfit,
+            cumulativeHands: nextHands,
+          });
+          nextHands += step;
+        }
+      }
+    }
+    else {
+      points.push({ label: 'Start', value: 0, cumulativeHands: 0 });
+      const groupBy = (d: Date) => {
+        if (interval === 'weekly') {
+          const start = new Date(d);
+          start.setDate(start.getDate() - start.getDay());
+          return start.toDateString();
+        }
+        if (interval === 'monthly')
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        return `${d.getFullYear()}`;
+      };
+      const groups = new Map<string, number>();
+      for (const s of sorted) {
+        const key = groupBy(new Date(s.date));
+        const prev = groups.get(key) ?? 0;
+        groups.set(key, prev + (s.dailyNet ?? 0));
+      }
+      cumulativeProfit = 0;
+      for (const [label, delta] of [...groups.entries()].sort()) {
+        cumulativeProfit += delta;
+        const displayLabel =
+          interval === 'weekly'
+            ? new Date(label).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })
+            : interval === 'monthly'
+              ? label.replace('-', '/')
+              : label;
+        points.push({ label: displayLabel, value: cumulativeProfit, cumulativeHands: 0 });
+      }
+    }
+    return points;
+  }, [sessions, interval]);
+
+  if (loading) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Loading…
+      </Typography>
+    );
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Add sessions to see summary and chart.
+      </Typography>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: compact ? 1.5 : 2,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: compact ? 1 : 1.5,
+        }}
+      >
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Start
+          </Typography>
+          <Typography variant="body2">
+            {stats.startDate?.toLocaleDateString() ?? '—'}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Hours
+          </Typography>
+          <Typography variant="body2">
+            {stats.totalHours.toFixed(1)}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Profit
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{ color: stats.totalProfit >= 0 ? 'success.main' : 'error.main' }}
+          >
+            ${stats.totalProfit.toFixed(2)}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            $/hand
+          </Typography>
+          <Typography variant="body2">
+            ${stats.profitPerHand.toFixed(2)}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Avg hands/hr
+          </Typography>
+          <Typography variant="body2">
+            {Math.round(stats.avgHandsPerHour)}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Total hands
+          </Typography>
+          <Typography variant="body2">
+            {stats.totalHands.toLocaleString()}
+          </Typography>
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography variant="caption" color="text.secondary">
+            $/hr
+          </Typography>
+          <Typography variant="body2">
+            ${stats.profitPerHour.toFixed(2)}
+          </Typography>
+        </Box>
+      </Paper>
+
+      <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <EmojiEventsIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Fun facts</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <FunFactsBento sessions={sessions} />
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <TrendingUpIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">By stake</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {byStake.length === 0 ? (
+              <Typography variant="caption" color="text.secondary">
+                No stake data recorded.
+              </Typography>
+            ) : (
+              byStake.map((row) => (
+                <Paper
+                  key={row.stake}
+                  variant="outlined"
+                  sx={{
+                    p: compact ? 1 : 1.5,
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: compact ? 1 : 1.5,
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ gridColumn: '1 / -1' }}>
+                    {row.stake}
+                  </Typography>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Start</Typography>
+                    <Typography variant="body2">{row.startDate?.toLocaleDateString() ?? '—'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Hours</Typography>
+                    <Typography variant="body2">{row.totalHours.toFixed(1)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Profit</Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: row.totalProfit >= 0 ? 'success.main' : 'error.main' }}
+                    >
+                      ${row.totalProfit.toFixed(2)}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">$/hand</Typography>
+                    <Typography variant="body2">${row.profitPerHand.toFixed(2)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Avg hands/hr</Typography>
+                    <Typography variant="body2">{Math.round(row.avgHandsPerHour)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Total hands</Typography>
+                    <Typography variant="body2">{row.totalHands.toLocaleString()}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">$/hr</Typography>
+                    <Typography variant="body2">${row.profitPerHour.toFixed(2)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">BB/100</Typography>
+                    <Typography variant="body2">
+                      {row.bbPer100 != null ? row.bbPer100.toFixed(1) : '—'}
+                    </Typography>
+                  </Box>
+                </Paper>
+              ))
+            )}
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      <Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 0.5,
+          }}
+        >
+          <Typography variant="caption" color="text.secondary">
+            Bankroll over time
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={(e) => setAnchorEl(e.currentTarget)}
+            aria-label="Chart interval"
+          >
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <Menu
+          anchorEl={anchorEl}
+          open={!!anchorEl}
+          onClose={() => setAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={() => { setInterval('weekly'); setAnchorEl(null); }}>
+            Weekly
+          </MenuItem>
+          <MenuItem onClick={() => { setInterval('monthly'); setAnchorEl(null); }}>
+            Monthly
+          </MenuItem>
+          <MenuItem onClick={() => { setInterval('yearly'); setAnchorEl(null); }}>
+            Yearly
+          </MenuItem>
+          {PER_HAND_OPTIONS.map((n) => (
+            <MenuItem
+              key={n}
+              onClick={() => { setInterval({ perHand: n }); setAnchorEl(null); }}
+            >
+              Per {n.toLocaleString()} hands
+            </MenuItem>
+          ))}
+        </Menu>
+        <Box sx={{ height: compact ? 160 : 220, width: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: -10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: axisColor }}
+                stroke={axisStroke}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: axisColor }}
+                stroke={axisStroke}
+                tickFormatter={(v) => `$${v}`}
+              />
+              <Tooltip
+                formatter={(value: number) => [`$${value.toFixed(2)}`, 'Bankroll']}
+                labelFormatter={(label) => label}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="#4caf50"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+          {formatIntervalLabel(interval)}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
