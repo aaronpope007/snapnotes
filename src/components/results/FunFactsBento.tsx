@@ -151,6 +151,13 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             accent="error"
           />
         )}
+        {insights.sessionCount > 0 && (
+          <InsightCard
+            icon={<CalendarMonthIcon sx={{ fontSize: 20 }} />}
+            label="Total sessions"
+            value={`${insights.sessionCount} session${insights.sessionCount !== 1 ? 's' : ''}`}
+          />
+        )}
         {(insights.longestBreakevenHands > 0 || insights.longestBreakevenDays > 0) && (
           <InsightCard
             icon={<ScheduleIcon sx={{ fontSize: 20 }} />}
@@ -172,6 +179,22 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             label="Biggest upswing"
             value={`${formatDollar(insights.biggestUpswing)}${insights.biggestUpswingHands > 0 ? ` over ${insights.biggestUpswingHands.toLocaleString()} hands` : ''}`}
             accent="success"
+          />
+        )}
+        {insights.bestSingleSessionNet != null && insights.bestSingleSessionNet > 0 && insights.bestSingleSessionDate && (
+          <InsightCard
+            icon={<TrendingUpIcon sx={{ fontSize: 20 }} />}
+            label="Best single session"
+            value={`${formatDollar(insights.bestSingleSessionNet)} on ${new Date(insights.bestSingleSessionDate).toLocaleDateString()}`}
+            accent="success"
+          />
+        )}
+        {insights.worstSingleSessionNet != null && insights.worstSingleSessionNet < 0 && insights.worstSingleSessionDate && (
+          <InsightCard
+            icon={<TrendingDownIcon sx={{ fontSize: 20 }} />}
+            label="Worst single session"
+            value={`${formatDollar(insights.worstSingleSessionNet)} on ${new Date(insights.worstSingleSessionDate).toLocaleDateString()}`}
+            accent="error"
           />
         )}
         {insights.bestDay && (
@@ -242,6 +265,28 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             label="$ won per hand"
             value={`${formatDollar(insights.profitPerHand)} (${insights.totalHands.toLocaleString()} hands)`}
             accent={insights.profitPerHand >= 0 ? 'success' : 'error'}
+          />
+        )}
+        {insights.totalHours > 0 && (
+          <InsightCard
+            icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}
+            label="Average $ per hour"
+            value={formatPerHr(insights.profitPerHour)}
+            accent={insights.profitPerHour >= 0 ? 'success' : 'error'}
+          />
+        )}
+        {insights.sessionCount > 0 && insights.avgSessionLengthHours > 0 && (
+          <InsightCard
+            icon={<ScheduleIcon sx={{ fontSize: 20 }} />}
+            label="Avg session length"
+            value={`${insights.avgSessionLengthHours.toFixed(1)} hrs/session`}
+          />
+        )}
+        {insights.sessionCount > 0 && insights.avgHandsPerSession > 0 && (
+          <InsightCard
+            icon={<ScheduleIcon sx={{ fontSize: 20 }} />}
+            label="Avg hands per session"
+            value={`${Math.round(insights.avgHandsPerSession).toLocaleString()} hands/session`}
           />
         )}
         {insights.currentStatus && (

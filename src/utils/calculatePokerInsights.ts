@@ -51,6 +51,22 @@ export interface PokerInsights {
   /** Total profit / total hands (avg $ per hand) */
   profitPerHand: number;
   totalHands: number;
+  /** Total hours played (for date range) */
+  totalHours: number;
+  /** Avg $ per hour (cumulativeNet / totalHours) */
+  profitPerHour: number;
+  /** Number of sessions in range */
+  sessionCount: number;
+  /** Best single session: net and date */
+  bestSingleSessionNet: number | null;
+  bestSingleSessionDate: string | null;
+  /** Worst single session: net and date */
+  worstSingleSessionNet: number | null;
+  worstSingleSessionDate: string | null;
+  /** Avg hours per session */
+  avgSessionLengthHours: number;
+  /** Avg hands per session */
+  avgHandsPerSession: number;
 }
 
 const TIME_BUCKETS: { key: number; label: string; minHour: number; maxHour: number }[] = [
@@ -87,6 +103,7 @@ export function calculatePokerInsights(
   const runningTotal: { cumulativeNet: number; cumulativeHands: number; date: string }[] = [];
   let cumulativeNet = 0;
   let cumulativeHands = 0;
+  let totalHours = 0;
   let peak = 0;
   let peakCumHands = 0;
   let peakDate: Date | null = null;
@@ -118,9 +135,11 @@ export function calculatePokerInsights(
     const s = sorted[i];
     const net = s.dailyNet ?? 0;
     const hands = s.hands ?? 0;
+    const hours = s.totalTime ?? 0;
     const date = new Date(s.date);
     cumulativeNet += net;
     cumulativeHands += hands;
+    totalHours += hours;
     runningTotal.push({
       cumulativeNet,
       cumulativeHands,
@@ -224,6 +243,27 @@ export function calculatePokerInsights(
           year: 'numeric',
         })
       : null;
+
+  // Best / worst single session
+  let bestSingleSessionNet: number | null = null;
+  let bestSingleSessionDate: string | null = null;
+  let worstSingleSessionNet: number | null = null;
+  let worstSingleSessionDate: string | null = null;
+  for (const s of sorted) {
+    const net = s.dailyNet ?? 0;
+    if (net > 0 && (bestSingleSessionNet === null || net > bestSingleSessionNet)) {
+      bestSingleSessionNet = net;
+      bestSingleSessionDate = s.date;
+    }
+    if (net < 0 && (worstSingleSessionNet === null || net < worstSingleSessionNet)) {
+      worstSingleSessionNet = net;
+      worstSingleSessionDate = s.date;
+    }
+  }
+
+  const sessionCount = sorted.length;
+  const avgSessionLengthHours = sessionCount > 0 ? totalHours / sessionCount : 0;
+  const avgHandsPerSession = sessionCount > 0 ? cumulativeHands / sessionCount : 0;
 
   const winRatePercentage =
     sorted.length > 0 ? (winningSessions / sorted.length) * 100 : 0;
@@ -362,5 +402,14 @@ export function calculatePokerInsights(
     runningTotal,
     totalHands: cumulativeHands,
     profitPerHand: cumulativeHands > 0 ? cumulativeNet / cumulativeHands : 0,
+    totalHours,
+    profitPerHour: totalHours > 0 ? cumulativeNet / totalHours : 0,
+    sessionCount,
+    bestSingleSessionNet,
+    bestSingleSessionDate,
+    worstSingleSessionNet,
+    worstSingleSessionDate,
+    avgSessionLengthHours,
+    avgHandsPerSession,
   };
 }
