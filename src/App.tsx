@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
@@ -144,6 +145,14 @@ export default function App() {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+  const [myRecent, setMyRecent] = useState(() => {
+    try { return localStorage.getItem('snapnotes_my_recent') === 'true'; } catch { return false; }
+  });
+  const [myRecentPlayers, setMyRecentPlayers] = useState<PlayerListItem[]>([]);
+
+  useEffect(() => {
+    try { localStorage.setItem('snapnotes_my_recent', String(myRecent)); } catch { /* ignore */ }
+  }, [myRecent]);
 
   const showSuccess = (msg: string) =>
     setSnackbar({ open: true, message: msg, severity: 'success' });
@@ -162,6 +171,23 @@ export default function App() {
       if (!opts?.silent) setLoading(false);
     }
   }, []);
+
+  const loadMyRecentPlayers = useCallback(async () => {
+    if (!myRecent || !userName?.trim()) {
+      setMyRecentPlayers([]);
+      return;
+    }
+    try {
+      const data = await fetchPlayers({ touchedBy: userName });
+      setMyRecentPlayers(Array.isArray(data) ? data : []);
+    } catch {
+      setMyRecentPlayers([]);
+    }
+  }, [myRecent, userName]);
+
+  useEffect(() => {
+    if (myRecent && userName?.trim()) void loadMyRecentPlayers();
+  }, [loadMyRecentPlayers, myRecent, userName, players]);
 
   useEffect(() => {
     loadPlayers();
@@ -460,15 +486,16 @@ export default function App() {
   const existingUsernames = new Set(players.map((p) => p.username.toLowerCase()));
 
   const recentPlayers = useMemo(() => {
-    return [...players]
+    const source = myRecent ? myRecentPlayers : players;
+    return [...source]
       .filter((p) => p.updatedAt ?? p.createdAt)
       .sort((a, b) => {
         const aTs = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
         const bTs = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
         return bTs - aTs;
       })
-      .slice(0, 10);
-  }, [players]);
+      .slice(0, 20);
+  }, [myRecent, myRecentPlayers, players]);
 
   const menuAndInput = (
     <>
@@ -743,11 +770,25 @@ export default function App() {
               </ErrorBoundary>
             </Box>
           )}
-          {recentPlayers.length > 0 && !showHandsToReview && !showLearning && !showResults && (
+          {(!selected && (recentPlayers.length > 0 || myRecent)) && !showHandsToReview && !showLearning && !showResults && (
             <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: compact ? 0.5 : 1, fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
-                Recent players
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: compact ? 0.5 : 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
+                  Recent players
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={myRecent}
+                      onChange={(e) => setMyRecent(e.target.checked)}
+                      disabled={!userName?.trim()}
+                    />
+                  }
+                  label={<Typography variant="caption" color="text.secondary">My recent</Typography>}
+                />
+              </Box>
+              {recentPlayers.length > 0 ? (
               <List dense disablePadding>
                 {recentPlayers.map((p: PlayerListItem) => (
                   <ListItemButton
@@ -786,6 +827,11 @@ export default function App() {
                   </ListItemButton>
                 ))}
               </List>
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  {myRecent ? "No players you've edited or added yet." : 'No recent players.'}
+                </Typography>
+              )}
             </Paper>
           )}
         </>
@@ -1082,11 +1128,25 @@ export default function App() {
             <Typography variant={compact ? 'caption' : 'body2'} color="text.secondary" sx={{ mb: compact ? 0.5 : 1 }}>
               Search for a player or add a new one.
             </Typography>
-            {recentPlayers.length > 0 && (
+            {(recentPlayers.length > 0 || myRecent) && (
               <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: compact ? 0.5 : 1, fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
-                  Recent players
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: compact ? 0.5 : 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
+                    Recent players
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={myRecent}
+                        onChange={(e) => setMyRecent(e.target.checked)}
+                        disabled={!userName?.trim()}
+                      />
+                    }
+                    label={<Typography variant="caption" color="text.secondary">My recent</Typography>}
+                  />
+                </Box>
+                {recentPlayers.length > 0 ? (
                 <List dense disablePadding>
                   {recentPlayers.map((p: PlayerListItem) => (
                     <ListItemButton
@@ -1124,6 +1184,11 @@ export default function App() {
                     </ListItemButton>
                   ))}
                 </List>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    {myRecent ? "No players you've edited or added yet." : 'No recent players.'}
+                  </Typography>
+                )}
               </Paper>
             )}
           </Box>

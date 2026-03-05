@@ -83,10 +83,20 @@ function normalizeStakesAndFormats(doc: Record<string, unknown>): { stakesSeenAt
   return { stakesSeenAt: [], formats: [] };
 }
 
-// GET /api/players — return list
-router.get('/', async (_req: Request, res: Response) => {
+// GET /api/players — return list (?touchedBy=username to filter to players with notes/comments from that user)
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const players = await Player.find()
+    const touchedBy = typeof req.query.touchedBy === 'string' ? req.query.touchedBy.trim() : undefined;
+    const query = touchedBy
+      ? {
+          $or: [
+            { 'notes.addedBy': touchedBy },
+            { 'handHistories.comments.addedBy': touchedBy },
+            { 'handHistories.comments.editedBy': touchedBy },
+          ],
+        }
+      : {};
+    const players = await Player.find(query)
       .select('username playerType gameTypes stakesSeenAt stakesWithFormat formats origin updatedAt createdAt')
       .sort({ username: 1 })
       .collation({ locale: 'en', strength: 2 })

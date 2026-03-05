@@ -6,8 +6,10 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-export async function fetchPlayers(): Promise<PlayerListItem[]> {
-  const { data } = await api.get<PlayerListItem[]>('/players');
+export async function fetchPlayers(options?: { touchedBy?: string | null }): Promise<PlayerListItem[]> {
+  const params: Record<string, string> = {};
+  if (options?.touchedBy?.trim()) params.touchedBy = options.touchedBy.trim();
+  const { data } = await api.get<PlayerListItem[]>('/players', { params });
   return data;
 }
 
