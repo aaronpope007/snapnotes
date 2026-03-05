@@ -11,6 +11,7 @@ import { CalculatorVisibilityProvider } from './context/CalculatorVisibilityCont
 import { DefaultStakesProvider } from './context/DefaultStakesContext';
 import { LearningVisibilityProvider } from './context/LearningVisibilityContext';
 import { ResultsVisibilityProvider } from './context/ResultsVisibilityContext';
+import { LeaksVisibilityProvider } from './context/LeaksVisibilityContext';
 import App from './App.tsx';
 import './index.css';
 
@@ -32,7 +33,9 @@ createRoot(document.getElementById('root')!).render(
               <DefaultStakesProvider>
               <LearningVisibilityProvider>
                 <ResultsVisibilityProvider>
-                  <App />
+                  <LeaksVisibilityProvider>
+                    <App />
+                  </LeaksVisibilityProvider>
                 </ResultsVisibilityProvider>
               </LearningVisibilityProvider>
               </DefaultStakesProvider>

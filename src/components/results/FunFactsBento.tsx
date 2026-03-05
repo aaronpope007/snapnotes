@@ -13,6 +13,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useCompactMode } from '../../context/CompactModeContext';
 import {
   calculatePokerInsights,
@@ -235,6 +236,14 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           value={formatDollar(insights.avgSessionNet)}
           accent={insights.avgSessionNet >= 0 ? 'success' : 'error'}
         />
+        {insights.totalHands > 0 && (
+          <InsightCard
+            icon={<AttachMoneyIcon sx={{ fontSize: 20 }} />}
+            label="$ won per hand"
+            value={`${formatDollar(insights.profitPerHand)} (${insights.totalHands.toLocaleString()} hands)`}
+            accent={insights.profitPerHand >= 0 ? 'success' : 'error'}
+          />
+        )}
         {insights.currentStatus && (
           <InsightCard
             icon={<LocalFireDepartmentIcon sx={{ fontSize: 20 }} />}

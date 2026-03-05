@@ -52,6 +52,7 @@ import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalMod
 import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
 import { useLearningVisibility, useSetLearningVisibility } from './context/LearningVisibilityContext';
 import { useResultsVisibility, useSetResultsVisibility } from './context/ResultsVisibilityContext';
+import { useLeaksVisibility, useSetLeaksVisibility } from './context/LeaksVisibilityContext';
 import { useDarkMode, useSetDarkMode } from './context/DarkModeContext';
 import { useUserCredentials } from './context/UserNameContext';
 import {
@@ -97,6 +98,8 @@ export default function App() {
   const setLearningVisible = useSetLearningVisibility();
   const resultsVisible = useResultsVisibility();
   const setResultsVisible = useSetResultsVisibility();
+  const leaksVisible = useLeaksVisibility();
+  const setLeaksVisible = useSetLeaksVisibility();
 
   useEffect(() => {
     if (!learningVisible) setShowLearning(false);
@@ -376,7 +379,7 @@ export default function App() {
     try {
       const created = await createPlayer(player, getAuthHeader());
       setPlayers((prev) =>
-        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, gameTypes: created.gameTypes ?? [], stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold', updatedAt: created.updatedAt, createdAt: created.createdAt }].sort(
+        [...prev, { _id: created._id, username: created.username, playerType: created.playerType, gameTypes: created.gameTypes ?? [], stakesSeenAt: created.stakesSeenAt ?? [], formats: created.formats ?? [], origin: created.origin ?? 'WPT Gold', leaks: created.leaks ?? [], updatedAt: created.updatedAt, createdAt: created.createdAt }].sort(
           (a, b) => a.username.localeCompare(b.username)
         )
       );
@@ -582,6 +585,12 @@ export default function App() {
             Results
           </Box>
           <Switch size="small" checked={resultsVisible} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setResultsVisible(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            Leaks (player tags)
+          </Box>
+          <Switch size="small" checked={leaksVisible} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLeaksVisible(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
         </MenuItem>
       </Menu>
       <input ref={backupFileInputRef} type="file" accept=".json" hidden onChange={handleRestoreFileChange} />

@@ -79,6 +79,10 @@ const playerSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    leaks: {
+      type: [String],
+      default: [],
+    },
     handHistories: {
       type: [
         {

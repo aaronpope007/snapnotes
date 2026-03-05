@@ -20,9 +20,11 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import { ExploitsDisplay } from './ExploitsDisplay';
+import { LeaksSection } from './LeaksSection';
 import { StakesSection } from './StakesSection';
 import { NotesSection } from './NotesSection';
 import { useUserName } from '../context/UserNameContext';
+import { useLeaksVisibility } from '../context/LeaksVisibilityContext';
 import { useCompactMode } from '../context/CompactModeContext';
 import {
   PLAYER_TYPE_KEYS,
@@ -45,6 +47,7 @@ interface PlayerCardProps {
 export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, onClose, horizontal = false }: PlayerCardProps) {
   const userName = useUserName();
   const compact = useCompactMode();
+  const leaksVisible = useLeaksVisibility();
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(player.username);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -175,6 +178,15 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
     setSaving(true);
     try {
       await onUpdate(player._id, { exploits: next });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateLeaks = async (leaks: string[]) => {
+    setSaving(true);
+    try {
+      await onUpdate(player._id, { leaks });
     } finally {
       setSaving(false);
     }
@@ -312,6 +324,15 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
                 </Button>
               </Box>
             </Box>
+            {leaksVisible && (
+              <Box sx={{ mb: compact ? 1 : 1.5 }}>
+                <LeaksSection
+                  leaks={player.leaks || []}
+                  onUpdateLeaks={handleUpdateLeaks}
+                  saving={saving}
+                />
+              </Box>
+            )}
             <NotesSection
               key={player._id}
               notes={player.notes || []}
@@ -381,6 +402,14 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
             ))}
           </Select>
         </FormControl>
+
+        {leaksVisible && (
+          <LeaksSection
+            leaks={player.leaks || []}
+            onUpdateLeaks={handleUpdateLeaks}
+            saving={saving}
+          />
+        )}
 
         <StakesSection
           gameTypes={player.gameTypes || []}

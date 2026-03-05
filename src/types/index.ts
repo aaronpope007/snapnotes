@@ -40,6 +40,7 @@ export interface Player {
   origin: string;
   notes: NoteEntry[];
   exploits: string[];
+  leaks?: string[];
   handHistories: HandHistoryEntry[];
   exploitHandExamples: string[];
   createdAt: string;
@@ -54,6 +55,7 @@ export interface PlayerListItem {
   stakesSeenAt: number[];
   formats: string[];
   origin: string;
+  leaks?: string[];
   updatedAt?: string;
   createdAt?: string;
 }
@@ -67,6 +69,7 @@ export interface PlayerCreate {
   origin?: string;
   notes?: NoteEntry[];
   exploits?: string[];
+  leaks?: string[];
   handHistories?: HandHistoryEntry[];
   exploitHandExamples?: string[];
 }

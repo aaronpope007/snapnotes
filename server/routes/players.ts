@@ -97,7 +97,7 @@ router.get('/', async (req: Request, res: Response) => {
         }
       : {};
     const players = await Player.find(query)
-      .select('username playerType gameTypes stakesSeenAt stakesWithFormat formats origin updatedAt createdAt')
+      .select('username playerType gameTypes stakesSeenAt stakesWithFormat formats origin leaks updatedAt createdAt')
       .sort({ username: 1 })
       .collation({ locale: 'en', strength: 2 })
       .lean();

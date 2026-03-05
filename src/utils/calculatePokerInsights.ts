@@ -48,6 +48,9 @@ export interface PokerInsights {
   byTimeOfDay: { label: string; profitPerHour: number; hours: number }[];
   /** Running total for chart */
   runningTotal: { cumulativeNet: number; cumulativeHands: number; date: string }[];
+  /** Total profit / total hands (avg $ per hand) */
+  profitPerHand: number;
+  totalHands: number;
 }
 
 const TIME_BUCKETS: { key: number; label: string; minHour: number; maxHour: number }[] = [
@@ -357,5 +360,7 @@ export function calculatePokerInsights(
     bestTimeOfDayProfitPerHour,
     byTimeOfDay,
     runningTotal,
+    totalHands: cumulativeHands,
+    profitPerHand: cumulativeHands > 0 ? cumulativeNet / cumulativeHands : 0,
   };
 }
