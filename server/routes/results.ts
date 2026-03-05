@@ -61,7 +61,10 @@ router.post('/', async (req: Request, res: Response) => {
       date?: string;
       totalTime?: number | null;
       hands?: number | null;
+      handsStartedAt?: number | null;
+      handsEndedAt?: number | null;
       dailyNet?: number | null;
+      endBankroll?: number | null;
       startTime?: string | null;
       endTime?: string | null;
       stake?: number | null;
@@ -75,12 +78,22 @@ router.post('/', async (req: Request, res: Response) => {
     const dateVal = body.date ? parseDate(body.date) : new Date();
     if (!dateVal) return res.status(400).json({ error: 'Invalid date' });
 
+    const handsStartedAt = body.handsStartedAt ?? null;
+    const handsEndedAt = body.handsEndedAt ?? null;
+    let hands = body.hands ?? null;
+    if (hands == null && handsStartedAt != null && handsEndedAt != null) {
+      hands = handsEndedAt - handsStartedAt;
+    }
+
     const session = new SessionResult({
       userId,
       date: dateVal,
       totalTime: body.totalTime ?? null,
-      hands: body.hands ?? null,
+      hands,
+      handsStartedAt,
+      handsEndedAt,
       dailyNet: body.dailyNet ?? null,
+      endBankroll: body.endBankroll ?? null,
       startTime: body.startTime ? new Date(body.startTime) : null,
       endTime: body.endTime ? new Date(body.endTime) : null,
       stake: body.stake ?? null,
@@ -105,7 +118,10 @@ router.post('/upload', async (req: Request, res: Response) => {
         date?: string | number | Date;
         totalTime?: number | string | null;
         hands?: number | string | null;
+        handsStartedAt?: number | string | null;
+        handsEndedAt?: number | string | null;
         dailyNet?: number | string | null;
+        endBankroll?: number | string | null;
       }>;
     };
     const userId = body.userId?.trim() || getUserId(req);
@@ -120,7 +136,10 @@ router.post('/upload', async (req: Request, res: Response) => {
       date: Date;
       totalTime: number | null;
       hands: number | null;
+      handsStartedAt: number | null;
+      handsEndedAt: number | null;
       dailyNet: number | null;
+      endBankroll: number | null;
     }> = [];
 
     for (let i = 0; i < raw.length; i++) {
@@ -131,15 +150,33 @@ router.post('/upload', async (req: Request, res: Response) => {
         row?.totalTime != null && row.totalTime !== ''
           ? Number(row.totalTime)
           : null;
-      const hands =
+      let hands =
         row?.hands != null && row.hands !== '' ? Number(row.hands) : null;
+      const handsStartedAt =
+        row?.handsStartedAt != null && row.handsStartedAt !== ''
+          ? Number(row.handsStartedAt)
+          : null;
+      const handsEndedAt =
+        row?.handsEndedAt != null && row.handsEndedAt !== ''
+          ? Number(row.handsEndedAt)
+          : null;
+      if (hands == null && handsStartedAt != null && handsEndedAt != null && !Number.isNaN(handsStartedAt) && !Number.isNaN(handsEndedAt)) {
+        hands = handsEndedAt - handsStartedAt;
+      }
       const dailyNet = parseDailyNet(row?.dailyNet);
+      const endBankroll =
+        row?.endBankroll != null && row.endBankroll !== ''
+          ? Number(String(row.endBankroll).replace(/[$,]/g, ''))
+          : null;
       toInsert.push({
         userId,
         date: dateVal,
         totalTime: typeof totalTime === 'number' && !Number.isNaN(totalTime) ? totalTime : null,
         hands: typeof hands === 'number' && !Number.isNaN(hands) && Number.isInteger(hands) ? hands : null,
+        handsStartedAt: typeof handsStartedAt === 'number' && !Number.isNaN(handsStartedAt) && Number.isInteger(handsStartedAt) ? handsStartedAt : null,
+        handsEndedAt: typeof handsEndedAt === 'number' && !Number.isNaN(handsEndedAt) && Number.isInteger(handsEndedAt) ? handsEndedAt : null,
         dailyNet,
+        endBankroll: typeof endBankroll === 'number' && !Number.isNaN(endBankroll) ? endBankroll : null,
       });
     }
 
@@ -176,7 +213,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
       date?: string;
       totalTime?: number | null;
       hands?: number | null;
+      handsStartedAt?: number | null;
+      handsEndedAt?: number | null;
       dailyNet?: number | null;
+      endBankroll?: number | null;
       startTime?: string | null;
       endTime?: string | null;
       stake?: number | null;
@@ -190,7 +230,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
     }
     if (body.totalTime !== undefined) session.totalTime = body.totalTime;
     if (body.hands !== undefined) session.hands = body.hands;
+    if (body.handsStartedAt !== undefined) session.handsStartedAt = body.handsStartedAt;
+    if (body.handsEndedAt !== undefined) session.handsEndedAt = body.handsEndedAt;
     if (body.dailyNet !== undefined) session.dailyNet = body.dailyNet;
+    if (body.endBankroll !== undefined) session.endBankroll = body.endBankroll;
     if (body.startTime !== undefined) session.startTime = body.startTime ? new Date(body.startTime) : null;
     if (body.endTime !== undefined) session.endTime = body.endTime ? new Date(body.endTime) : null;
     if (body.stake !== undefined) session.stake = body.stake;

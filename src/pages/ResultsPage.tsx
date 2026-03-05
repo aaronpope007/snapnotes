@@ -13,9 +13,15 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 interface ResultsPageProps {
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
+  onActiveSessionChange?: () => void;
+  hasActiveSession?: boolean;
+  activeSessionStartTime?: string | null;
+  resetSessionTrigger?: number;
+  requestOpenEndSessionModal?: boolean;
+  onClearRequestOpenEndSessionModal?: () => void;
 }
 
-export function ResultsPage({ onSuccess, onError }: ResultsPageProps) {
+export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActiveSession, activeSessionStartTime, resetSessionTrigger, requestOpenEndSessionModal, onClearRequestOpenEndSessionModal }: ResultsPageProps) {
   const userName = useUserName();
   const [view, setView] = useState<ResultsViewValue>('summary');
   const [activeTab, setActiveTab] = useState<ResultsTabValue>('sessions');
@@ -90,6 +96,10 @@ export function ResultsPage({ onSuccess, onError }: ResultsPageProps) {
   );
 
   const totalHands = sessions.reduce((sum, s) => sum + (s.hands ?? 0), 0);
+  const mostRecentSession = sessions[0] ?? null;
+  const lastHandsEndedAt =
+    mostRecentSession?.handsEndedAt ??
+    (sessions.length > 0 ? totalHands : 0);
 
   return (
     <Box sx={{ width: '100%', minWidth: 0, flex: 1, overflow: 'auto' }}>
@@ -98,11 +108,17 @@ export function ResultsPage({ onSuccess, onError }: ResultsPageProps) {
         onViewChange={setView}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        totalHands={totalHands}
+        lastHandsEndedAt={lastHandsEndedAt}
         hasUser={!!userName?.trim()}
+        userName={userName}
+        lastEndBankroll={mostRecentSession?.endBankroll ?? null}
         onAddSession={handleAddSession}
         onSuccess={(msg) => onSuccess?.(msg)}
         onError={(msg) => onError?.(msg)}
+        onActiveSessionChange={onActiveSessionChange}
+        resetSessionTrigger={resetSessionTrigger}
+        requestOpenEndSessionModal={requestOpenEndSessionModal}
+        onClearRequestOpenEndSessionModal={onClearRequestOpenEndSessionModal}
       />
       {!userName?.trim() ? (
         <Typography variant="body2" color="text.secondary">
@@ -110,7 +126,7 @@ export function ResultsPage({ onSuccess, onError }: ResultsPageProps) {
         </Typography>
       ) : view === 'summary' ? (
         <ErrorBoundary>
-          <SummaryTab sessions={sessions} loading={loading} />
+          <SummaryTab sessions={sessions} loading={loading} hasActiveSession={hasActiveSession} activeSessionStartTime={activeSessionStartTime} />
         </ErrorBoundary>
       ) : activeTab === 'sessions' ? (
         <ErrorBoundary>

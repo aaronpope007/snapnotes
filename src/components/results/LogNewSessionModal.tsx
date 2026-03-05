@@ -34,7 +34,7 @@ export function LogNewSessionModal({
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [stake, setStake] = useState<number | ''>(200);
+  const [stake, setStake] = useState<number | ''>('');
   const [isRing, setIsRing] = useState(false);
   const [isHU, setIsHU] = useState(false);
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
@@ -81,7 +81,7 @@ export function LogNewSessionModal({
       const sessionDate = date ? `${date}T12:00:00` : new Date().toISOString();
       const payload: SessionResultCreate = {
         date: sessionDate,
-        totalTime: totalTimeFromTimes ?? undefined,
+        totalTime: totalTimeFromTimes != null ? Math.round(totalTimeFromTimes * 100) / 100 : undefined,
         hands: handsPlayed,
         dailyNet: dailyNet.trim() ? Number(dailyNet.replace(/[$,]/g, '')) : undefined,
         startTime: startTime ? `${date}T${startTime}:00` : undefined,
@@ -174,10 +174,11 @@ export function LogNewSessionModal({
               select
               label="Stake"
               size="small"
-              value={stake === '' ? 200 : stake}
-              onChange={(e) => setStake(Number(e.target.value) || '')}
+              value={stake === '' ? '' : stake}
+              onChange={(e) => setStake(e.target.value === '' ? '' : Number(e.target.value) || '')}
               sx={{ minWidth: 90 }}
             >
+              <MenuItem value="">—</MenuItem>
               {RESULTS_STAKE_OPTIONS.map((s) => (
                 <MenuItem key={s} value={s}>
                   {s}

@@ -451,7 +451,11 @@ export function useHandsToReview({
     if (!userName) return;
     try {
       const updated = await markHandReviewed(handId, userName);
-      setHands((prev) => prev.map((h) => (h._id === handId ? updated : h)));
+      const reviewedBy = [...(updated.reviewedBy ?? [])];
+      if (!reviewedBy.includes(userName)) reviewedBy.push(userName);
+      setHands((prev) =>
+        prev.map((h) => (h._id === handId ? { ...updated, reviewedBy } : h))
+      );
       onSuccess?.('Marked as reviewed');
     } catch {
       onError?.('Failed to mark as reviewed');

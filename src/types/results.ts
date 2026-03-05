@@ -6,7 +6,10 @@ export interface SessionResult {
   date: string;
   totalTime: number | null;
   hands: number | null;
+  handsStartedAt: number | null;
+  handsEndedAt: number | null;
   dailyNet: number | null;
+  endBankroll: number | null;
   startTime: string | null;
   endTime: string | null;
   stake: number | null;
@@ -21,7 +24,10 @@ export interface SessionResultCreate {
   date?: string;
   totalTime?: number | null;
   hands?: number | null;
+  handsStartedAt?: number | null;
+  handsEndedAt?: number | null;
   dailyNet?: number | null;
+  endBankroll?: number | null;
   startTime?: string | null;
   endTime?: string | null;
   stake?: number | null;
@@ -30,12 +36,15 @@ export interface SessionResultCreate {
   gameType?: SessionGameType;
 }
 
-/** Row format for bulk upload (e.g. CSV: Date, total time, hands, Daily Net) */
+/** Row format for bulk upload (e.g. CSV: Date, total time, hands, Daily Net, Hands Start, Hands End, Account End) */
 export interface SessionUploadRow {
   date: string | number | Date;
   totalTime?: number | string | null;
   hands?: number | string | null;
+  handsStartedAt?: number | string | null;
+  handsEndedAt?: number | string | null;
   dailyNet?: number | string | null;
+  endBankroll?: number | string | null;
 }
 
 export const RESULTS_STAKE_OPTIONS = [200, 400, 800, 1000, 2000] as const;

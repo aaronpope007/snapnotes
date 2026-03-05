@@ -7,6 +7,7 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -39,6 +40,8 @@ import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import { MergePlayerDialog } from './components/MergePlayerDialog';
 import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { useConfirm } from './hooks/useConfirm';
 import { ChangeNameDialog } from './components/ChangeNameDialog';
 import { ImprovementNotesDialog } from './components/ImprovementNotesDialog';
 import { DefaultStakesDialog } from './components/DefaultStakesDialog';
@@ -70,6 +73,8 @@ import { fetchReviewers } from './api/reviewers';
 import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
+import { getActiveSession, clearActiveSession } from './utils/activeSession';
+import { SessionDurationLabel } from './components/SessionDurationLabel';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
 
 /** Fixed height for Add Player / Hands to Review / Learning / Results nav buttons. Do not change. */
@@ -110,6 +115,10 @@ export default function App() {
   const darkMode = useDarkMode();
   const setDarkMode = useSetDarkMode();
   const { getAuthHeader, userName } = useUserCredentials();
+  const [activeSessionTick, setActiveSessionTick] = useState(0);
+  const activeSession = useMemo(() => getActiveSession(), [activeSessionTick]);
+  const showSessionInProgress = !!activeSession && activeSession.userId === userName?.trim();
+  const [resetSessionTrigger, setResetSessionTrigger] = useState(0);
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,6 +132,7 @@ export default function App() {
   });
   const [showLearning, setShowLearning] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [requestOpenEndSessionModal, setRequestOpenEndSessionModal] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeLoading, setMergeLoading] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
@@ -161,6 +171,21 @@ export default function App() {
     setSnackbar({ open: true, message: msg, severity: 'success' });
   const showError = (msg: string) =>
     setSnackbar({ open: true, message: msg, severity: 'error' });
+
+  const {
+    confirmOpen: resetSessionConfirmOpen,
+    openConfirm: openResetSessionConfirm,
+    closeConfirm: closeResetSessionConfirm,
+    handleConfirm: handleResetSessionConfirm,
+    confirmOptions: resetSessionConfirmOptions,
+  } = useConfirm();
+
+  const handleResetSession = useCallback(() => {
+    clearActiveSession();
+    setActiveSessionTick((t) => t + 1);
+    setResetSessionTrigger((t) => t + 1);
+    showSuccess('Session reset. You can start a new session when ready.');
+  }, [showSuccess]);
 
   const loadPlayers = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -613,8 +638,8 @@ export default function App() {
         top: horizontal && !showResults ? (compact ? 1 : 2) : undefined,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'nowrap', minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
-        <Box sx={{ width: 200, flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+        <Box sx={{ width: 200, flexShrink: 0, minWidth: 0 }}>
           <SearchBar
             players={players}
             onSelect={handleSelectPlayer}
@@ -654,6 +679,46 @@ export default function App() {
         >
           <NoteAddIcon fontSize="small" />
         </IconButton>
+        {showSessionInProgress && activeSession && (
+          <>
+            <Chip
+              label={<SessionDurationLabel startTime={activeSession.startTime} />}
+              size="small"
+              color="error"
+              sx={{ fontWeight: 600 }}
+              aria-label="Session in progress"
+            />
+            <Button
+              size="small"
+              color="error"
+              variant="contained"
+              onClick={() => {
+                setShowHandsToReview(false);
+                setShowLearning(false);
+                setShowResults(true);
+                setRequestOpenEndSessionModal(true);
+              }}
+            >
+              End session
+            </Button>
+            <Button
+              size="small"
+              color="error"
+              variant="outlined"
+              onClick={() =>
+                openResetSessionConfirm(handleResetSession, {
+                  title: 'Reset session?',
+                  message:
+                    'This will clear your current session without saving. You can start a new session when ready.',
+                  confirmText: 'Reset session',
+                  confirmDanger: true,
+                })
+              }
+            >
+              Reset session
+            </Button>
+          </>
+        )}
         <IconButton
           size="small"
           onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -667,7 +732,7 @@ export default function App() {
       </Box>
       {!selected && (
         <>
-          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto', minWidth: 0 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}>
             <Button
               variant="outlined"
               size="small"
@@ -775,6 +840,12 @@ export default function App() {
                 <ResultsPage
                   onSuccess={showSuccess}
                   onError={showError}
+                  onActiveSessionChange={() => setActiveSessionTick((t) => t + 1)}
+                  hasActiveSession={showSessionInProgress}
+                  activeSessionStartTime={activeSession?.startTime ?? null}
+                  resetSessionTrigger={resetSessionTrigger}
+                  requestOpenEndSessionModal={requestOpenEndSessionModal}
+                  onClearRequestOpenEndSessionModal={() => setRequestOpenEndSessionModal(false)}
                 />
               </ErrorBoundary>
             </Box>
@@ -886,8 +957,8 @@ export default function App() {
         <Box sx={{ flex: horizontal && !showResults ? 1 : (horizontal && showResults ? 0 : undefined), minWidth: horizontal ? 0 : undefined, display: horizontal && showResults ? 'none' : 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
           {!horizontal && (
             <Box sx={{ mb: compact ? 1 : 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5, flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
-                <Box sx={{ width: 200, flexShrink: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+                <Box sx={{ width: 200, flexShrink: 0, minWidth: 0 }}>
                   <SearchBar
                     players={players}
                     onSelect={handleSelectPlayer}
@@ -927,6 +998,46 @@ export default function App() {
                 >
                   <NoteAddIcon fontSize="small" />
                 </IconButton>
+                {showSessionInProgress && activeSession && (
+                  <>
+                    <Chip
+                      label={<SessionDurationLabel startTime={activeSession.startTime} />}
+                      size="small"
+                      color="error"
+                      sx={{ fontWeight: 600 }}
+                      aria-label="Session in progress"
+                    />
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="contained"
+                      onClick={() => {
+                        setShowHandsToReview(false);
+                        setShowLearning(false);
+                        setShowResults(true);
+                        setRequestOpenEndSessionModal(true);
+                      }}
+                    >
+                      End session
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      onClick={() =>
+                        openResetSessionConfirm(handleResetSession, {
+                          title: 'Reset session?',
+                          message:
+                            'This will clear your current session without saving. You can start a new session when ready.',
+                          confirmText: 'Reset session',
+                          confirmDanger: true,
+                        })
+                      }
+                    >
+                      Reset session
+                    </Button>
+                  </>
+                )}
                 <IconButton
                   size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -938,7 +1049,7 @@ export default function App() {
                   <SettingsIcon fontSize="small" />
                 </IconButton>
               </Box>
-          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto', minWidth: 0 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}>
             <Button
               variant="outlined"
               size="small"
@@ -1039,8 +1150,8 @@ export default function App() {
         ) : selected ? (
           <>
             {horizontal && (
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexShrink: 0, flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>
-                <Box sx={{ width: 200, flexShrink: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+                <Box sx={{ width: 200, flexShrink: 0, minWidth: 0 }}>
                   <SearchBar
                     players={players}
                     onSelect={handleSelectPlayer}
@@ -1080,6 +1191,46 @@ export default function App() {
                 >
                   <NoteAddIcon fontSize="small" />
                 </IconButton>
+                {showSessionInProgress && activeSession && (
+                  <>
+                    <Chip
+                      label={<SessionDurationLabel startTime={activeSession.startTime} />}
+                      size="small"
+                      color="error"
+                      sx={{ fontWeight: 600 }}
+                      aria-label="Session in progress"
+                    />
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="contained"
+                      onClick={() => {
+                        setShowHandsToReview(false);
+                        setShowLearning(false);
+                        setShowResults(true);
+                        setRequestOpenEndSessionModal(true);
+                      }}
+                    >
+                      End session
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      onClick={() =>
+                        openResetSessionConfirm(handleResetSession, {
+                          title: 'Reset session?',
+                          message:
+                            'This will clear your current session without saving. You can start a new session when ready.',
+                          confirmText: 'Reset session',
+                          confirmDanger: true,
+                        })
+                      }
+                    >
+                      Reset session
+                    </Button>
+                  </>
+                )}
                 <IconButton
                   size="small"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -1231,6 +1382,13 @@ export default function App() {
           loading={mergeLoading}
         />
       )}
+
+      <ConfirmDialog
+        open={resetSessionConfirmOpen}
+        onClose={closeResetSessionConfirm}
+        onConfirm={handleResetSessionConfirm}
+        {...resetSessionConfirmOptions}
+      />
 
       <RestoreBackupConfirmDialog
         open={restoreDialogOpen}

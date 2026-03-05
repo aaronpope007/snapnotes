@@ -47,15 +47,18 @@ function parseCsvLine(line: string): string[] {
   return out;
 }
 
-/** Parse CSV text with headers: Date, total time, hands, Daily Net (case-insensitive, flexible) */
+/** Parse CSV text with headers: Date, total time, hands, Daily Net, Hands Start, Hands End, Account End (case-insensitive, flexible) */
 function parseResultsCsv(text: string): SessionUploadRow[] {
   const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
   const headers = parseCsvLine(lines[0]).map((h) => h.replace(/^"|"$/g, '').trim().toLowerCase());
   const dateIdx = headers.findIndex((h) => h === 'date' || h.includes('date'));
-  const timeIdx = headers.findIndex((h) => h.includes('time') || h === 'total time');
+  const timeIdx = headers.findIndex((h) => h.includes('time') && h.includes('total'));
+  const handsStartIdx = headers.findIndex((h) => h.includes('hands') && h.includes('start'));
+  const handsEndIdx = headers.findIndex((h) => h.includes('hands') && h.includes('end') && !h.includes('start'));
   const handsIdx = headers.findIndex((h) => h === 'hands');
   const netIdx = headers.findIndex((h) => h.includes('net') || h === 'daily net');
+  const accountEndIdx = headers.findIndex((h) => h === 'account end' || h === 'accountend');
 
   if (dateIdx === -1) return [];
 
@@ -65,13 +68,19 @@ function parseResultsCsv(text: string): SessionUploadRow[] {
     const dateVal = cells[dateIdx];
     if (!dateVal) continue;
     const timeVal = timeIdx >= 0 && cells[timeIdx] !== undefined ? cells[timeIdx].replace(/,/g, '') : undefined;
+    const handsStartVal = handsStartIdx >= 0 && cells[handsStartIdx] !== undefined ? cells[handsStartIdx].replace(/,/g, '') : undefined;
+    const handsEndVal = handsEndIdx >= 0 && cells[handsEndIdx] !== undefined ? cells[handsEndIdx].replace(/,/g, '') : undefined;
     const handsVal = handsIdx >= 0 && cells[handsIdx] !== undefined ? cells[handsIdx].replace(/,/g, '') : undefined;
     const netVal = netIdx >= 0 && cells[netIdx] !== undefined ? cells[netIdx].replace(/[$,]/g, '') : undefined;
+    const accountEndVal = accountEndIdx >= 0 && cells[accountEndIdx] !== undefined ? cells[accountEndIdx].replace(/[$,]/g, '') : undefined;
     rows.push({
       date: dateVal,
       totalTime: timeVal || undefined,
+      handsStartedAt: handsStartVal || undefined,
+      handsEndedAt: handsEndVal || undefined,
       hands: handsVal || undefined,
       dailyNet: netVal || undefined,
+      endBankroll: accountEndVal || undefined,
     });
   }
   return rows;
@@ -92,7 +101,7 @@ export function AddOrUploadTab({
   });
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [stake, setStake] = useState<number | ''>(200);
+  const [stake, setStake] = useState<number | ''>('');
   const [isRing, setIsRing] = useState(false);
   const [isHU, setIsHU] = useState(false);
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
@@ -123,7 +132,7 @@ export function AddOrUploadTab({
       const sessionDate = date ? `${date}T12:00:00` : new Date().toISOString();
       const payload: SessionResultCreate = {
         date: sessionDate,
-        totalTime: totalTimeFromTimes ?? undefined,
+        totalTime: totalTimeFromTimes != null ? Math.round(totalTimeFromTimes * 100) / 100 : undefined,
         hands: hands.trim() ? Number(hands) : undefined,
         dailyNet: dailyNet.trim() ? Number(dailyNet.replace(/[$,]/g, '')) : undefined,
         startTime: startTime ? `${date}T${startTime}:00` : undefined,
@@ -250,10 +259,11 @@ export function AddOrUploadTab({
           select
           label="Stake"
           size="small"
-          value={stake === '' ? 200 : stake}
-          onChange={(e) => setStake(Number(e.target.value) || '')}
+          value={stake === '' ? '' : stake}
+          onChange={(e) => setStake(e.target.value === '' ? '' : Number(e.target.value) || '')}
           sx={{ minWidth: 90 }}
         >
+          <MenuItem value="">—</MenuItem>
           {RESULTS_STAKE_OPTIONS.map((s) => (
             <MenuItem key={s} value={s}>
               {s}

@@ -170,13 +170,15 @@ export function HandReviewCard({
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <IconButton size="small" sx={{ p: 0, flexShrink: 0 }}>
-          {expanded ? (
-            <ExpandLessIcon fontSize="small" />
-          ) : (
-            <ExpandMoreIcon fontSize="small" />
-          )}
-        </IconButton>
+        <Tooltip title={expanded ? 'Collapse details' : 'Expand details'} enterDelay={300}>
+          <IconButton size="small" sx={{ p: 0, flexShrink: 0 }}>
+            {expanded ? (
+              <ExpandLessIcon fontSize="small" />
+            ) : (
+              <ExpandMoreIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
         <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <Tooltip title={hand.title || DEFAULT_HAND_TITLE} enterDelay={0}>
             <Typography
@@ -217,58 +219,67 @@ export function HandReviewCard({
             Private
           </Typography>
         )}
-        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, flexShrink: 0 }}>
-          {hand.status === 'archived' ? 'Archived' : 'Open'}
-        </Typography>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCopyLink(hand._id);
-          }}
-          sx={{ p: 0.25, flexShrink: 0 }}
-          aria-label="Copy link"
-          title="Copy link to paste in Discord"
-        >
-          <LinkIcon fontSize="small" />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(hand);
-          }}
-          sx={{ p: 0.25, flexShrink: 0 }}
-          aria-label="Edit"
-        >
-          <EditIcon fontSize="small" />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            onArchive(hand);
-          }}
-          sx={{ p: 0.25, flexShrink: 0 }}
-          aria-label={hand.status === 'archived' ? 'Unarchive' : 'Archive'}
-        >
-          {hand.status === 'archived' ? (
-            <UnarchiveIcon fontSize="small" />
-          ) : (
-            <ArchiveIcon fontSize="small" />
-          )}
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(hand._id);
-          }}
-          sx={{ p: 0.25, flexShrink: 0 }}
-          aria-label="Delete"
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+        <Tooltip title={hand.status === 'archived' ? 'Status: Archived' : 'Status: Open'} enterDelay={300}>
+          <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, flexShrink: 0 }}>
+            {hand.status === 'archived' ? 'Archived' : 'Open'}
+          </Typography>
+        </Tooltip>
+        <Tooltip title="Copy link to paste in Discord" enterDelay={300}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopyLink(hand._id);
+            }}
+            sx={{ p: 0.25, flexShrink: 0 }}
+            aria-label="Copy link"
+          >
+            <LinkIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Edit hand" enterDelay={300}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(hand);
+            }}
+            sx={{ p: 0.25, flexShrink: 0 }}
+            aria-label="Edit"
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={hand.status === 'archived' ? 'Unarchive hand' : 'Archive hand'} enterDelay={300}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onArchive(hand);
+            }}
+            sx={{ p: 0.25, flexShrink: 0 }}
+            aria-label={hand.status === 'archived' ? 'Unarchive' : 'Archive'}
+          >
+            {hand.status === 'archived' ? (
+              <UnarchiveIcon fontSize="small" />
+            ) : (
+              <ArchiveIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Delete hand" enterDelay={300}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(hand._id);
+            }}
+            sx={{ p: 0.25, flexShrink: 0 }}
+            aria-label="Delete"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <Collapse in={expanded}>
@@ -341,20 +352,24 @@ export function HandReviewCard({
           {userName && (hasReviewed || canMarkReviewed) && (
             <Box sx={{ mb: compact ? 0.5 : 1 }}>
               {hasReviewed ? (
-                <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />
-                  You reviewed this hand
-                </Typography>
+                <Tooltip title="You have marked this hand as reviewed" enterDelay={300}>
+                  <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />
+                    You reviewed this hand
+                  </Typography>
+                </Tooltip>
               ) : (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<CheckCircleOutlineIcon />}
-                  onClick={() => onMarkReviewed?.(hand._id)}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Mark as reviewed
-                </Button>
+                <Tooltip title="Mark this hand as reviewed (it will no longer show in For me)" enterDelay={300}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<CheckCircleOutlineIcon />}
+                    onClick={() => onMarkReviewed?.(hand._id)}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Mark as reviewed
+                  </Button>
+                </Tooltip>
               )}
             </Box>
           )}

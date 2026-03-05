@@ -44,6 +44,41 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
     }
   }, [deleteId, onDelete]);
 
+  const gridMeta = useMemo(() => {
+    const byId = new Map<string, {
+      handsStart: number | null;
+      handsEnd: number | null;
+      accountStart: number | null;
+      accountEnd: number | null;
+      handsPerHour: number | null;
+    }>();
+    const sorted = [...sessions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    let cumulativeHands = 0;
+    let prevEndBankroll: number | null = null;
+    for (const s of sorted) {
+      const handsStart = s.handsStartedAt ?? null;
+      const handsEnd = s.handsEndedAt ?? null;
+      const h = s.hands ?? 0;
+      const displayHandsStart = handsStart ?? cumulativeHands;
+      const displayHandsEnd = handsEnd ?? cumulativeHands + h;
+      cumulativeHands = handsEnd ?? (cumulativeHands + h);
+      const accountEnd = s.endBankroll ?? null;
+      const totalTime = s.totalTime ?? 0;
+      const handsPerHour = totalTime > 0 && h > 0 ? Math.round(h / totalTime) : null;
+      byId.set(s._id, {
+        handsStart: displayHandsStart,
+        handsEnd: displayHandsEnd,
+        accountStart: prevEndBankroll,
+        accountEnd,
+        handsPerHour,
+      });
+      prevEndBankroll = accountEnd;
+    }
+    return byId;
+  }, [sessions]);
+
   const columns = useMemo<GridColDef<SessionResult>[]>(
     () => [
       {
@@ -72,6 +107,42 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         },
       },
       {
+        field: 'startTime',
+        headerName: 'Time start',
+        width: 90,
+        valueFormatter: (value) => {
+          const s = value as string | null;
+          if (!s) return '—';
+          try {
+            return new Date(s).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          } catch {
+            return '—';
+          }
+        },
+      },
+      {
+        field: 'endTime',
+        headerName: 'Time end',
+        width: 90,
+        valueFormatter: (value) => {
+          const s = value as string | null;
+          if (!s) return '—';
+          try {
+            return new Date(s).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          } catch {
+            return '—';
+          }
+        },
+      },
+      {
+        field: 'handsStart',
+        headerName: 'Hands start',
+        width: 100,
+        valueGetter: (_, row) => gridMeta.get(row._id)?.handsStart ?? null,
+        valueFormatter: (value) =>
+          value != null ? Number(value).toLocaleString() : '—',
+      },
+      {
         field: 'hands',
         headerName: 'Hands',
         width: 80,
@@ -82,8 +153,40 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         },
       },
       {
+        field: 'handsEnd',
+        headerName: 'Hands end',
+        width: 100,
+        valueGetter: (_, row) => gridMeta.get(row._id)?.handsEnd ?? null,
+        valueFormatter: (value) =>
+          value != null ? Number(value).toLocaleString() : '—',
+      },
+      {
+        field: 'handsPerHour',
+        headerName: 'Hands/hr',
+        width: 85,
+        valueGetter: (_, row) => gridMeta.get(row._id)?.handsPerHour ?? null,
+        valueFormatter: (value) =>
+          value != null ? String(value) : '—',
+      },
+      {
+        field: 'accountStart',
+        headerName: 'Account start',
+        width: 110,
+        valueGetter: (_, row) => gridMeta.get(row._id)?.accountStart ?? null,
+        valueFormatter: (value) =>
+          value != null ? formatCurrency(value) : '—',
+      },
+      {
+        field: 'accountEnd',
+        headerName: 'Account end',
+        width: 110,
+        valueGetter: (_, row) => gridMeta.get(row._id)?.accountEnd ?? null,
+        valueFormatter: (value) =>
+          value != null ? formatCurrency(value) : '—',
+      },
+      {
         field: 'dailyNet',
-        headerName: 'Net',
+        headerName: 'Daily Net',
         width: 95,
         valueFormatter: (value) => formatCurrency(value as number | null),
         cellClassName: (params) => {
@@ -152,7 +255,7 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         ),
       },
     ],
-    []
+    [gridMeta]
   );
 
   const rows = useMemo(

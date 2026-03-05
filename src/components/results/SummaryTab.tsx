@@ -20,9 +20,11 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import Alert from '@mui/material/Alert';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { useDarkMode } from '../../context/DarkModeContext';
 import type { SessionResult } from '../../types/results';
+import { SessionDurationLabel } from '../SessionDurationLabel';
 import { FunFactsBento } from './FunFactsBento';
 
 export type ChartInterval =
@@ -33,7 +35,8 @@ export type ChartInterval =
 
 const PER_HAND_OPTIONS = [5000, 10000, 25000, 50000, 100000];
 
-function formatIntervalLabel(interval: ChartInterval): string {
+function formatIntervalLabel(interval: ChartInterval | undefined): string {
+  if (interval == null) return 'Monthly';
   if (typeof interval === 'object') return `Per ${interval.perHand.toLocaleString()} hands`;
   return interval.charAt(0).toUpperCase() + interval.slice(1);
 }
@@ -41,9 +44,11 @@ function formatIntervalLabel(interval: ChartInterval): string {
 interface SummaryTabProps {
   sessions: SessionResult[];
   loading: boolean;
+  hasActiveSession?: boolean;
+  activeSessionStartTime?: string | null;
 }
 
-export function SummaryTab({ sessions, loading }: SummaryTabProps) {
+export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionStartTime }: SummaryTabProps) {
   const compact = useCompactMode();
   const darkMode = useDarkMode();
   const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
@@ -202,6 +207,11 @@ export function SummaryTab({ sessions, loading }: SummaryTabProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {hasActiveSession && activeSessionStartTime && (
+        <Alert severity="error" sx={{ fontWeight: 600 }}>
+          <SessionDurationLabel startTime={activeSessionStartTime} />
+        </Alert>
+      )}
       <Paper
         variant="outlined"
         sx={{

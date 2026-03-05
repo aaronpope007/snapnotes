@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -8,8 +8,12 @@ import SummarizeIcon from '@mui/icons-material/Summarize';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import AddIcon from '@mui/icons-material/Add';
 import PostAddIcon from '@mui/icons-material/PostAdd';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
 import { useCompactMode } from '../../context/CompactModeContext';
+import { getActiveSession, setActiveSession, clearActiveSession } from '../../utils/activeSession';
 import { LogNewSessionModal } from './LogNewSessionModal';
+import { EndSessionModal } from './EndSessionModal';
 import type { SessionResultCreate } from '../../types/results';
 
 export type ResultsViewValue = 'summary' | 'all';
@@ -20,11 +24,17 @@ interface ResultsTabsProps {
   onViewChange: (view: ResultsViewValue) => void;
   activeTab: ResultsTabValue;
   onTabChange: (tab: ResultsTabValue) => void;
-  totalHands: number;
+  lastHandsEndedAt: number;
   hasUser: boolean;
+  userName: string | null;
+  lastEndBankroll: number | null;
   onAddSession: (payload: SessionResultCreate) => Promise<void>;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
+  onActiveSessionChange?: () => void;
+  resetSessionTrigger?: number;
+  requestOpenEndSessionModal?: boolean;
+  onClearRequestOpenEndSessionModal?: () => void;
 }
 
 export function ResultsTabs({
@@ -32,14 +42,67 @@ export function ResultsTabs({
   onViewChange,
   activeTab,
   onTabChange,
-  totalHands,
+  lastHandsEndedAt,
   hasUser,
+  userName,
+  lastEndBankroll,
   onAddSession,
   onSuccess,
   onError,
+  onActiveSessionChange,
+  resetSessionTrigger,
+  requestOpenEndSessionModal,
+  onClearRequestOpenEndSessionModal,
 }: ResultsTabsProps) {
   const compact = useCompactMode();
   const [logModalOpen, setLogModalOpen] = useState(false);
+  const [endModalOpen, setEndModalOpen] = useState(false);
+  const [activeSession, setActiveSessionState] = useState(() => getActiveSession());
+
+  useEffect(() => {
+    if (requestOpenEndSessionModal && onClearRequestOpenEndSessionModal) {
+      setEndModalOpen(true);
+      onClearRequestOpenEndSessionModal();
+    }
+  }, [requestOpenEndSessionModal, onClearRequestOpenEndSessionModal]);
+
+  useEffect(() => {
+    const stored = getActiveSession();
+    if (stored && userName && stored.userId !== userName.trim()) {
+      clearActiveSession();
+      setActiveSessionState(null);
+    } else {
+      setActiveSessionState(stored);
+    }
+  }, [userName]);
+
+  useEffect(() => {
+    if (resetSessionTrigger == null) return;
+    setActiveSessionState(getActiveSession());
+  }, [resetSessionTrigger]);
+
+  const handleStartSession = useCallback(() => {
+    if (!userName?.trim()) return;
+    const session = {
+      startTime: new Date().toISOString(),
+      userId: userName.trim(),
+      startHandNumber: lastHandsEndedAt,
+    };
+    setActiveSession(session);
+    setActiveSessionState(session);
+    onActiveSessionChange?.();
+    onSuccess('Session started. Click End session when done.');
+  }, [userName, lastHandsEndedAt, onSuccess, onActiveSessionChange]);
+
+  const handleEndSessionSuccess = useCallback(
+    async (payload: SessionResultCreate) => {
+      await onAddSession(payload);
+      clearActiveSession();
+      setActiveSessionState(null);
+      onActiveSessionChange?.();
+    },
+    [onAddSession, onActiveSessionChange]
+  );
 
   return (
     <Box
@@ -67,6 +130,32 @@ export function ResultsTabs({
         >
           Summary
         </Button>
+        {activeSession ? (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+              Session in progress since {new Date(activeSession.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<StopIcon />}
+              onClick={() => setEndModalOpen(true)}
+            >
+              End session
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<PlayArrowIcon />}
+            onClick={handleStartSession}
+            disabled={!hasUser}
+          >
+            Start session
+          </Button>
+        )}
         <Button
           variant="outlined"
           size="small"
@@ -88,11 +177,22 @@ export function ResultsTabs({
       <LogNewSessionModal
         open={logModalOpen}
         onClose={() => setLogModalOpen(false)}
-        totalHandsSoFar={totalHands}
+        totalHandsSoFar={lastHandsEndedAt}
         onAddSession={onAddSession}
         onSuccess={onSuccess}
         onError={onError}
       />
+      {activeSession && (
+        <EndSessionModal
+          open={endModalOpen}
+          onClose={() => setEndModalOpen(false)}
+          activeSession={activeSession}
+          lastEndBankroll={lastEndBankroll}
+          onEndSession={handleEndSessionSuccess}
+          onSuccess={onSuccess}
+          onError={onError}
+        />
+      )}
       {view === 'all' && (
         <ToggleButtonGroup
           value={activeTab}
