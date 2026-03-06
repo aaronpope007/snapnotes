@@ -137,7 +137,7 @@ export function ResultsTabs({
             </Typography>
             <Button
               variant="contained"
-              color="primary"
+              color="error"
               size="small"
               startIcon={<StopIcon />}
               onClick={() => setEndModalOpen(true)}
@@ -148,6 +148,7 @@ export function ResultsTabs({
         ) : (
           <Button
             variant="contained"
+            color="success"
             size="small"
             startIcon={<PlayArrowIcon />}
             onClick={handleStartSession}
