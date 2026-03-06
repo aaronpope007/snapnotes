@@ -41,11 +41,21 @@ export interface PokerInsights {
   shortSessionHours: number;
   longSessionProfitPerHour: number | null;
   longSessionHours: number;
-  /** Best time of day by $/hr (from startTime) */
+  /** Best time of day by $/hand (from startTime) */
   bestTimeOfDay: string | null;
+  bestTimeOfDayProfitPerHand: number;
+  /** Best time of day by $/hr (for comparison with hands/hr) */
+  bestTimeOfDayByHourly: string | null;
   bestTimeOfDayProfitPerHour: number;
-  /** $/hr by time-of-day bucket */
-  byTimeOfDay: { label: string; profitPerHour: number; hours: number }[];
+  /** $/hand and $/hr by time-of-day bucket */
+  byTimeOfDay: {
+    label: string;
+    profitPerHand: number;
+    profitPerHour: number;
+    hours: number;
+    hands: number;
+    handsPerHour: number;
+  }[];
   /** Running total for chart */
   runningTotal: { cumulativeNet: number; cumulativeHands: number; date: string }[];
   /** Total profit / total hands (avg $ per hand) */
@@ -335,7 +345,7 @@ export function calculatePokerInsights(
   }
 
   // Time of day (from startTime; only sessions with startTime)
-  const byTimeBucket = new Map<number, { hours: number; profit: number }>();
+  const byTimeBucket = new Map<number, { hours: number; profit: number; hands: number }>();
   for (const s of sorted) {
     const startTime = s.startTime ? new Date(s.startTime) : null;
     if (!startTime || Number.isNaN(startTime.getTime())) continue;
@@ -344,26 +354,44 @@ export function calculatePokerInsights(
     if (!bucket) continue;
     const hours = s.totalTime ?? 0;
     const profit = s.dailyNet ?? 0;
-    const existing = byTimeBucket.get(bucket.key) ?? { hours: 0, profit: 0 };
+    const hands = s.hands ?? 0;
+    const existing = byTimeBucket.get(bucket.key) ?? { hours: 0, profit: 0, hands: 0 };
     byTimeBucket.set(bucket.key, {
       hours: existing.hours + hours,
       profit: existing.profit + profit,
+      hands: existing.hands + hands,
     });
   }
   const byTimeOfDay = TIME_BUCKETS.map((b) => {
-    const data = byTimeBucket.get(b.key) ?? { hours: 0, profit: 0 };
+    const data = byTimeBucket.get(b.key) ?? { hours: 0, profit: 0, hands: 0 };
+    const profitPerHand = data.hands > 0 ? data.profit / data.hands : 0;
+    const profitPerHour = data.hours > 0 ? data.profit / data.hours : 0;
+    const handsPerHour = data.hours > 0 ? data.hands / data.hours : 0;
     return {
       label: b.label,
-      profitPerHour: data.hours > 0 ? data.profit / data.hours : 0,
+      profitPerHand,
+      profitPerHour,
       hours: data.hours,
+      hands: data.hands,
+      handsPerHour,
     };
   }).filter((r) => r.hours > 0);
+  // Best time by $/hand (fair when table count varies)
   let bestTimeOfDay: string | null = null;
+  let bestTimeOfDayProfitPerHand = 0;
+  for (const r of byTimeOfDay) {
+    if (r.hands > 0 && r.profitPerHand > bestTimeOfDayProfitPerHand) {
+      bestTimeOfDayProfitPerHand = r.profitPerHand;
+      bestTimeOfDay = r.label;
+    }
+  }
+  // Best time by $/hr (highest hourly; can compare to hands/hr)
+  let bestTimeOfDayByHourly: string | null = null;
   let bestTimeOfDayProfitPerHour = 0;
   for (const r of byTimeOfDay) {
     if (r.profitPerHour > bestTimeOfDayProfitPerHour) {
       bestTimeOfDayProfitPerHour = r.profitPerHour;
-      bestTimeOfDay = r.label;
+      bestTimeOfDayByHourly = r.label;
     }
   }
 
@@ -397,6 +425,8 @@ export function calculatePokerInsights(
     longSessionProfitPerHour: longHours > 0 ? longProfit / longHours : null,
     longSessionHours: longHours,
     bestTimeOfDay,
+    bestTimeOfDayProfitPerHand,
+    bestTimeOfDayByHourly,
     bestTimeOfDayProfitPerHour,
     byTimeOfDay,
     runningTotal,

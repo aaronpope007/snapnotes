@@ -216,17 +216,33 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
         {insights.bestTimeOfDay && (
           <InsightCard
             icon={<WbSunnyIcon sx={{ fontSize: 20 }} />}
-            label="Best time of day"
-            value={`${insights.bestTimeOfDay} (${formatDollar(insights.bestTimeOfDayProfitPerHour)}/hr)`}
+            label="Best time of day (by $/hand)"
+            value={`${insights.bestTimeOfDay}: ${formatDollar(insights.bestTimeOfDayProfitPerHand)}/hand`}
             accent="success"
+          />
+        )}
+        {insights.bestTimeOfDayByHourly && (
+          <InsightCard
+            icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}
+            label="Highest $/hr time"
+            value={
+              (() => {
+                const r = insights.byTimeOfDay.find((x) => x.label === insights.bestTimeOfDayByHourly);
+                const handsHr = r ? `${Math.round(r.handsPerHour).toLocaleString()} hands/hr` : '';
+                return `${insights.bestTimeOfDayByHourly}: ${formatPerHr(insights.bestTimeOfDayProfitPerHour)}${handsHr ? ` (${handsHr})` : ''}`;
+              })()
+            }
           />
         )}
         {insights.byTimeOfDay.length > 0 && (
           <InsightCard
             icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}
-            label="$/hr by time of day"
+            label="$/hand & $/hr by time of day"
             value={insights.byTimeOfDay
-              .map((r) => `${r.label}: ${formatDollar(r.profitPerHour)}/hr`)
+              .map(
+                (r) =>
+                  `${r.label}: ${formatDollar(r.profitPerHand)}/hand, ${formatPerHr(r.profitPerHour)}/hr`
+              )
               .join(' · ')}
           />
         )}
