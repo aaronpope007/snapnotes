@@ -241,7 +241,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             value={insights.byTimeOfDay
               .map(
                 (r) =>
-                  `${r.label}: ${formatDollar(r.profitPerHand)}/hand, ${formatPerHr(r.profitPerHour)}/hr`
+                  `${r.label}: ${formatDollar(r.profitPerHand)}/hand, ${formatPerHr(r.profitPerHour)}`
               )
               .join(' · ')}
           />
