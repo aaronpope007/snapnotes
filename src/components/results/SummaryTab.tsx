@@ -33,7 +33,7 @@ export type ChartInterval =
   | 'yearly'
   | { perHand: number };
 
-const PER_HAND_OPTIONS = [5000, 10000, 25000, 50000, 100000];
+const PER_HAND_OPTIONS = [1000, 5000, 10000, 25000, 50000, 100000];
 
 function formatIntervalLabel(interval: ChartInterval | undefined): string {
   if (interval == null) return 'Monthly';
@@ -54,7 +54,7 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
   const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
   const axisStroke = darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
   const gridStroke = darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-  const [interval, setInterval] = useState<ChartInterval>('monthly');
+  const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const stats = useMemo(() => {
@@ -148,7 +148,7 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
         cumulativeProfit += net;
         while (cumulativeHands >= nextHands) {
           points.push({
-            label: `${(nextHands / 1000).toFixed(0)}k hands`,
+            label: `${(nextHands / 1000).toFixed(0)}k`,
             value: cumulativeProfit,
             cumulativeHands: nextHands,
           });
@@ -395,9 +395,6 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-          <MenuItem onClick={() => { setInterval('weekly'); setAnchorEl(null); }}>
-            Weekly
-          </MenuItem>
           <MenuItem onClick={() => { setInterval('monthly'); setAnchorEl(null); }}>
             Monthly
           </MenuItem>
@@ -415,12 +412,17 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
         </Menu>
         <Box sx={{ height: compact ? 160 : 220, width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: -10 }}>
+            <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 10, fill: axisColor }}
                 stroke={axisStroke}
+                label={
+                  typeof interval === 'object'
+                    ? { value: 'Hands', position: 'insideBottom', offset: -8, fill: axisStroke }
+                    : undefined
+                }
               />
               <YAxis
                 tick={{ fontSize: 10, fill: axisColor }}
