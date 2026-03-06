@@ -196,6 +196,29 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         },
       },
       {
+        field: 'profitPerHand',
+        headerName: '$/hand',
+        width: 80,
+        valueGetter: (_, row) => {
+          const net = row.dailyNet ?? null;
+          const hands = row.hands ?? 0;
+          if (net == null || hands <= 0) return null;
+          return Number(net) / hands;
+        },
+        valueFormatter: (value) => {
+          if (value === null || value === undefined) return '—';
+          const n = Number(value);
+          if (Number.isNaN(n)) return '—';
+          const sign = n < 0 ? '−' : '';
+          return `${sign}$${Math.abs(n).toFixed(2)}`;
+        },
+        cellClassName: (params) => {
+          const n = params.value as number | null;
+          if (n === null || n === undefined) return '';
+          return n >= 0 ? 'net-positive' : 'net-negative';
+        },
+      },
+      {
         field: 'stake',
         headerName: 'Stake',
         width: 75,

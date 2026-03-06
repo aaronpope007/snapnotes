@@ -193,9 +193,16 @@ export function EndSessionModal({
             required
           />
           {dailyNet != null && (
-            <Typography variant="body2" sx={{ color: dailyNet >= 0 ? 'success.main' : 'error.main', fontWeight: 500 }}>
-              Net: {dailyNet >= 0 ? '+' : '−'}${Math.abs(dailyNet).toFixed(2)}
-            </Typography>
+            <Box>
+              <Typography variant="body2" sx={{ color: dailyNet >= 0 ? 'success.main' : 'error.main', fontWeight: 500 }}>
+                Net: {dailyNet >= 0 ? '+' : '−'}${Math.abs(dailyNet).toFixed(2)}
+              </Typography>
+              {hands != null && hands > 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  $/hand: ${(dailyNet / hands).toFixed(2)}
+                </Typography>
+              )}
+            </Box>
           )}
           <Typography variant="body2" color="text.secondary">
             Starting hand number: {activeSession.startHandNumber.toLocaleString()}
