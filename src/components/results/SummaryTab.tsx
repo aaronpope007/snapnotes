@@ -8,6 +8,8 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -55,6 +57,7 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
   const axisStroke = darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
   const gridStroke = darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
+  const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const stats = useMemo(() => {
@@ -133,12 +136,12 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
     if (sorted.length === 0) return [];
 
     const isPerHand = typeof interval === 'object';
-    const points: { label: string; value: number; cumulativeHands: number }[] = [];
+    const points: { label: string; value: number; profitPerHand: number; cumulativeHands: number }[] = [];
     let cumulativeProfit = 0;
     let cumulativeHands = 0;
 
     if (isPerHand) {
-      points.push({ label: 'Start', value: 0, cumulativeHands: 0 });
+      points.push({ label: 'Start', value: 0, profitPerHand: 0, cumulativeHands: 0 });
       const step = interval.perHand;
       let nextHands = step;
       for (const s of sorted) {
@@ -147,9 +150,11 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
         cumulativeHands += hands;
         cumulativeProfit += net;
         while (cumulativeHands >= nextHands) {
+          const pph = nextHands > 0 ? cumulativeProfit / nextHands : 0;
           points.push({
             label: `${(nextHands / 1000).toFixed(0)}k`,
             value: cumulativeProfit,
+            profitPerHand: pph,
             cumulativeHands: nextHands,
           });
           nextHands += step;
@@ -157,7 +162,6 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
       }
     }
     else {
-      points.push({ label: 'Start', value: 0, cumulativeHands: 0 });
       const groupBy = (d: Date) => {
         if (interval === 'weekly') {
           const start = new Date(d);
@@ -168,22 +172,29 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
           return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         return `${d.getFullYear()}`;
       };
-      const groups = new Map<string, number>();
+      const groups = new Map<string, { profit: number; hands: number }>();
       for (const s of sorted) {
         const key = groupBy(new Date(s.date));
-        const prev = groups.get(key) ?? 0;
-        groups.set(key, prev + (s.dailyNet ?? 0));
+        const prev = groups.get(key) ?? { profit: 0, hands: 0 };
+        groups.set(key, {
+          profit: prev.profit + (s.dailyNet ?? 0),
+          hands: prev.hands + (s.hands ?? 0),
+        });
       }
       cumulativeProfit = 0;
-      for (const [label, delta] of [...groups.entries()].sort()) {
+      cumulativeHands = 0;
+      points.push({ label: 'Start', value: 0, profitPerHand: 0, cumulativeHands: 0 });
+      for (const [label, { profit: delta, hands: groupHands }] of [...groups.entries()].sort()) {
         cumulativeProfit += delta;
+        cumulativeHands += groupHands;
         const displayLabel =
           interval === 'weekly'
             ? new Date(label).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })
             : interval === 'monthly'
               ? label.replace('-', '/')
               : label;
-        points.push({ label: displayLabel, value: cumulativeProfit, cumulativeHands: 0 });
+        const pph = cumulativeHands > 0 ? cumulativeProfit / cumulativeHands : 0;
+        points.push({ label: displayLabel, value: cumulativeProfit, profitPerHand: pph, cumulativeHands });
       }
     }
     return points;
@@ -375,11 +386,24 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
             alignItems: 'center',
             justifyContent: 'space-between',
             mb: 0.5,
+            flexWrap: 'wrap',
+            gap: 0.5,
           }}
         >
-          <Typography variant="caption" color="text.secondary">
-            Bankroll over time
-          </Typography>
+          <ToggleButtonGroup
+            value={chartMode}
+            exclusive
+            onChange={(_, v) => v != null && setChartMode(v)}
+            size="small"
+            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+          >
+            <ToggleButton value="bankroll" aria-label="Bankroll over time">
+              Bankroll
+            </ToggleButton>
+            <ToggleButton value="perHand" aria-label="$ per hand over time">
+              $/hand
+            </ToggleButton>
+          </ToggleButtonGroup>
           <IconButton
             size="small"
             onClick={(e) => setAnchorEl(e.currentTarget)}
@@ -427,16 +451,20 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
               <YAxis
                 tick={{ fontSize: 10, fill: axisColor }}
                 stroke={axisStroke}
-                tickFormatter={(v) => `$${v}`}
+                tickFormatter={(v) => (chartMode === 'perHand' ? `$${Number(v).toFixed(2)}` : `$${v}`)}
               />
               <Tooltip
-                formatter={(value: number) => [`$${value.toFixed(2)}`, 'Bankroll']}
+                formatter={(value: number) =>
+                  chartMode === 'perHand'
+                    ? [`$${Number(value).toFixed(2)}/hand`, '$/hand']
+                    : [`$${Number(value).toFixed(2)}`, 'Bankroll']
+                }
                 labelFormatter={(label) => label}
               />
               <Line
                 type="monotone"
-                dataKey="value"
-                stroke="#4caf50"
+                dataKey={chartMode === 'perHand' ? 'profitPerHand' : 'value'}
+                stroke={chartMode === 'perHand' ? '#ff9800' : '#4caf50'}
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 isAnimationActive={false}
@@ -445,7 +473,7 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
           </ResponsiveContainer>
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          {formatIntervalLabel(interval)}
+          {chartMode === 'perHand' ? '$ per hand over time' : 'Bankroll over time'} · {formatIntervalLabel(interval)}
         </Typography>
       </Box>
     </Box>
