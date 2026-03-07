@@ -12,6 +12,8 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import SummarizeIcon from '@mui/icons-material/Summarize';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import {
   LineChart,
@@ -231,6 +233,14 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           <SessionDurationLabel startTime={activeSessionStartTime} />
         </Alert>
       )}
+      <Accordion variant="outlined" defaultExpanded sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <SummarizeIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Summary</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
       <Paper
         variant="outlined"
         sx={{
@@ -329,6 +339,8 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           </Typography>
         </Box>
       </Paper>
+        </AccordionDetails>
+      </Accordion>
 
       <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
@@ -478,18 +490,26 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         </AccordionDetails>
       </Accordion>
 
-      <Box>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            mb: 0.5,
-            flexWrap: 'wrap',
-            gap: 0.5,
-          }}
-        >
-          <ToggleButtonGroup
+      <Accordion variant="outlined" defaultExpanded sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <ShowChartIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Bankroll / $ per hand</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 0.5,
+                flexWrap: 'wrap',
+                gap: 0.5,
+              }}
+            >
+              <ToggleButtonGroup
             value={chartMode}
             exclusive
             onChange={(_, v) => v != null && setChartMode(v)}
@@ -533,7 +553,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
             </MenuItem>
           ))}
         </Menu>
-        <Box sx={{ height: compact ? 320 : 440, width: '100%' }}>
+        <Box sx={{ height: compact ? 640 : 880, width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -574,7 +594,9 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
           {chartMode === 'perHand' ? '$ per hand over time' : 'Bankroll over time'} · {formatIntervalLabel(interval)}
         </Typography>
-      </Box>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
     </Box>
   );
 }

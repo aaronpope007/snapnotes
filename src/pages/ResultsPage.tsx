@@ -166,37 +166,37 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
   return (
     <Box sx={{ width: '100%', minWidth: 0, flex: 1, overflow: 'auto' }}>
       <ResultsTabs
-        view={view}
-        onViewChange={setView}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        lastHandsEndedAt={lastHandsEndedAt}
-        hasUser={!!userName?.trim()}
-        userName={userName}
-        lastEndBankroll={mostRecentSession?.endBankroll ?? null}
-        onAddSession={handleAddSession}
-        onSuccess={(msg) => onSuccess?.(msg)}
-        onError={(msg) => onError?.(msg)}
-        onActiveSessionChange={onActiveSessionChange}
-        resetSessionTrigger={resetSessionTrigger}
-        requestOpenEndSessionModal={requestOpenEndSessionModal}
-        onClearRequestOpenEndSessionModal={onClearRequestOpenEndSessionModal}
-      />
+            view={view}
+            onViewChange={setView}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            lastHandsEndedAt={lastHandsEndedAt}
+            hasUser={!!userName?.trim()}
+            userName={userName}
+            lastEndBankroll={mostRecentSession?.endBankroll ?? null}
+            onAddSession={handleAddSession}
+            onSuccess={(msg) => onSuccess?.(msg)}
+            onError={(msg) => onError?.(msg)}
+            onActiveSessionChange={onActiveSessionChange}
+            resetSessionTrigger={resetSessionTrigger}
+            requestOpenEndSessionModal={requestOpenEndSessionModal}
+          onClearRequestOpenEndSessionModal={onClearRequestOpenEndSessionModal}
+        />
       {!userName?.trim() ? (
-        <Typography variant="body2" color="text.secondary">
-          Enter your name to use Results.
-        </Typography>
-      ) : view === 'summary' ? (
-        <ErrorBoundary>
-          <SummaryTab
-            sessions={sessions}
-            withdrawals={withdrawals}
-            loading={loading}
-            hasActiveSession={hasActiveSession}
-            activeSessionStartTime={activeSessionStartTime}
-          />
-        </ErrorBoundary>
-      ) : activeTab === 'withdrawals' ? (
+            <Typography variant="body2" color="text.secondary">
+              Enter your name to use Results.
+            </Typography>
+          ) : view === 'summary' ? (
+            <ErrorBoundary>
+              <SummaryTab
+                sessions={sessions}
+                withdrawals={withdrawals}
+                loading={loading}
+                hasActiveSession={hasActiveSession}
+                activeSessionStartTime={activeSessionStartTime}
+              />
+            </ErrorBoundary>
+          ) : activeTab === 'withdrawals' ? (
         <ErrorBoundary>
           <WithdrawalsTab
             withdrawals={withdrawals}
@@ -210,19 +210,19 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
       ) : activeTab === 'sessions' ? (
         <ErrorBoundary>
           <SessionsGridTab
-            sessions={sessions}
-            loading={loading}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-          />
-        </ErrorBoundary>
-      ) : (
-        <ErrorBoundary>
-          <AddOrUploadTab
-            userId={userName}
-            onAddSession={handleAddSession}
-            onUpload={handleUpload}
-            onSuccess={(msg) => onSuccess?.(msg)}
+                sessions={sessions}
+                loading={loading}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+              />
+            </ErrorBoundary>
+          ) : (
+            <ErrorBoundary>
+              <AddOrUploadTab
+                userId={userName}
+                onAddSession={handleAddSession}
+                onUpload={handleUpload}
+                onSuccess={(msg) => onSuccess?.(msg)}
             onError={(msg) => onError?.(msg)}
           />
         </ErrorBoundary>
