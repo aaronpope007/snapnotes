@@ -693,6 +693,7 @@ export default function App() {
               color="error"
               variant="contained"
               onClick={() => {
+                setSelected(null);
                 setShowHandsToReview(false);
                 setShowLearning(false);
                 setShowResults(true);
@@ -1012,6 +1013,7 @@ export default function App() {
                       color="error"
                       variant="contained"
                       onClick={() => {
+                        setSelected(null);
                         setShowHandsToReview(false);
                         setShowLearning(false);
                         setShowResults(true);
@@ -1205,6 +1207,7 @@ export default function App() {
                       color="error"
                       variant="contained"
                       onClick={() => {
+                        setSelected(null);
                         setShowHandsToReview(false);
                         setShowLearning(false);
                         setShowResults(true);

@@ -61,8 +61,12 @@ export function ResultsTabs({
 
   useEffect(() => {
     if (requestOpenEndSessionModal && onClearRequestOpenEndSessionModal) {
-      setEndModalOpen(true);
       onClearRequestOpenEndSessionModal();
+      queueMicrotask(() => {
+        const stored = getActiveSession();
+        setActiveSessionState(stored);
+        if (stored) setEndModalOpen(true);
+      });
     }
   }, [requestOpenEndSessionModal, onClearRequestOpenEndSessionModal]);
 
@@ -71,10 +75,11 @@ export function ResultsTabs({
     if (stored && userName && stored.userId !== userName.trim()) {
       clearActiveSession();
       setActiveSessionState(null);
+      onActiveSessionChange?.();
     } else {
       setActiveSessionState(stored);
     }
-  }, [userName]);
+  }, [userName, onActiveSessionChange]);
 
   useEffect(() => {
     if (resetSessionTrigger == null) return;

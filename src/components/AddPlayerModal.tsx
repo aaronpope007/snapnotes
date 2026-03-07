@@ -23,6 +23,7 @@ import {
 } from '../constants/playerTypes';
 import type { PlayerTypeKey, PlayerCreate, NoteEntry } from '../types';
 import { STAKE_VALUES, GAME_TYPE_OPTIONS, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
+import { toNoteOneLiner } from '../utils/noteUtils';
 
 interface AddPlayerModalProps {
   open: boolean;
@@ -116,7 +117,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
         note && userName
           ? [
               {
-                text: note,
+                text: toNoteOneLiner(note),
                 addedBy: userName,
                 addedAt: new Date().toISOString(),
               },
