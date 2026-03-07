@@ -60,6 +60,7 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [hourlyPerHandRange, setHourlyPerHandRange] = useState<InsightsDateRange>('all');
 
   const stats = useMemo(() => {
     const sorted = [...sessions].sort(
