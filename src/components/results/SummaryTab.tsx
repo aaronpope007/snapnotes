@@ -362,7 +362,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 <ToggleButton value="today">Today</ToggleButton>
               </ToggleButtonGroup>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: compact ? 1 : 1.5 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: compact ? 1 : 1.5 }}>
               <Box>
                 <Typography variant="caption" color="text.secondary">$/hr</Typography>
                 <Typography
@@ -397,6 +397,14 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 <Typography variant="caption" color="text.secondary">Hands played</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
                   {hourlyPerHandInsights.totalHands.toLocaleString()}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Hands/hr</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {hourlyPerHandInsights.totalHours > 0
+                    ? Math.round(hourlyPerHandInsights.totalHands / hourlyPerHandInsights.totalHours).toLocaleString()
+                    : '—'}
                 </Typography>
               </Box>
             </Box>
