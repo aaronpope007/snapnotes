@@ -57,6 +57,7 @@ export function EndSessionModal({
 }: EndSessionModalProps) {
   const [endBankroll, setEndBankroll] = useState('');
   const [startBankroll, setStartBankroll] = useState('');
+  const [startTimeEditable, setStartTimeEditable] = useState('');
   const [endingHandNumber, setEndingHandNumber] = useState('');
   const [stake, setStake] = useState<number | ''>('');
   const [isRing, setIsRing] = useState(false);
@@ -65,8 +66,14 @@ export function EndSessionModal({
   const [saving, setSaving] = useState(false);
 
   const now = new Date();
-  const totalTimeHours = computeHoursBetween(activeSession.startTime, now);
-  const startDate = new Date(activeSession.startTime);
+  const startTimeIso = startTimeEditable.trim()
+    ? (() => {
+        const d = new Date(startTimeEditable);
+        return Number.isNaN(d.getTime()) ? activeSession.startTime : d.toISOString();
+      })()
+    : activeSession.startTime;
+  const totalTimeHours = computeHoursBetween(startTimeIso, now);
+  const startDate = new Date(startTimeIso);
 
   const endBankrollNum = endBankroll.trim() ? parseFloat(endBankroll.replace(/[$,]/g, '')) : null;
   const startBankrollNum =
@@ -111,7 +118,7 @@ export function EndSessionModal({
     try {
       const payload: SessionResultCreate = {
         date: startDate.toISOString(),
-        startTime: activeSession.startTime,
+        startTime: startTimeIso,
         endTime: now.toISOString(),
         totalTime: Math.round(totalTimeHours * 100) / 100,
         hands: hands ?? undefined,
@@ -138,6 +145,7 @@ export function EndSessionModal({
     dailyNet,
     hands,
     totalTimeHours,
+    startTimeEditable,
     activeSession.startTime,
     activeSession.startHandNumber,
     stake,
@@ -156,9 +164,15 @@ export function EndSessionModal({
       <DialogTitle>End session</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            Started {startDate.toLocaleString()}
-          </Typography>
+          <TextField
+            label="Start time"
+            type="datetime-local"
+            size="small"
+            value={startTimeEditable}
+            onChange={(e) => setStartTimeEditable(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+          />
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             Time played: {totalTimeHours.toFixed(2)} hrs
           </Typography>
