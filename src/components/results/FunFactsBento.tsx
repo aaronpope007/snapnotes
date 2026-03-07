@@ -116,6 +116,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           <ToggleButton value="all">All time</ToggleButton>
           <ToggleButton value="year">This year</ToggleButton>
           <ToggleButton value="month">This month</ToggleButton>
+          <ToggleButton value="today">Today</ToggleButton>
         </ToggleButtonGroup>
         <ToggleButtonGroup
           value={useBB ? 'bb' : 'usd'}

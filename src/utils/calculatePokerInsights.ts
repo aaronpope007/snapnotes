@@ -1,6 +1,6 @@
 import type { SessionResult } from '../types/results';
 
-export type InsightsDateRange = 'all' | 'month' | 'year';
+export type InsightsDateRange = 'all' | 'month' | 'year' | 'today';
 
 export interface PokerInsights {
   /** Max drawdown in dollars (peak - valley) */
@@ -98,6 +98,14 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 function filterSessionsByRange(sessions: SessionResult[], range: InsightsDateRange): SessionResult[] {
   if (range === 'all') return sessions;
   const now = new Date();
+  if (range === 'today') {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return sessions.filter((s) => {
+      const d = new Date(s.date);
+      const sStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return sStr === todayStr;
+    });
+  }
   let cutoff: Date;
   if (range === 'month') {
     cutoff = new Date(now.getFullYear(), now.getMonth(), 1);

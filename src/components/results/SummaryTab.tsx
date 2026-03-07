@@ -347,6 +347,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 <ToggleButton value="all">All time</ToggleButton>
                 <ToggleButton value="year">This year</ToggleButton>
                 <ToggleButton value="month">This month</ToggleButton>
+                <ToggleButton value="today">Today</ToggleButton>
               </ToggleButtonGroup>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: compact ? 1 : 1.5 }}>
