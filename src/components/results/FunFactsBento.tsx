@@ -247,19 +247,55 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           />
         )}
         {insights.byDayOfWeek.some((r) => r.hands > 0 || r.profit !== 0) && (
-          <InsightCard
-            icon={<CalendarMonthIcon sx={{ fontSize: 20 }} />}
-            label="Net & $/hand by day of week"
-            value={insights.byDayOfWeek
-              .map((r) => {
-                const short = r.label.slice(0, 3);
-                if (r.hands === 0 && r.profit === 0) return `${short}: —`;
-                const net = formatDollar(r.profit);
-                const pph = r.hands > 0 ? `${formatDollar(r.profitPerHand)}/hand` : '—';
-                return `${short}: ${net} (${pph})`;
-              })
-              .join(' · ')}
-          />
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.5,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'text.secondary' }}>
+                <CalendarMonthIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Net & $/hand by day of week
+              </Typography>
+            </Box>
+            <Box
+              component="ul"
+              sx={{
+                m: 0,
+                pl: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.25,
+              }}
+            >
+              {[...insights.byDayOfWeek]
+                .sort((a, b) => b.profit - a.profit)
+                .map((r) => {
+                  const hasData = r.hands > 0 || r.profit !== 0;
+                  const net = formatDollar(r.profit);
+                  const pph = r.hands > 0 ? `${formatDollar(r.profitPerHand)}/hand` : '—';
+                  return (
+                    <Typography
+                      key={r.label}
+                      component="li"
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                        color: hasData && r.profit >= 0 ? 'success.main' : hasData && r.profit < 0 ? 'error.main' : 'text.secondary',
+                      }}
+                    >
+                      {r.label}: {hasData ? `${net} (${pph})` : '—'}
+                    </Typography>
+                  );
+                })}
+            </Box>
+          </Paper>
         )}
         {(insights.shortSessionProfitPerHour != null || insights.longSessionProfitPerHour != null) && (
           <InsightCard
