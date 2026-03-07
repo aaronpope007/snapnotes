@@ -246,6 +246,21 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
               .join(' · ')}
           />
         )}
+        {insights.byDayOfWeek.some((r) => r.hands > 0 || r.profit !== 0) && (
+          <InsightCard
+            icon={<CalendarMonthIcon sx={{ fontSize: 20 }} />}
+            label="Net & $/hand by day of week"
+            value={insights.byDayOfWeek
+              .map((r) => {
+                const short = r.label.slice(0, 3);
+                if (r.hands === 0 && r.profit === 0) return `${short}: —`;
+                const net = formatDollar(r.profit);
+                const pph = r.hands > 0 ? `${formatDollar(r.profitPerHand)}/hand` : '—';
+                return `${short}: ${net} (${pph})`;
+              })
+              .join(' · ')}
+          />
+        )}
         {(insights.shortSessionProfitPerHour != null || insights.longSessionProfitPerHour != null) && (
           <InsightCard
             icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}

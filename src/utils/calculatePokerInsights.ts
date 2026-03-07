@@ -56,6 +56,13 @@ export interface PokerInsights {
     hands: number;
     handsPerHour: number;
   }[];
+  /** Net and $/hand by day of week */
+  byDayOfWeek: {
+    label: string;
+    profit: number;
+    hands: number;
+    profitPerHand: number;
+  }[];
   /** Running total for chart */
   runningTotal: { cumulativeNet: number; cumulativeHands: number; date: string }[];
   /** Total profit / total hands (avg $ per hand) */
@@ -288,22 +295,34 @@ export function calculatePokerInsights(
   else if (currentWin === 1) currentStatus = '1 winning session';
   else if (currentLose === 1) currentStatus = '1 losing session';
 
-  // Best day of week by $/hr
+  // Best day of week by $/hr; also build full byDayOfWeek for display
   const byDay = new Map<
     number,
-    { hours: number; profit: number }
+    { hours: number; profit: number; hands: number }
   >();
   for (const s of sorted) {
     const d = new Date(s.date);
     const day = d.getDay();
     const hours = s.totalTime ?? 0;
     const profit = s.dailyNet ?? 0;
-    const existing = byDay.get(day) ?? { hours: 0, profit: 0 };
+    const hands = s.hands ?? 0;
+    const existing = byDay.get(day) ?? { hours: 0, profit: 0, hands: 0 };
     byDay.set(day, {
       hours: existing.hours + hours,
       profit: existing.profit + profit,
+      hands: existing.hands + hands,
     });
   }
+  const byDayOfWeek = [0, 1, 2, 3, 4, 5, 6].map((day) => {
+    const data = byDay.get(day) ?? { hours: 0, profit: 0, hands: 0 };
+    const profitPerHand = data.hands > 0 ? data.profit / data.hands : 0;
+    return {
+      label: DAY_NAMES[day],
+      profit: data.profit,
+      hands: data.hands,
+      profitPerHand,
+    };
+  });
   let bestDay: string | null = null;
   let bestDayProfitPerHour = 0;
   let bestDayTotal = 0;
@@ -429,6 +448,7 @@ export function calculatePokerInsights(
     bestTimeOfDayByHourly,
     bestTimeOfDayProfitPerHour,
     byTimeOfDay,
+    byDayOfWeek,
     runningTotal,
     totalHands: cumulativeHands,
     profitPerHand: cumulativeHands > 0 ? cumulativeNet / cumulativeHands : 0,
