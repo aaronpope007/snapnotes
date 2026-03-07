@@ -26,6 +26,7 @@ import Alert from '@mui/material/Alert';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { useDarkMode } from '../../context/DarkModeContext';
 import type { SessionResult } from '../../types/results';
+import { calculatePokerInsights, type InsightsDateRange } from '../../utils/calculatePokerInsights';
 import { SessionDurationLabel } from '../SessionDurationLabel';
 import { FunFactsBento } from './FunFactsBento';
 
@@ -200,6 +201,11 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
     return points;
   }, [sessions, interval]);
 
+  const hourlyPerHandInsights = useMemo(
+    () => calculatePokerInsights(sessions, { dateRange: hourlyPerHandRange }),
+    [sessions, hourlyPerHandRange]
+  );
+
   if (loading) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -290,6 +296,59 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
           <Typography variant="body2">
             ${stats.profitPerHour.toFixed(2)}
           </Typography>
+        </Box>
+      </Paper>
+
+      <Paper
+        variant="outlined"
+        sx={{
+          p: compact ? 1.5 : 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+            $/hr & $/hand
+          </Typography>
+          <ToggleButtonGroup
+            value={hourlyPerHandRange}
+            exclusive
+            onChange={(_, v) => v != null && setHourlyPerHandRange(v)}
+            size="small"
+            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+          >
+            <ToggleButton value="all">All time</ToggleButton>
+            <ToggleButton value="year">This year</ToggleButton>
+            <ToggleButton value="month">This month</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: compact ? 1 : 1.5 }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary">$/hr</Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 500,
+                color: hourlyPerHandInsights.profitPerHour >= 0 ? 'success.main' : 'error.main',
+              }}
+            >
+              ${hourlyPerHandInsights.profitPerHour.toFixed(2)}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary">$/hand</Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 500,
+                color: hourlyPerHandInsights.profitPerHand >= 0 ? 'success.main' : 'error.main',
+              }}
+            >
+              ${hourlyPerHandInsights.profitPerHand.toFixed(2)}/hand
+            </Typography>
+          </Box>
         </Box>
       </Paper>
 
