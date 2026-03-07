@@ -122,8 +122,6 @@ export function calculatePokerInsights(
   let cumulativeHands = 0;
   let totalHours = 0;
   let peak = 0;
-  let peakCumHands = 0;
-  let peakDate: Date | null = null;
 
   let inStretch = false;
   let stretchStartCumHands = 0;
@@ -182,8 +180,6 @@ export function calculatePokerInsights(
 
     if (cumulativeNet > peak) {
       peak = cumulativeNet;
-      peakCumHands = cumulativeHands;
-      peakDate = date;
       if (inStretch) {
         const stretchHands = cumulativeHands - stretchStartCumHands;
         const stretchDays = stretchStartDate

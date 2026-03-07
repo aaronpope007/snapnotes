@@ -49,3 +49,19 @@ export interface SessionUploadRow {
 
 export const RESULTS_STAKE_OPTIONS = [200, 400, 800, 1000, 2000] as const;
 export type ResultsStakeValue = (typeof RESULTS_STAKE_OPTIONS)[number];
+
+export interface Withdrawal {
+  _id: string;
+  userId: string;
+  date: string;
+  amount: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WithdrawalCreate {
+  date?: string;
+  amount: number;
+  notes?: string | null;
+}

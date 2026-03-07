@@ -25,7 +25,7 @@ import {
 import Alert from '@mui/material/Alert';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { useDarkMode } from '../../context/DarkModeContext';
-import type { SessionResult } from '../../types/results';
+import type { SessionResult, Withdrawal } from '../../types/results';
 import { calculatePokerInsights, type InsightsDateRange } from '../../utils/calculatePokerInsights';
 import { SessionDurationLabel } from '../SessionDurationLabel';
 import { FunFactsBento } from './FunFactsBento';
@@ -46,12 +46,13 @@ function formatIntervalLabel(interval: ChartInterval | undefined): string {
 
 interface SummaryTabProps {
   sessions: SessionResult[];
+  withdrawals?: Withdrawal[];
   loading: boolean;
   hasActiveSession?: boolean;
   activeSessionStartTime?: string | null;
 }
 
-export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionStartTime }: SummaryTabProps) {
+export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSession, activeSessionStartTime }: SummaryTabProps) {
   const compact = useCompactMode();
   const darkMode = useDarkMode();
   const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
@@ -298,6 +299,35 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
             ${stats.profitPerHour.toFixed(2)}
           </Typography>
         </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography variant="caption" color="text.secondary">
+            Total winnings
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 500, color: stats.totalProfit >= 0 ? 'success.main' : 'error.main' }}
+          >
+            ${stats.totalProfit.toFixed(2)}
+          </Typography>
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography variant="caption" color="text.secondary">
+            Total withdrawn
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 500, color: 'success.main' }}>
+            ${withdrawals.reduce((sum, w) => sum + w.amount, 0).toFixed(2)}
+          </Typography>
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography variant="caption" color="text.secondary">
+            Current account
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {sessions.length > 0 && sessions[0].endBankroll != null
+              ? `$${Number(sessions[0].endBankroll).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : '—'}
+          </Typography>
+        </Box>
       </Paper>
 
       <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
@@ -502,7 +532,7 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
             </MenuItem>
           ))}
         </Menu>
-        <Box sx={{ height: compact ? 160 : 220, width: '100%' }}>
+        <Box sx={{ height: compact ? 320 : 440, width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -522,10 +552,10 @@ export function SummaryTab({ sessions, loading, hasActiveSession, activeSessionS
                 tickFormatter={(v) => (chartMode === 'perHand' ? `$${Number(v).toFixed(2)}` : `$${v}`)}
               />
               <Tooltip
-                formatter={(value: number) =>
+                formatter={(value: number | undefined) =>
                   chartMode === 'perHand'
-                    ? [`$${Number(value).toFixed(2)}/hand`, '$/hand']
-                    : [`$${Number(value).toFixed(2)}`, 'Bankroll']
+                    ? [`$${Number(value ?? 0).toFixed(2)}/hand`, '$/hand']
+                    : [`$${Number(value ?? 0).toFixed(2)}`, 'Bankroll']
                 }
                 labelFormatter={(label) => label}
               />

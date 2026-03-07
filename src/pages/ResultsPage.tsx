@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
-import { fetchSessionResults, createSessionResult, uploadSessionResults, updateSessionResult, deleteSessionResult } from '../api/results';
-import type { SessionResult, SessionResultCreate, SessionUploadRow } from '../types/results';
+import { fetchSessionResults, createSessionResult, uploadSessionResults, updateSessionResult, deleteSessionResult, fetchWithdrawals, createWithdrawal, updateWithdrawal, deleteWithdrawal } from '../api/results';
+import type { SessionResult, SessionResultCreate, SessionUploadRow, Withdrawal, WithdrawalCreate } from '../types/results';
 import { ResultsTabs, type ResultsTabValue, type ResultsViewValue } from '../components/results/ResultsTabs';
 import { SessionsGridTab } from '../components/results/SessionsGridTab';
 import { AddOrUploadTab } from '../components/results/AddOrUploadTab';
 import { SummaryTab } from '../components/results/SummaryTab';
+import { WithdrawalsTab } from '../components/results/WithdrawalsTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 interface ResultsPageProps {
@@ -26,7 +27,9 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
   const [view, setView] = useState<ResultsViewValue>('summary');
   const [activeTab, setActiveTab] = useState<ResultsTabValue>('sessions');
   const [sessions, setSessions] = useState<SessionResult[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
 
   const loadSessions = useCallback(async () => {
     if (!userName?.trim()) {
@@ -46,9 +49,31 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
     }
   }, [userName, onError]);
 
+  const loadWithdrawals = useCallback(async () => {
+    if (!userName?.trim()) {
+      setWithdrawals([]);
+      setWithdrawalsLoading(false);
+      return;
+    }
+    setWithdrawalsLoading(true);
+    try {
+      const data = await fetchWithdrawals(userName);
+      setWithdrawals(Array.isArray(data) ? data : []);
+    } catch {
+      setWithdrawals([]);
+      onError?.('Failed to load withdrawals');
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  }, [userName, onError]);
+
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
+
+  useEffect(() => {
+    void loadWithdrawals();
+  }, [loadWithdrawals]);
 
   const handleAddSession = useCallback(
     async (payload: SessionResultCreate) => {
@@ -95,6 +120,43 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
     [loadSessions, onSuccess, onError]
   );
 
+  const handleAddWithdrawal = useCallback(
+    async (payload: WithdrawalCreate) => {
+      await createWithdrawal(userName, payload);
+      await loadWithdrawals();
+      onSuccess?.('Withdrawal added.');
+    },
+    [userName, loadWithdrawals, onSuccess]
+  );
+
+  const handleUpdateWithdrawal = useCallback(
+    async (id: string, updates: Partial<WithdrawalCreate>) => {
+      try {
+        await updateWithdrawal(id, updates);
+        await loadWithdrawals();
+        onSuccess?.('Withdrawal updated.');
+      } catch {
+        onError?.('Failed to update withdrawal.');
+        throw new Error('Failed to update withdrawal');
+      }
+    },
+    [loadWithdrawals, onSuccess, onError]
+  );
+
+  const handleDeleteWithdrawal = useCallback(
+    async (id: string) => {
+      try {
+        await deleteWithdrawal(id);
+        await loadWithdrawals();
+        onSuccess?.('Withdrawal deleted.');
+      } catch {
+        onError?.('Failed to delete withdrawal.');
+        throw new Error('Failed to delete withdrawal');
+      }
+    },
+    [loadWithdrawals, onSuccess, onError]
+  );
+
   const totalHands = sessions.reduce((sum, s) => sum + (s.hands ?? 0), 0);
   const mostRecentSession = sessions[0] ?? null;
   const lastHandsEndedAt =
@@ -126,7 +188,24 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
         </Typography>
       ) : view === 'summary' ? (
         <ErrorBoundary>
-          <SummaryTab sessions={sessions} loading={loading} hasActiveSession={hasActiveSession} activeSessionStartTime={activeSessionStartTime} />
+          <SummaryTab
+            sessions={sessions}
+            withdrawals={withdrawals}
+            loading={loading}
+            hasActiveSession={hasActiveSession}
+            activeSessionStartTime={activeSessionStartTime}
+          />
+        </ErrorBoundary>
+      ) : activeTab === 'withdrawals' ? (
+        <ErrorBoundary>
+          <WithdrawalsTab
+            withdrawals={withdrawals}
+            loading={withdrawalsLoading}
+            onAdd={handleAddWithdrawal}
+            onUpdate={handleUpdateWithdrawal}
+            onDelete={handleDeleteWithdrawal}
+            onError={(msg) => onError?.(msg)}
+          />
         </ErrorBoundary>
       ) : activeTab === 'sessions' ? (
         <ErrorBoundary>

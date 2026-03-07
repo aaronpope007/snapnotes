@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { SessionResult, SessionResultCreate, SessionUploadRow } from '../types/results';
+import type { SessionResult, SessionResultCreate, SessionUploadRow, Withdrawal, WithdrawalCreate } from '../types/results';
 
 const api = axios.create({
   baseURL: '/api',
@@ -53,4 +53,33 @@ export async function deleteAllSessionResults(userId: string | null): Promise<{ 
     params: { userId: userId.trim() },
   });
   return data;
+}
+
+export async function fetchWithdrawals(userId: string | null): Promise<Withdrawal[]> {
+  if (!userId?.trim()) return [];
+  const { data } = await api.get<Withdrawal[]>('/withdrawals', {
+    params: { userId: userId.trim() },
+  });
+  return data;
+}
+
+export async function createWithdrawal(
+  userId: string | null,
+  payload: WithdrawalCreate
+): Promise<Withdrawal> {
+  const body = { ...payload, userId: userId ?? undefined };
+  const { data } = await api.post<Withdrawal>('/withdrawals', body);
+  return data;
+}
+
+export async function updateWithdrawal(
+  id: string,
+  updates: Partial<WithdrawalCreate>
+): Promise<Withdrawal> {
+  const { data } = await api.patch<Withdrawal>(`/withdrawals/${id}`, updates);
+  return data;
+}
+
+export async function deleteWithdrawal(id: string): Promise<void> {
+  await api.delete(`/withdrawals/${id}`);
 }

@@ -8,6 +8,7 @@ import SummarizeIcon from '@mui/icons-material/Summarize';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import AddIcon from '@mui/icons-material/Add';
 import PostAddIcon from '@mui/icons-material/PostAdd';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import { useCompactMode } from '../../context/CompactModeContext';
@@ -17,7 +18,7 @@ import { EndSessionModal } from './EndSessionModal';
 import type { SessionResultCreate } from '../../types/results';
 
 export type ResultsViewValue = 'summary' | 'all';
-export type ResultsTabValue = 'sessions' | 'add';
+export type ResultsTabValue = 'sessions' | 'add' | 'withdrawals';
 
 interface ResultsTabsProps {
   view: ResultsViewValue;
@@ -62,11 +63,9 @@ export function ResultsTabs({
   useEffect(() => {
     if (requestOpenEndSessionModal && onClearRequestOpenEndSessionModal) {
       onClearRequestOpenEndSessionModal();
-      queueMicrotask(() => {
-        const stored = getActiveSession();
-        setActiveSessionState(stored);
-        if (stored) setEndModalOpen(true);
-      });
+      const stored = getActiveSession();
+      setActiveSessionState(stored);
+      if (stored) setEndModalOpen(true);
     }
   }, [requestOpenEndSessionModal, onClearRequestOpenEndSessionModal]);
 
@@ -213,6 +212,10 @@ export function ResultsTabs({
           <ToggleButton value="add" aria-label="Add / Upload">
             <AddIcon sx={{ fontSize: 14, mr: 0.25 }} />
             Add / Upload
+          </ToggleButton>
+          <ToggleButton value="withdrawals" aria-label="Withdrawals">
+            <AccountBalanceWalletIcon sx={{ fontSize: 14, mr: 0.25 }} />
+            Withdrawals
           </ToggleButton>
         </ToggleButtonGroup>
       )}
