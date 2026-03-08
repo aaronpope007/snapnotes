@@ -21,7 +21,7 @@ function parseDailyNet(val: unknown): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-/** Parse date from MM/DD/YYYY or ISO string */
+/** Parse date from MM/DD/YYYY, YYYY-MM-DD, or ISO string. Date-only strings (YYYY-MM-DD) are stored at noon UTC to avoid timezone shifts when displaying. */
 function parseDate(val: unknown): Date | null {
   if (val === null || val === undefined || val === '') return null;
   if (val instanceof Date && !Number.isNaN(val.getTime())) return val;
@@ -33,6 +33,11 @@ function parseDate(val: unknown): Date | null {
     const day = parseInt(m[2], 10);
     const year = parseInt(m[3], 10);
     const d = new Date(year, month, day);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const isoOnly = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoOnly) {
+    const d = new Date(s + 'T12:00:00.000Z');
     return Number.isNaN(d.getTime()) ? null : d;
   }
   const d = new Date(s);

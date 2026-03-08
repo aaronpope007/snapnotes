@@ -52,7 +52,8 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
   useEffect(() => {
     if (session) {
       const d = new Date(session.date);
-      setDate(d.toISOString().slice(0, 10));
+      const localDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      setDate(localDateStr);
       setTotalTime(session.totalTime != null ? String(session.totalTime) : '');
       setStartTime(toTimeString(session.startTime));
       setEndTime(toTimeString(session.endTime));
@@ -74,7 +75,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
     try {
       const sessionDate = date || new Date().toISOString().slice(0, 10);
       await onSave(session._id, {
-        date: date ? `${date}T12:00:00` : undefined,
+        date: date || undefined,
         totalTime: totalTime.trim() ? Math.round(Number(totalTime) * 100) / 100 : null,
         startTime: startTime.trim() ? `${sessionDate}T${startTime.trim()}:00` : null,
         endTime: endTime.trim() ? `${sessionDate}T${endTime.trim()}:00` : null,

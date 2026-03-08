@@ -116,8 +116,9 @@ export function EndSessionModal({
     }
     setSaving(true);
     try {
+      const localDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
       const payload: SessionResultCreate = {
-        date: startDate.toISOString(),
+        date: localDateStr,
         startTime: startTimeIso,
         endTime: now.toISOString(),
         totalTime: Math.round(totalTimeHours * 100) / 100,

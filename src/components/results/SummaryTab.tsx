@@ -8,6 +8,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -63,7 +64,15 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [hourlyPerHandRange, setHourlyPerHandRange] = useState<InsightsDateRange>('all');
+  const [rangePreset, setRangePreset] = useState<'all' | 'year' | 'month' | 'today' | 'custom'>('all');
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const hourlyPerHandRange: InsightsDateRange =
+    rangePreset === 'custom' ? { start: customStart, end: customEnd } : rangePreset;
 
   const stats = useMemo(() => {
     const sorted = [...sessions].sort(
@@ -348,19 +357,44 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         </AccordionSummary>
         <AccordionDetails>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1 }}>
-              <ToggleButtonGroup
-                value={hourlyPerHandRange}
-                exclusive
-                onChange={(_, v) => v != null && setHourlyPerHandRange(v)}
-                size="small"
-                sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
-              >
-                <ToggleButton value="all">All time</ToggleButton>
-                <ToggleButton value="year">This year</ToggleButton>
-                <ToggleButton value="month">This month</ToggleButton>
-                <ToggleButton value="today">Today</ToggleButton>
-              </ToggleButtonGroup>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1 }}>
+                <ToggleButtonGroup
+                  value={rangePreset}
+                  exclusive
+                  onChange={(_, v) => v != null && setRangePreset(v)}
+                  size="small"
+                  sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+                >
+                  <ToggleButton value="all">All time</ToggleButton>
+                  <ToggleButton value="year">This year</ToggleButton>
+                  <ToggleButton value="month">This month</ToggleButton>
+                  <ToggleButton value="today">Today</ToggleButton>
+                  <ToggleButton value="custom">Custom</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              {rangePreset === 'custom' && (
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <TextField
+                    size="small"
+                    type="date"
+                    label="From"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ width: 140 }}
+                  />
+                  <TextField
+                    size="small"
+                    type="date"
+                    label="To"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ width: 140 }}
+                  />
+                </Box>
+              )}
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: compact ? 1 : 1.5 }}>
               <Box>

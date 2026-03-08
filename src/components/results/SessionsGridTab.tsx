@@ -110,6 +110,13 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         field: 'startTime',
         headerName: 'Time start',
         width: 90,
+        sortComparator: (_v1, _v2, p1, p2) => {
+          const r1 = p1.api.getRow(p1.id) as SessionResult;
+          const r2 = p2.api.getRow(p2.id) as SessionResult;
+          const t1 = r1.startTime ? new Date(r1.startTime).getTime() : 0;
+          const t2 = r2.startTime ? new Date(r2.startTime).getTime() : 0;
+          return t1 - t2;
+        },
         valueFormatter: (value) => {
           const s = value as string | null;
           if (!s) return '—';
@@ -281,14 +288,18 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
     [gridMeta]
   );
 
-  const rows = useMemo(
-    () =>
-      sessions.map((s) => ({
-        ...s,
-        id: s._id,
-      })),
-    [sessions]
-  );
+  const rows = useMemo(() => {
+    const dateKey = (s: SessionResult) => new Date(s.date).toISOString().slice(0, 10);
+    const timeKey = (s: SessionResult) =>
+      (s.endTime || s.startTime) ? new Date(s.endTime || s.startTime!).getTime() : 0;
+    const sorted = [...sessions].sort((a, b) => {
+      const dA = dateKey(a);
+      const dB = dateKey(b);
+      if (dB !== dA) return dB.localeCompare(dA);
+      return timeKey(b) - timeKey(a);
+    });
+    return sorted.map((s) => ({ ...s, id: s._id }));
+  }, [sessions]);
 
   return (
     <>
@@ -306,8 +317,14 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
           rows={rows}
           columns={columns}
           loading={loading}
+          sortingMode="server"
           initialState={{
-            sorting: { sortModel: [{ field: 'date', sort: 'desc' }] },
+            sorting: {
+              sortModel: [
+                { field: 'date', sort: 'desc' },
+                { field: 'endTime', sort: 'desc' },
+              ],
+            },
             pagination: { paginationModel: { pageSize: 25 } },
           }}
           pageSizeOptions={[10, 25, 50]}
