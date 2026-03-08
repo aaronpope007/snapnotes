@@ -50,6 +50,7 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
       handsEnd: number | null;
       accountStart: number | null;
       accountEnd: number | null;
+      sessionNet: number | null;
       handsPerHour: number | null;
     }>();
     const sorted = [...sessions].sort(
@@ -64,14 +65,18 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
       const displayHandsStart = handsStart ?? cumulativeHands;
       const displayHandsEnd = handsEnd ?? cumulativeHands + h;
       cumulativeHands = handsEnd ?? (cumulativeHands + h);
+      const accountStart = s.startBankroll ?? prevEndBankroll;
       const accountEnd = s.endBankroll ?? null;
+      const sessionNet =
+        accountStart != null && accountEnd != null ? accountEnd - accountStart : (s.dailyNet ?? null);
       const totalTime = s.totalTime ?? 0;
       const handsPerHour = totalTime > 0 && h > 0 ? Math.round(h / totalTime) : null;
       byId.set(s._id, {
         handsStart: displayHandsStart,
         handsEnd: displayHandsEnd,
-        accountStart: prevEndBankroll,
+        accountStart,
         accountEnd,
+        sessionNet,
         handsPerHour,
       });
       prevEndBankroll = accountEnd;
@@ -86,6 +91,13 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         headerName: 'Date',
         flex: 1,
         minWidth: 100,
+        sortComparator: (_v1, _v2, p1, p2) => {
+          const r1 = p1.api.getRow(p1.id) as SessionResult;
+          const r2 = p2.api.getRow(p2.id) as SessionResult;
+          const d1 = new Date(r1.date).toISOString().slice(0, 10);
+          const d2 = new Date(r2.date).toISOString().slice(0, 10);
+          return d1.localeCompare(d2);
+        },
         valueFormatter: (value) => {
           const d = value as string | null;
           if (!d) return '—';
@@ -192,9 +204,10 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
           value != null ? formatCurrency(value) : '—',
       },
       {
-        field: 'dailyNet',
-        headerName: 'Daily Net',
+        field: 'sessionNet',
+        headerName: 'Session Net',
         width: 95,
+        valueGetter: (_, row) => gridMeta.get(row._id)?.sessionNet ?? null,
         valueFormatter: (value) => formatCurrency(value as number | null),
         cellClassName: (params) => {
           const n = params.value as number | null;
@@ -207,7 +220,7 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         headerName: '$/hand',
         width: 80,
         valueGetter: (_, row) => {
-          const net = row.dailyNet ?? null;
+          const net = gridMeta.get(row._id)?.sessionNet ?? row.dailyNet ?? null;
           const hands = row.hands ?? 0;
           if (net == null || hands <= 0) return null;
           return Number(net) / hands;
@@ -317,7 +330,6 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
           rows={rows}
           columns={columns}
           loading={loading}
-          sortingMode="server"
           initialState={{
             sorting: {
               sortModel: [

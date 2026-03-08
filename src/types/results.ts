@@ -9,6 +9,7 @@ export interface SessionResult {
   handsStartedAt: number | null;
   handsEndedAt: number | null;
   dailyNet: number | null;
+  startBankroll: number | null;
   endBankroll: number | null;
   startTime: string | null;
   endTime: string | null;
@@ -27,6 +28,7 @@ export interface SessionResultCreate {
   handsStartedAt?: number | null;
   handsEndedAt?: number | null;
   dailyNet?: number | null;
+  startBankroll?: number | null;
   endBankroll?: number | null;
   startTime?: string | null;
   endTime?: string | null;

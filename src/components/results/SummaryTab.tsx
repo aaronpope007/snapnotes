@@ -30,6 +30,10 @@ import { useCompactMode } from '../../context/CompactModeContext';
 import { useDarkMode } from '../../context/DarkModeContext';
 import type { SessionResult, Withdrawal } from '../../types/results';
 import { calculatePokerInsights, type InsightsDateRange } from '../../utils/calculatePokerInsights';
+import {
+  getMostRecentSession,
+  getSessionNetsMap,
+} from '../../utils/sessionUtils';
 import { SessionDurationLabel } from '../SessionDurationLabel';
 import { FunFactsBento } from './FunFactsBento';
 
@@ -78,20 +82,22 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     const sorted = [...sessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
+    const sessionNets = getSessionNetsMap(sessions);
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const mostRecent = getMostRecentSession(sessions);
+    const currentAccount = mostRecent?.endBankroll ?? null;
+    const totalProfit = sorted.reduce((sum, s) => sum + net(s), 0);
     const totalHours = sorted.reduce(
       (sum, s) => sum + (s.totalTime ?? 0),
       0
     );
     const totalHands = sorted.reduce((sum, s) => sum + (s.hands ?? 0), 0);
-    const totalProfit = sorted.reduce(
-      (sum, s) => sum + (s.dailyNet ?? 0),
-      0
-    );
-    const startDate =
-      sorted.length > 0 ? new Date(sorted[0].date) : null;
     const profitPerHand = totalHands > 0 ? totalProfit / totalHands : 0;
     const avgHandsPerHour = totalHours > 0 ? totalHands / totalHours : 0;
     const profitPerHour = totalHours > 0 ? totalProfit / totalHours : 0;
+    const profitPerHourAt240 = profitPerHand * 240;
+    const startDate =
+      sorted.length > 0 ? new Date(sorted[0].date) : null;
 
     return {
       startDate,
@@ -101,10 +107,15 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       profitPerHand,
       avgHandsPerHour,
       profitPerHour,
+      profitPerHourAt240,
+      currentAccount,
     };
   }, [sessions]);
 
+  const sessionNets = useMemo(() => getSessionNetsMap(sessions), [sessions]);
+
   const byStake = useMemo(() => {
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const groups = new Map<number, SessionResult[]>();
     for (const s of sessions) {
       const stake = s.stake ?? 0;
@@ -120,7 +131,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         );
         const totalHours = sorted.reduce((sum, s) => sum + (s.totalTime ?? 0), 0);
         const totalHands = sorted.reduce((sum, s) => sum + (s.hands ?? 0), 0);
-        const totalProfit = sorted.reduce((sum, s) => sum + (s.dailyNet ?? 0), 0);
+        const totalProfit = sorted.reduce((sum, s) => sum + net(s), 0);
         const startDate = sorted.length > 0 ? new Date(sorted[0].date) : null;
         const profitPerHand = totalHands > 0 ? totalProfit / totalHands : 0;
         const avgHandsPerHour = totalHours > 0 ? totalHands / totalHours : 0;
@@ -141,7 +152,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           bbPer100,
         };
       });
-  }, [sessions]);
+  }, [sessions, sessionNets]);
 
   const chartData = useMemo(() => {
     const sorted = [...sessions].sort(
@@ -149,6 +160,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     );
     if (sorted.length === 0) return [];
 
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const isPerHand = typeof interval === 'object';
     const points: { label: string; value: number; profitPerHand: number; cumulativeHands: number }[] = [];
     let cumulativeProfit = 0;
@@ -160,9 +172,9 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       let nextHands = step;
       for (const s of sorted) {
         const hands = s.hands ?? 0;
-        const net = s.dailyNet ?? 0;
+        const sessionNet = net(s);
         cumulativeHands += hands;
-        cumulativeProfit += net;
+        cumulativeProfit += sessionNet;
         while (cumulativeHands >= nextHands) {
           const pph = nextHands > 0 ? cumulativeProfit / nextHands : 0;
           points.push({
@@ -191,7 +203,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         const key = groupBy(new Date(s.date));
         const prev = groups.get(key) ?? { profit: 0, hands: 0 };
         groups.set(key, {
-          profit: prev.profit + (s.dailyNet ?? 0),
+          profit: prev.profit + net(s),
           hands: prev.hands + (s.hands ?? 0),
         });
       }
@@ -212,7 +224,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       }
     }
     return points;
-  }, [sessions, interval]);
+  }, [sessions, interval, sessionNets]);
 
   const hourlyPerHandInsights = useMemo(
     () => calculatePokerInsights(sessions, { dateRange: hourlyPerHandRange }),
@@ -342,9 +354,17 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
             Current account
           </Typography>
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            {sessions.length > 0 && sessions[0].endBankroll != null
-              ? `$${Number(sessions[0].endBankroll).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            {stats.currentAccount != null
+              ? `$${Number(stats.currentAccount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : '—'}
+          </Typography>
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography variant="caption" color="text.secondary">
+            $/hr @ 240 hands
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            ${stats.profitPerHourAt240.toFixed(2)}
           </Typography>
         </Box>
       </Paper>
@@ -396,7 +416,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 </Box>
               )}
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: compact ? 1 : 1.5 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: compact ? 1 : 1.5 }}>
               <Box>
                 <Typography variant="caption" color="text.secondary">Net won</Typography>
                 <Typography
@@ -451,6 +471,18 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                   {hourlyPerHandInsights.totalHours > 0
                     ? Math.round(hourlyPerHandInsights.totalHands / hourlyPerHandInsights.totalHours).toLocaleString()
                     : '—'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">$/hr @ 240</Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 500,
+                    color: (hourlyPerHandInsights.profitPerHand * 240) >= 0 ? 'success.main' : 'error.main',
+                  }}
+                >
+                  ${(hourlyPerHandInsights.profitPerHand * 240).toFixed(2)}
                 </Typography>
               </Box>
             </Box>

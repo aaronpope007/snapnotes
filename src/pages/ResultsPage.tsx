@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
@@ -158,7 +158,18 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
   );
 
   const totalHands = sessions.reduce((sum, s) => sum + (s.hands ?? 0), 0);
-  const mostRecentSession = sessions[0] ?? null;
+  const mostRecentSession = useMemo(() => {
+    if (sessions.length === 0) return null;
+    const sorted = [...sessions].sort((a, b) => {
+      const dA = new Date(a.date).toISOString().slice(0, 10);
+      const dB = new Date(b.date).toISOString().slice(0, 10);
+      if (dB !== dA) return dB.localeCompare(dA);
+      const tA = (a.endTime || a.startTime) ? new Date(a.endTime || a.startTime!).getTime() : 0;
+      const tB = (b.endTime || b.startTime) ? new Date(b.endTime || b.startTime!).getTime() : 0;
+      return tB - tA;
+    });
+    return sorted[0];
+  }, [sessions]);
   const lastHandsEndedAt =
     mostRecentSession?.handsEndedAt ??
     (sessions.length > 0 ? totalHands : 0);

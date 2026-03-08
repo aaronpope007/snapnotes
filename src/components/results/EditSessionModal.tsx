@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -28,7 +28,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
   const [handsStartedAt, setHandsStartedAt] = useState<string>('');
   const [handsEndedAt, setHandsEndedAt] = useState<string>('');
   const [hands, setHands] = useState<string>('');
-  const [dailyNet, setDailyNet] = useState<string>('');
+  const [startBankroll, setStartBankroll] = useState<string>('');
   const [endBankroll, setEndBankroll] = useState<string>('');
   const [stake, setStake] = useState<number | ''>('');
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
@@ -60,7 +60,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
       setHandsStartedAt(session.handsStartedAt != null ? String(session.handsStartedAt) : '');
       setHandsEndedAt(session.handsEndedAt != null ? String(session.handsEndedAt) : '');
       setHands(session.hands != null ? String(session.hands) : '');
-      setDailyNet(session.dailyNet != null ? String(session.dailyNet) : '');
+      setStartBankroll(session.startBankroll != null ? String(session.startBankroll) : '');
       setEndBankroll(session.endBankroll != null ? String(session.endBankroll) : '');
       setStake(session.stake ?? '');
       setGameType(session.gameType ?? 'NLHE');
@@ -69,6 +69,32 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
     }
   }, [session]);
 
+  const derivedHands = useMemo(() => {
+    const start = handsStartedAt.trim() ? parseInt(handsStartedAt.replace(/,/g, ''), 10) : NaN;
+    const end = handsEndedAt.trim() ? parseInt(handsEndedAt.replace(/,/g, ''), 10) : NaN;
+    if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) return end - start;
+    return hands.trim() ? parseInt(hands.replace(/,/g, ''), 10) : NaN;
+  }, [handsStartedAt, handsEndedAt, hands]);
+
+  const derivedDailyNet = useMemo(() => {
+    const start = startBankroll.trim() ? parseFloat(startBankroll.replace(/[$,]/g, '')) : NaN;
+    const end = endBankroll.trim() ? parseFloat(endBankroll.replace(/[$,]/g, '')) : NaN;
+    if (!Number.isNaN(start) && !Number.isNaN(end)) return end - start;
+    return NaN;
+  }, [startBankroll, endBankroll]);
+
+  const derivedTotalTime = useMemo(() => {
+    if (!startTime.trim() || !endTime.trim()) return NaN;
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    if ([sh, sm, eh, em].some(Number.isNaN)) return NaN;
+    const startMins = sh * 60 + sm;
+    const endMins = eh * 60 + em;
+    const diffMins = endMins - startMins;
+    if (diffMins < 0) return NaN; // end before start
+    return Math.round((diffMins / 60) * 100) / 100; // 2 decimal places
+  }, [startTime, endTime]);
+
   const handleSubmit = async () => {
     if (!session) return;
     setSaving(true);
@@ -76,13 +102,17 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
       const sessionDate = date || new Date().toISOString().slice(0, 10);
       await onSave(session._id, {
         date: date || undefined,
-        totalTime: totalTime.trim() ? Math.round(Number(totalTime) * 100) / 100 : null,
+        totalTime: (() => {
+          const val = !Number.isNaN(derivedTotalTime) ? derivedTotalTime : (totalTime.trim() ? Number(totalTime) : NaN);
+          return !Number.isNaN(val) ? Math.round(val * 100) / 100 : null;
+        })(),
         startTime: startTime.trim() ? `${sessionDate}T${startTime.trim()}:00` : null,
         endTime: endTime.trim() ? `${sessionDate}T${endTime.trim()}:00` : null,
         handsStartedAt: handsStartedAt.trim() ? Number(handsStartedAt.replace(/,/g, '')) : null,
         handsEndedAt: handsEndedAt.trim() ? Number(handsEndedAt.replace(/,/g, '')) : null,
-        hands: hands.trim() ? Number(hands.replace(/,/g, '')) : null,
-        dailyNet: dailyNet.trim() ? Number(dailyNet.replace(/[$,]/g, '')) : null,
+        hands: !Number.isNaN(derivedHands) ? derivedHands : (hands.trim() ? Number(hands.replace(/,/g, '')) : null),
+        dailyNet: !Number.isNaN(derivedDailyNet) ? Math.round(derivedDailyNet * 100) / 100 : null,
+        startBankroll: startBankroll.trim() ? Number(startBankroll.replace(/[$,]/g, '')) : null,
         endBankroll: endBankroll.trim() ? Number(endBankroll.replace(/[$,]/g, '')) : null,
         stake: stake === '' ? null : stake,
         gameType,
@@ -113,8 +143,9 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
             label="Time (hrs)"
             type="number"
             size="small"
-            value={totalTime}
+            value={!Number.isNaN(derivedTotalTime) ? derivedTotalTime : totalTime}
             onChange={(e) => setTotalTime(e.target.value)}
+            InputProps={{ readOnly: !Number.isNaN(derivedTotalTime) }}
             inputProps={{ step: 0.01, min: 0 }}
             fullWidth
           />
@@ -158,8 +189,19 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
             label="Hands"
             type="number"
             size="small"
-            value={hands}
+            value={!Number.isNaN(derivedHands) ? derivedHands : hands}
             onChange={(e) => setHands(e.target.value)}
+            InputProps={{ readOnly: !Number.isNaN(derivedHands) }}
+            fullWidth
+          />
+          <TextField
+            label="Account start"
+            size="small"
+            value={startBankroll}
+            onChange={(e) => setStartBankroll(e.target.value)}
+            InputProps={{
+              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+            }}
             fullWidth
           />
           <TextField
@@ -173,12 +215,12 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
             fullWidth
           />
           <TextField
-            label="Daily Net"
+            label="Session Net"
             size="small"
-            value={dailyNet}
-            onChange={(e) => setDailyNet(e.target.value)}
+            value={!Number.isNaN(derivedDailyNet) ? derivedDailyNet.toFixed(2) : ''}
             InputProps={{
               startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              readOnly: true,
             }}
             fullWidth
           />

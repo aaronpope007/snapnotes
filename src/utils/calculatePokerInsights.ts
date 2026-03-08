@@ -1,4 +1,5 @@
 import type { SessionResult } from '../types/results';
+import { getSessionNetsMap } from './sessionUtils';
 
 export type InsightsDateRange = 'all' | 'month' | 'year' | 'today' | { start: string; end: string };
 
@@ -128,10 +129,13 @@ export function calculatePokerInsights(
   options?: { dateRange?: InsightsDateRange }
 ): PokerInsights {
   const range = options?.dateRange ?? 'all';
+  const sessionNets = getSessionNetsMap(sessions);
   const filtered = filterSessionsByRange(sessions, range);
   const sorted = [...filtered].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+
+  const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
 
   const runningTotal: { cumulativeNet: number; cumulativeHands: number; date: string }[] = [];
   let cumulativeNet = 0;
@@ -164,11 +168,11 @@ export function calculatePokerInsights(
 
   for (let i = 0; i < sorted.length; i++) {
     const s = sorted[i];
-    const net = s.dailyNet ?? 0;
+    const sessionNet = net(s);
     const hands = s.hands ?? 0;
     const hours = s.totalTime ?? 0;
     const date = new Date(s.date);
-    cumulativeNet += net;
+    cumulativeNet += sessionNet;
     cumulativeHands += hands;
     totalHours += hours;
     runningTotal.push({
@@ -177,7 +181,7 @@ export function calculatePokerInsights(
       date: s.date,
     });
 
-    if (net > 0) {
+    if (sessionNet > 0) {
       currentWin++;
       currentLose = 0;
       if (currentWin > maxWinStreak) {
@@ -185,7 +189,7 @@ export function calculatePokerInsights(
         maxWinStreakEndIdx = i;
       }
       winningSessions++;
-    } else if (net < 0) {
+    } else if (sessionNet < 0) {
       currentLose++;
       currentWin = 0;
       maxLoseStreak = Math.max(maxLoseStreak, currentLose);
@@ -279,13 +283,13 @@ export function calculatePokerInsights(
   let worstSingleSessionNet: number | null = null;
   let worstSingleSessionDate: string | null = null;
   for (const s of sorted) {
-    const net = s.dailyNet ?? 0;
-    if (net > 0 && (bestSingleSessionNet === null || net > bestSingleSessionNet)) {
-      bestSingleSessionNet = net;
+    const sessionNetVal = net(s);
+    if (sessionNetVal > 0 && (bestSingleSessionNet === null || sessionNetVal > bestSingleSessionNet)) {
+      bestSingleSessionNet = sessionNetVal;
       bestSingleSessionDate = s.date;
     }
-    if (net < 0 && (worstSingleSessionNet === null || net < worstSingleSessionNet)) {
-      worstSingleSessionNet = net;
+    if (sessionNetVal < 0 && (worstSingleSessionNet === null || sessionNetVal < worstSingleSessionNet)) {
+      worstSingleSessionNet = sessionNetVal;
       worstSingleSessionDate = s.date;
     }
   }
@@ -316,7 +320,7 @@ export function calculatePokerInsights(
     const d = new Date(s.date);
     const day = d.getDay();
     const hours = s.totalTime ?? 0;
-    const profit = s.dailyNet ?? 0;
+    const profit = net(s);
     const hands = s.hands ?? 0;
     const existing = byDay.get(day) ?? { hours: 0, profit: 0, hands: 0 };
     byDay.set(day, {
@@ -365,7 +369,7 @@ export function calculatePokerInsights(
   let longProfit = 0;
   for (const s of sorted) {
     const hours = s.totalTime ?? 0;
-    const profit = s.dailyNet ?? 0;
+    const profit = net(s);
     if (hours < SHORT_THRESHOLD) {
       shortHours += hours;
       shortProfit += profit;
@@ -384,7 +388,7 @@ export function calculatePokerInsights(
     const bucket = TIME_BUCKETS.find((b) => hour >= b.minHour && hour <= b.maxHour);
     if (!bucket) continue;
     const hours = s.totalTime ?? 0;
-    const profit = s.dailyNet ?? 0;
+    const profit = net(s);
     const hands = s.hands ?? 0;
     const existing = byTimeBucket.get(bucket.key) ?? { hours: 0, profit: 0, hands: 0 };
     byTimeBucket.set(bucket.key, {

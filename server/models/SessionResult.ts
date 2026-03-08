@@ -9,6 +9,7 @@ const sessionResultSchema = new mongoose.Schema(
     handsStartedAt: { type: Number, default: null },
     handsEndedAt: { type: Number, default: null },
     dailyNet: { type: Number, default: null }, // profit/loss in dollars
+    startBankroll: { type: Number, default: null }, // bankroll $ at start of session
     endBankroll: { type: Number, default: null }, // bankroll $ at end of session (for next session's start bankroll)
     startTime: { type: Date, default: null },
     endTime: { type: Date, default: null },

@@ -69,6 +69,7 @@ router.post('/', async (req: Request, res: Response) => {
       handsStartedAt?: number | null;
       handsEndedAt?: number | null;
       dailyNet?: number | null;
+      startBankroll?: number | null;
       endBankroll?: number | null;
       startTime?: string | null;
       endTime?: string | null;
@@ -98,6 +99,7 @@ router.post('/', async (req: Request, res: Response) => {
       handsStartedAt,
       handsEndedAt,
       dailyNet: body.dailyNet ?? null,
+      startBankroll: body.startBankroll ?? null,
       endBankroll: body.endBankroll ?? null,
       startTime: body.startTime ? new Date(body.startTime) : null,
       endTime: body.endTime ? new Date(body.endTime) : null,
@@ -221,6 +223,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       handsStartedAt?: number | null;
       handsEndedAt?: number | null;
       dailyNet?: number | null;
+      startBankroll?: number | null;
       endBankroll?: number | null;
       startTime?: string | null;
       endTime?: string | null;
@@ -238,6 +241,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (body.handsStartedAt !== undefined) session.handsStartedAt = body.handsStartedAt;
     if (body.handsEndedAt !== undefined) session.handsEndedAt = body.handsEndedAt;
     if (body.dailyNet !== undefined) session.dailyNet = body.dailyNet;
+    if (body.startBankroll !== undefined) session.startBankroll = body.startBankroll;
     if (body.endBankroll !== undefined) session.endBankroll = body.endBankroll;
     if (body.startTime !== undefined) session.startTime = body.startTime ? new Date(body.startTime) : null;
     if (body.endTime !== undefined) session.endTime = body.endTime ? new Date(body.endTime) : null;
