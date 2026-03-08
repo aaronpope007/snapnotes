@@ -362,7 +362,19 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 <ToggleButton value="today">Today</ToggleButton>
               </ToggleButtonGroup>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: compact ? 1 : 1.5 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: compact ? 1 : 1.5 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Net won</Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 500,
+                    color: hourlyPerHandInsights.cumulativeNet >= 0 ? 'success.main' : 'error.main',
+                  }}
+                >
+                  ${hourlyPerHandInsights.cumulativeNet.toFixed(2)}
+                </Typography>
+              </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">$/hr</Typography>
                 <Typography
