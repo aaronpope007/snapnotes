@@ -48,6 +48,7 @@ import { DefaultStakesDialog } from './components/DefaultStakesDialog';
 import { MDFPanel } from './components/MDFPanel';
 import { FoldEquityPanel } from './components/FoldEquityPanel';
 import { GeoPanel } from './components/GeoPanel';
+import { RngButton } from './components/RngButton';
 import { TopNotificationBar } from './components/TopNotificationBar';
 import { TempNoteModal } from './components/TempNoteModal';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
@@ -79,18 +80,6 @@ import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } fr
 
 /** Fixed height for Add Player / Hands to Review / Learning / Results nav buttons. Do not change. */
 const NAV_BUTTON_HEIGHT = 38;
-
-/** Interpolate background color: 1 = reddest, 99–100 = passive grey. */
-function getRngButtonBgColor(value: number | null): string | undefined {
-  if (value === null) return undefined;
-  const t = Math.max(0, Math.min(1, (value - 1) / 98)); // 1→0, 99→1
-  const [r1, g1, b1] = [0xb7, 0x1c, 0x1c]; // red
-  const [r2, g2, b2] = [0x42, 0x42, 0x42]; // passive grey
-  const r = Math.round(r1 + (r2 - r1) * t);
-  const g = Math.round(g1 + (g2 - g1) * t);
-  const b = Math.round(b1 + (b2 - b1) * t);
-  return `rgb(${r},${g},${b})`;
-}
 
 export default function App() {
   const compact = useCompactMode();
@@ -144,8 +133,6 @@ export default function App() {
   const [changeNameOpen, setChangeNameOpen] = useState(false);
   const [improvementNotesOpen, setImprovementNotesOpen] = useState(false);
   const [defaultStakesDialogOpen, setDefaultStakesDialogOpen] = useState(false);
-  const [rngValue, setRngValue] = useState<number | null>(null);
-  const handleRngClick = () => setRngValue(Math.floor(Math.random() * 100) + 1);
   const [tempNoteOpen, setTempNoteOpen] = useState(false);
   const [reviewersList, setReviewersList] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState<{
@@ -653,24 +640,7 @@ export default function App() {
         {calcVisibility.showMDF && <MDFPanel compact={compact} />}
         {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
         {calcVisibility.showGEO && <GeoPanel compact={compact} />}
-        {calcVisibility.showRNG && (
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleRngClick}
-            aria-label="Random number 1-100"
-            sx={{
-              minWidth: 44,
-              px: 1,
-              ...(getRngButtonBgColor(rngValue) && {
-                backgroundColor: getRngButtonBgColor(rngValue),
-                '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
-              }),
-            }}
-          >
-            {rngValue ?? 'RNG'}
-          </Button>
-        )}
+        {calcVisibility.showRNG && <RngButton />}
         <IconButton
           size="small"
           onClick={() => setTempNoteOpen(true)}
@@ -973,24 +943,7 @@ export default function App() {
                 {calcVisibility.showMDF && <MDFPanel compact={compact} />}
                 {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
                 {calcVisibility.showGEO && <GeoPanel compact={compact} />}
-                {calcVisibility.showRNG && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleRngClick}
-                    aria-label="Random number 1-100"
-                    sx={{
-                      minWidth: 44,
-                      px: 1,
-                      ...(getRngButtonBgColor(rngValue) && {
-                        backgroundColor: getRngButtonBgColor(rngValue),
-                        '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
-                      }),
-                    }}
-                  >
-                    {rngValue ?? 'RNG'}
-                  </Button>
-                )}
+                {calcVisibility.showRNG && <RngButton />}
                 <IconButton
                   size="small"
                   onClick={() => setTempNoteOpen(true)}
@@ -1167,24 +1120,7 @@ export default function App() {
                 {calcVisibility.showMDF && <MDFPanel compact={compact} />}
                 {calcVisibility.showFE && <FoldEquityPanel compact={compact} />}
                 {calcVisibility.showGEO && <GeoPanel compact={compact} />}
-                {calcVisibility.showRNG && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleRngClick}
-                    aria-label="Random number 1-100"
-                    sx={{
-                      minWidth: 44,
-                      px: 1,
-                      ...(getRngButtonBgColor(rngValue) && {
-                        backgroundColor: getRngButtonBgColor(rngValue),
-                        '&:hover': { backgroundColor: getRngButtonBgColor(rngValue) },
-                      }),
-                    }}
-                  >
-                    {rngValue ?? 'RNG'}
-                  </Button>
-                )}
+                {calcVisibility.showRNG && <RngButton />}
                 <IconButton
                   size="small"
                   onClick={() => setTempNoteOpen(true)}
