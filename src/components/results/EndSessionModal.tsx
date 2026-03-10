@@ -11,8 +11,8 @@ import InputAdornment from '@mui/material/InputAdornment';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
-import type { SessionResultCreate } from '../../types/results';
-import { RESULTS_STAKE_OPTIONS } from '../../types/results';
+import type { SessionResultCreate, SessionRating } from '../../types/results';
+import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
 import type { ActiveSession } from '../../utils/activeSession';
 
 interface EndSessionModalProps {
@@ -60,6 +60,7 @@ export function EndSessionModal({
   const [startTimeEditable, setStartTimeEditable] = useState('');
   const [endingHandNumber, setEndingHandNumber] = useState('');
   const [stake, setStake] = useState<number | ''>('');
+  const [rating, setRating] = useState<SessionRating | ''>('');
   const [isRing, setIsRing] = useState(false);
   const [isHU, setIsHU] = useState(false);
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
@@ -99,6 +100,7 @@ export function EndSessionModal({
       setStartBankroll(lastEndBankroll != null ? String(lastEndBankroll) : '');
       setEndingHandNumber('');
       setStake('');
+      setRating('');
       setIsRing(false);
       setIsHU(false);
       setGameType('NLHE');
@@ -112,6 +114,10 @@ export function EndSessionModal({
     }
     if (startBankrollNum == null || Number.isNaN(startBankrollNum)) {
       onError('Enter start bankroll (or we use your last session’s end bankroll).');
+      return;
+    }
+    if (rating === '') {
+      onError('Select how you played (rating).');
       return;
     }
     setSaving(true);
@@ -128,6 +134,7 @@ export function EndSessionModal({
         dailyNet: dailyNet ?? undefined,
         endBankroll: endBankrollNum,
         stake: stake === '' ? undefined : stake,
+        rating: rating as SessionRating,
         isRing: isRing || undefined,
         isHU: isHU || undefined,
         gameType,
@@ -154,6 +161,7 @@ export function EndSessionModal({
     isHU,
     gameType,
     endHandNum,
+    rating,
     onEndSession,
     onSuccess,
     onError,
@@ -233,6 +241,23 @@ export function EndSessionModal({
             }
             fullWidth
           />
+          <TextField
+            select
+            label="How did you play?"
+            size="small"
+            value={rating}
+            onChange={(e) => setRating((e.target.value || '') as SessionRating | '')}
+            fullWidth
+            required
+            helperText="Rate your play (required)"
+          >
+            <MenuItem value="">Select…</MenuItem>
+            {SESSION_RATING_OPTIONS.map((r) => (
+              <MenuItem key={r} value={r}>
+                {r}
+              </MenuItem>
+            ))}
+          </TextField>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
               select
@@ -278,7 +303,7 @@ export function EndSessionModal({
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={saving || endBankrollNum == null || Number.isNaN(endBankrollNum) || startBankrollNum == null || Number.isNaN(startBankrollNum)}
+          disabled={saving || endBankrollNum == null || Number.isNaN(endBankrollNum) || startBankrollNum == null || Number.isNaN(startBankrollNum) || rating === ''}
         >
           {saving ? 'Saving…' : 'End session'}
         </Button>

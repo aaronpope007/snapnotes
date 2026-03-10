@@ -1,5 +1,9 @@
 export type SessionGameType = 'NLHE' | 'PLO';
 
+export type SessionRating = 'A' | 'B' | 'C' | 'D' | 'F';
+
+export const SESSION_RATING_OPTIONS: SessionRating[] = ['A', 'B', 'C', 'D', 'F'];
+
 export interface SessionResult {
   _id: string;
   userId: string;
@@ -17,6 +21,7 @@ export interface SessionResult {
   isRing: boolean | null;
   isHU: boolean | null;
   gameType: SessionGameType;
+  rating: SessionRating | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +41,7 @@ export interface SessionResultCreate {
   isRing?: boolean | null;
   isHU?: boolean | null;
   gameType?: SessionGameType;
+  rating?: SessionRating | null;
 }
 
 /** Row format for bulk upload (e.g. CSV: Date, total time, hands, Daily Net, Hands Start, Hands End, Account End) */

@@ -10,8 +10,8 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
 import InputAdornment from '@mui/material/InputAdornment';
-import type { SessionResultCreate } from '../../types/results';
-import { RESULTS_STAKE_OPTIONS } from '../../types/results';
+import type { SessionResultCreate, SessionRating } from '../../types/results';
+import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
 
 interface LogNewSessionModalProps {
   open: boolean;
@@ -38,6 +38,7 @@ export function LogNewSessionModal({
   const [isRing, setIsRing] = useState(false);
   const [isHU, setIsHU] = useState(false);
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
+  const [rating, setRating] = useState<SessionRating | ''>('');
   const [handsStartedAt, setHandsStartedAt] = useState<string>('');
   const [handsEndedAt, setHandsEndedAt] = useState<string>('');
   const [dailyNet, setDailyNet] = useState<string>('');
@@ -50,6 +51,7 @@ export function LogNewSessionModal({
       setStartTime('');
       setEndTime('');
       setDailyNet('');
+      setRating('');
     }
   }, [open, totalHandsSoFar]);
 
@@ -87,6 +89,7 @@ export function LogNewSessionModal({
         startTime: startTime ? `${date}T${startTime}:00` : undefined,
         endTime: endTime ? `${date}T${endTime}:00` : undefined,
         stake: stake === '' ? undefined : stake,
+        rating: rating === '' ? undefined : rating,
         isRing: isRing || undefined,
         isHU: isHU || undefined,
         gameType,
@@ -107,6 +110,7 @@ export function LogNewSessionModal({
     isRing,
     isHU,
     gameType,
+    rating,
     handsPlayed,
     dailyNet,
     totalTimeFromTimes,
@@ -195,6 +199,21 @@ export function LogNewSessionModal({
             >
               <MenuItem value="NLHE">NLHE</MenuItem>
               <MenuItem value="PLO">PLO</MenuItem>
+            </TextField>
+            <TextField
+              select
+              label="Rating"
+              size="small"
+              value={rating}
+              onChange={(e) => setRating((e.target.value || '') as SessionRating | '')}
+              sx={{ minWidth: 80 }}
+            >
+              <MenuItem value="">—</MenuItem>
+              {SESSION_RATING_OPTIONS.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {r}
+                </MenuItem>
+              ))}
             </TextField>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>

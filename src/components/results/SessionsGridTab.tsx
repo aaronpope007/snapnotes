@@ -239,6 +239,12 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         },
       },
       {
+        field: 'rating',
+        headerName: 'Rating',
+        width: 70,
+        valueFormatter: (value) => (value as string) || '—',
+      },
+      {
         field: 'stake',
         headerName: 'Stake',
         width: 75,

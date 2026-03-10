@@ -10,8 +10,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import type { SessionResult, SessionResultCreate } from '../../types/results';
-import { RESULTS_STAKE_OPTIONS } from '../../types/results';
+import type { SessionResult, SessionResultCreate, SessionRating } from '../../types/results';
+import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
 
 interface EditSessionModalProps {
   open: boolean;
@@ -32,6 +32,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
   const [endBankroll, setEndBankroll] = useState<string>('');
   const [stake, setStake] = useState<number | ''>('');
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
+  const [rating, setRating] = useState<SessionRating | ''>('');
   const [isRing, setIsRing] = useState(false);
   const [isHU, setIsHU] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,6 +65,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
       setEndBankroll(session.endBankroll != null ? String(session.endBankroll) : '');
       setStake(session.stake ?? '');
       setGameType(session.gameType ?? 'NLHE');
+      setRating(session.rating ?? '');
       setIsRing(session.isRing ?? false);
       setIsHU(session.isHU ?? false);
     }
@@ -116,6 +118,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
         endBankroll: endBankroll.trim() ? Number(endBankroll.replace(/[$,]/g, '')) : null,
         stake: stake === '' ? null : stake,
         gameType,
+        rating: rating === '' ? null : rating,
         isRing: isRing || null,
         isHU: isHU || null,
       });
@@ -249,6 +252,21 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
           >
             <MenuItem value="NLHE">NLHE</MenuItem>
             <MenuItem value="PLO">PLO</MenuItem>
+          </TextField>
+          <TextField
+            select
+            label="Rating"
+            size="small"
+            value={rating}
+            onChange={(e) => setRating((e.target.value || '') as SessionRating | '')}
+            fullWidth
+          >
+            <MenuItem value="">—</MenuItem>
+            {SESSION_RATING_OPTIONS.map((r) => (
+              <MenuItem key={r} value={r}>
+                {r}
+              </MenuItem>
+            ))}
           </TextField>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <FormControlLabel

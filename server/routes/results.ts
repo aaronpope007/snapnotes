@@ -77,6 +77,7 @@ router.post('/', async (req: Request, res: Response) => {
       isRing?: boolean | null;
       isHU?: boolean | null;
       gameType?: 'NLHE' | 'PLO';
+      rating?: 'A' | 'B' | 'C' | 'D' | 'F' | null;
     };
     const userId = body.userId?.trim() || getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId required' });
@@ -107,6 +108,7 @@ router.post('/', async (req: Request, res: Response) => {
       isRing: body.isRing ?? null,
       isHU: body.isHU ?? null,
       gameType: body.gameType ?? 'NLHE',
+      rating: body.rating && ['A', 'B', 'C', 'D', 'F'].includes(body.rating) ? body.rating : null,
     });
     await session.save();
     res.status(201).json(session);
@@ -231,6 +233,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       isRing?: boolean | null;
       isHU?: boolean | null;
       gameType?: 'NLHE' | 'PLO';
+      rating?: 'A' | 'B' | 'C' | 'D' | 'F' | null;
     };
     if (body.date !== undefined) {
       const d = parseDate(body.date);
@@ -250,6 +253,9 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (body.isHU !== undefined) session.isHU = body.isHU;
     if (body.gameType !== undefined && ['NLHE', 'PLO'].includes(body.gameType)) {
       session.gameType = body.gameType;
+    }
+    if (body.rating !== undefined) {
+      session.rating = body.rating && ['A', 'B', 'C', 'D', 'F'].includes(body.rating) ? body.rating : null;
     }
     await session.save();
     res.json(session);
