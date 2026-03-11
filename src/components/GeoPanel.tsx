@@ -61,7 +61,7 @@ export function GeoPanel({ compact }: GeoPanelProps) {
         aria-controls={anchorEl ? 'geo-popover' : undefined}
         aria-haspopup="true"
         aria-expanded={Boolean(anchorEl)}
-        sx={{ minWidth: 44, px: 1 }}
+        sx={{ minWidth: 72, minHeight: 40, px: 1.5, fontSize: '1.75rem', fontWeight: 600 }}
       >
         GEO
       </Button>

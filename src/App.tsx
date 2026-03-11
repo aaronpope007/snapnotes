@@ -642,12 +642,13 @@ export default function App() {
         {calcVisibility.showGEO && <GeoPanel compact={compact} />}
         {calcVisibility.showRNG && <RngButton />}
         <IconButton
-          size="small"
+          size="medium"
           onClick={() => setTempNoteOpen(true)}
           aria-label="Temp note"
           title="Temp note (scratchpad, nothing saved)"
+          sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
         >
-          <NoteAddIcon fontSize="small" />
+          <NoteAddIcon />
         </IconButton>
         {showSessionInProgress && activeSession && (
           <>
@@ -691,14 +692,15 @@ export default function App() {
           </>
         )}
         <IconButton
-          size="small"
+          size="medium"
           onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
           aria-label="Settings"
           aria-controls={settingsOpen ? 'settings-menu' : undefined}
           aria-haspopup="true"
           aria-expanded={settingsOpen ? 'true' : undefined}
+          sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
         >
-          <SettingsIcon fontSize="small" />
+          <SettingsIcon />
         </IconButton>
       </Box>
       {!selected && (
@@ -945,12 +947,13 @@ export default function App() {
                 {calcVisibility.showGEO && <GeoPanel compact={compact} />}
                 {calcVisibility.showRNG && <RngButton />}
                 <IconButton
-                  size="small"
+                  size="medium"
                   onClick={() => setTempNoteOpen(true)}
                   aria-label="Temp note"
                   title="Temp note (scratchpad, nothing saved)"
+                  sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
                 >
-                  <NoteAddIcon fontSize="small" />
+                  <NoteAddIcon />
                 </IconButton>
                 {showSessionInProgress && activeSession && (
                   <>
@@ -994,14 +997,15 @@ export default function App() {
                   </>
                 )}
                 <IconButton
-                  size="small"
+                  size="medium"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
                   aria-label="Settings"
                   aria-controls={settingsOpen ? 'settings-menu' : undefined}
                   aria-haspopup="true"
                   aria-expanded={settingsOpen ? 'true' : undefined}
+                  sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
                 >
-                  <SettingsIcon fontSize="small" />
+                  <SettingsIcon />
                 </IconButton>
               </Box>
           <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}>
@@ -1122,12 +1126,13 @@ export default function App() {
                 {calcVisibility.showGEO && <GeoPanel compact={compact} />}
                 {calcVisibility.showRNG && <RngButton />}
                 <IconButton
-                  size="small"
+                  size="medium"
                   onClick={() => setTempNoteOpen(true)}
                   aria-label="Temp note"
                   title="Temp note (scratchpad, nothing saved)"
+                  sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
                 >
-                  <NoteAddIcon fontSize="small" />
+                  <NoteAddIcon />
                 </IconButton>
                 {showSessionInProgress && activeSession && (
                   <>
@@ -1171,14 +1176,15 @@ export default function App() {
                   </>
                 )}
                 <IconButton
-                  size="small"
+                  size="medium"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
                   aria-label="Settings"
                   aria-controls={settingsOpen ? 'settings-menu' : undefined}
                   aria-haspopup="true"
                   aria-expanded={settingsOpen ? 'true' : undefined}
+                  sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
                 >
-                  <SettingsIcon fontSize="small" />
+                  <SettingsIcon />
                 </IconButton>
               </Box>
             )}

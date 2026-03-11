@@ -28,9 +28,11 @@ export function RngButton() {
       onClick={handleClick}
       aria-label="Random number 1-100"
       sx={{
-        minWidth: 88,
-        minHeight: 44,
-        px: 2,
+        minWidth: 72,
+        minHeight: 40,
+        px: 1.5,
+        fontSize: '1.75rem',
+        fontWeight: 600,
         ...(bgColor && {
           backgroundColor: bgColor,
           '&:hover': { backgroundColor: bgColor },
