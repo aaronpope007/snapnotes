@@ -280,7 +280,14 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
                 .map((r) => {
                   const hasData = r.hands > 0 || r.profit !== 0;
                   const net = formatDollar(r.profit);
+                  const handsStr =
+                    r.hands >= 100_000
+                      ? `${Math.round(r.hands / 1000)}k`
+                      : r.hands > 0
+                        ? r.hands.toLocaleString()
+                        : '';
                   const pph = r.hands > 0 ? `${formatDollar(r.profitPerHand)}/hand` : '—';
+                  const handsSuffix = handsStr ? ` ${handsStr} hands` : '';
                   return (
                     <Typography
                       key={r.label}
@@ -291,7 +298,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
                         color: hasData && r.profit >= 0 ? 'success.main' : hasData && r.profit < 0 ? 'error.main' : 'text.secondary',
                       }}
                     >
-                      {r.label}: {hasData ? `${net} (${pph})` : '—'}
+                      {r.label}: {hasData ? `${net} (${pph})${handsSuffix}` : '—'}
                     </Typography>
                   );
                 })}

@@ -43,7 +43,28 @@ export type ChartInterval =
   | 'yearly'
   | { perHand: number };
 
-const PER_HAND_OPTIONS = [1000, 5000, 10000, 25000, 50000, 100000];
+const PER_HAND_OPTIONS = [250, 500, 1000, 5000, 10000, 25000, 50000, 100000];
+
+const NICE_HAND_STEPS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
+
+function getHandsAxisTicks(maxHands: number): number[] {
+  if (maxHands <= 0) return [0];
+  const rawStep = maxHands / 10;
+  const step = NICE_HAND_STEPS.find((s) => s >= rawStep) ?? NICE_HAND_STEPS[NICE_HAND_STEPS.length - 1];
+  const ticks: number[] = [];
+  for (let h = 0; h <= maxHands; h += step) {
+    ticks.push(h);
+  }
+  if (ticks[ticks.length - 1] !== maxHands) ticks.push(maxHands);
+  return ticks;
+}
+
+function formatHandsAxisLabel(hands: number): string {
+  if (hands === 0) return 'Start';
+  if (hands >= 1_000_000) return `${(hands / 1_000_000).toFixed(hands % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (hands >= 1000) return `${(hands / 1000).toFixed(hands % 1000 === 0 ? 0 : 1)}k`;
+  return String(hands);
+}
 
 function formatIntervalLabel(interval: ChartInterval | undefined): string {
   if (interval == null) return 'Monthly';
@@ -169,6 +190,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     if (isPerHand) {
       points.push({ label: 'Start', value: 0, profitPerHand: 0, cumulativeHands: 0 });
       const step = interval.perHand;
+      const labelEvery1k = step === 250;
       let nextHands = step;
       for (const s of sorted) {
         const hands = s.hands ?? 0;
@@ -177,8 +199,11 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         cumulativeProfit += sessionNet;
         while (cumulativeHands >= nextHands) {
           const pph = nextHands > 0 ? cumulativeProfit / nextHands : 0;
+          const label = labelEvery1k
+            ? (nextHands % 1000 === 0 ? `${nextHands / 1000}k` : '')
+            : `${(nextHands / 1000).toFixed(0)}k`;
           points.push({
-            label: `${(nextHands / 1000).toFixed(0)}k`,
+            label,
             value: cumulativeProfit,
             profitPerHand: pph,
             cumulativeHands: nextHands,
@@ -225,6 +250,17 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     }
     return points;
   }, [sessions, interval, sessionNets]);
+
+  const chartXAxisConfig = useMemo(() => {
+    if (typeof interval !== 'object') return null;
+    const maxHands = chartData.length > 0
+      ? Math.max(...chartData.map((d) => d.cumulativeHands ?? 0))
+      : 0;
+    return {
+      ticks: getHandsAxisTicks(maxHands),
+      tickFormatter: formatHandsAxisLabel,
+    };
+  }, [chartData, interval]);
 
   const hourlyPerHandInsights = useMemo(
     () => calculatePokerInsights(sessions, { dateRange: hourlyPerHandRange }),
@@ -644,9 +680,11 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
             <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
               <XAxis
-                dataKey="label"
+                dataKey={chartXAxisConfig ? 'cumulativeHands' : 'label'}
                 tick={{ fontSize: 10, fill: axisColor }}
                 stroke={axisStroke}
+                ticks={chartXAxisConfig?.ticks}
+                tickFormatter={chartXAxisConfig?.tickFormatter}
                 label={
                   typeof interval === 'object'
                     ? { value: 'Hands', position: 'insideBottom', offset: -8, fill: axisStroke }
@@ -664,7 +702,11 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                     ? [`$${Number(value ?? 0).toFixed(2)}/hand`, '$/hand']
                     : [`$${Number(value ?? 0).toFixed(2)}`, 'Bankroll']
                 }
-                labelFormatter={(label) => label}
+                labelFormatter={(label) =>
+                  chartXAxisConfig && typeof label === 'number'
+                    ? formatHandsAxisLabel(label)
+                    : String(label)
+                }
               />
               <Line
                 type="monotone"
