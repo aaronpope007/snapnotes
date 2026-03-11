@@ -24,12 +24,13 @@ export function RngButton() {
   return (
     <Button
       variant="outlined"
-      size="small"
+      size="medium"
       onClick={handleClick}
       aria-label="Random number 1-100"
       sx={{
-        minWidth: 44,
-        px: 1,
+        minWidth: 88,
+        minHeight: 44,
+        px: 2,
         ...(bgColor && {
           backgroundColor: bgColor,
           '&:hover': { backgroundColor: bgColor },
