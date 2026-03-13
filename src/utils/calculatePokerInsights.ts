@@ -11,6 +11,12 @@ export interface PokerInsights {
   /** Longest breakeven stretch (hands below peak before recovery) */
   longestBreakevenHands: number;
   longestBreakevenDays: number;
+  /** Top 3 longest breakeven stretches (by hands) */
+  topBreakevenStretches: { hands: number; days: number }[];
+  /** Top 3 biggest downswings (by dollar amount) */
+  topDownswings: { amount: number; hands: number }[];
+  /** Top 3 biggest upswings (by dollar amount) */
+  topUpswings: { amount: number; hands: number }[];
   /** Biggest upswing from valley to peak */
   biggestUpswing: number;
   biggestUpswingHands: number;
@@ -187,6 +193,7 @@ export function calculatePokerInsights(
   let stretchStartDate: Date | null = null;
   let longestStretchHands = 0;
   let longestStretchDays = 0;
+  const allBreakevenStretches: { hands: number; days: number }[] = [];
 
   let inDownswing = false;
   let downswingPeak = 0;
@@ -197,6 +204,8 @@ export function calculatePokerInsights(
   let biggestDownswingHands = 0;
   let biggestUpswingAmount = 0;
   let biggestUpswingHands = 0;
+  const allDownswings: { amount: number; hands: number }[] = [];
+  const allUpswings: { amount: number; hands: number }[] = [];
 
   let maxWinStreak = 0;
   let maxLoseStreak = 0;
@@ -248,6 +257,7 @@ export function calculatePokerInsights(
           longestStretchHands = stretchHands;
           longestStretchDays = stretchDays;
         }
+        allBreakevenStretches.push({ hands: stretchHands, days: stretchDays });
         inStretch = false;
       }
       if (inDownswing) {
@@ -256,12 +266,14 @@ export function calculatePokerInsights(
           biggestDownswingAmount = drop;
           biggestDownswingHands = downswingHands;
         }
+        allDownswings.push({ amount: drop, hands: downswingHands });
         const rise = cumulativeNet - downswingValley;
         const upswingHands = cumulativeHands - valleyCumHands;
         if (rise > biggestUpswingAmount) {
           biggestUpswingAmount = rise;
           biggestUpswingHands = upswingHands;
         }
+        allUpswings.push({ amount: rise, hands: upswingHands });
         inDownswing = false;
       }
     } else if (cumulativeNet < peak) {
@@ -299,6 +311,7 @@ export function calculatePokerInsights(
       longestStretchHands = stretchHands;
       longestStretchDays = stretchDays;
     }
+    allBreakevenStretches.push({ hands: stretchHands, days: stretchDays });
   }
   if (inDownswing) {
     const drop = downswingPeak - downswingValley;
@@ -306,7 +319,21 @@ export function calculatePokerInsights(
       biggestDownswingAmount = drop;
       biggestDownswingHands = downswingHands;
     }
+    allDownswings.push({ amount: drop, hands: downswingHands });
+    const rise = cumulativeNet - downswingValley;
+    const upswingHands = cumulativeHands - valleyCumHands;
+    allUpswings.push({ amount: rise, hands: upswingHands });
   }
+
+  const topBreakevenStretches = [...allBreakevenStretches]
+    .sort((a, b) => b.hands - a.hands)
+    .slice(0, 3);
+  const topDownswings = [...allDownswings]
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3);
+  const topUpswings = [...allUpswings]
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3);
 
   const maxWinStreakMonth =
     maxWinStreakEndIdx >= 0
@@ -615,6 +642,9 @@ export function calculatePokerInsights(
     maxDrawdownHands: biggestDownswingHands,
     longestBreakevenHands: longestStretchHands,
     longestBreakevenDays: longestStretchDays,
+    topBreakevenStretches,
+    topDownswings,
+    topUpswings,
     biggestUpswing: biggestUpswingAmount,
     biggestUpswingHands: biggestUpswingHands,
     maxWinStreak,

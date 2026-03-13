@@ -167,29 +167,65 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             accent={insights.avgDayNet >= 0 ? 'success' : 'error'}
           />
         )}
-        {(insights.longestBreakevenHands > 0 || insights.longestBreakevenDays > 0) && (
-          <InsightCard
-            icon={<ScheduleIcon sx={{ fontSize: 20 }} />}
-            label="Longest breakeven stretch"
-            value={`${insights.longestBreakevenHands.toLocaleString()} hands / ${insights.longestBreakevenDays} day${insights.longestBreakevenDays !== 1 ? 's' : ''}`}
-            accent="warning"
-          />
+        {insights.topBreakevenStretches.length > 0 && (
+          <Paper
+            variant="outlined"
+            sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'warning.main' }}>
+                <ScheduleIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Top 3 longest breakeven stretches
+              </Typography>
+            </Box>
+            {insights.topBreakevenStretches.map((r, i) => (
+              <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                {r.hands.toLocaleString()} hands / {r.days} day{r.days !== 1 ? 's' : ''}
+              </Typography>
+            ))}
+          </Paper>
         )}
-        {insights.maxDrawdown > 0 && (
-          <InsightCard
-            icon={<TrendingDownIcon sx={{ fontSize: 20 }} />}
-            label="Biggest downswing"
-            value={`${formatDownswing(insights.maxDrawdown)}${insights.maxDrawdownHands > 0 ? ` over ${insights.maxDrawdownHands.toLocaleString()} hands` : ''}`}
-            accent="error"
-          />
+        {insights.topDownswings.length > 0 && (
+          <Paper
+            variant="outlined"
+            sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'error.main' }}>
+                <TrendingDownIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Top 3 longest downswings
+              </Typography>
+            </Box>
+            {insights.topDownswings.map((r, i) => (
+              <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
+                {formatDownswing(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}
+              </Typography>
+            ))}
+          </Paper>
         )}
-        {insights.biggestUpswing > 0 && (
-          <InsightCard
-            icon={<TrendingUpIcon sx={{ fontSize: 20 }} />}
-            label="Biggest upswing"
-            value={`${formatDollar(insights.biggestUpswing)}${insights.biggestUpswingHands > 0 ? ` over ${insights.biggestUpswingHands.toLocaleString()} hands` : ''}`}
-            accent="success"
-          />
+        {insights.topUpswings.length > 0 && (
+          <Paper
+            variant="outlined"
+            sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'success.main' }}>
+                <TrendingUpIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Top 3 longest upswings
+              </Typography>
+            </Box>
+            {insights.topUpswings.map((r, i) => (
+              <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'success.main' }}>
+                {formatDollar(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}
+              </Typography>
+            ))}
+          </Paper>
         )}
         {insights.bestSingleSessionNet != null && insights.bestSingleSessionNet > 0 && insights.bestSingleSessionDate && (
           <InsightCard
