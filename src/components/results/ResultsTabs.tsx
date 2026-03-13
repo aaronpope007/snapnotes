@@ -11,10 +11,12 @@ import PostAddIcon from '@mui/icons-material/PostAdd';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
+import EditIcon from '@mui/icons-material/Edit';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { getActiveSession, setActiveSession, clearActiveSession } from '../../utils/activeSession';
 import { LogNewSessionModal } from './LogNewSessionModal';
 import { EndSessionModal } from './EndSessionModal';
+import { EditActiveSessionModal } from './EditActiveSessionModal';
 import type { SessionResultCreate } from '../../types/results';
 
 export type ResultsViewValue = 'summary' | 'all';
@@ -60,6 +62,7 @@ export function ResultsTabs({
   const compact = useCompactMode();
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [endModalOpen, setEndModalOpen] = useState(false);
+  const [editSessionModalOpen, setEditSessionModalOpen] = useState(false);
   const [startingSession, setStartingSession] = useState(false);
   const [activeSession, setActiveSessionState] = useState(() => getActiveSession());
 
@@ -123,6 +126,18 @@ export function ResultsTabs({
     [onAddSession, onActiveSessionChange]
   );
 
+  const handleEditActiveSessionSave = useCallback(
+    (startTimeIso: string) => {
+      if (!activeSession) return;
+      const updated = { ...activeSession, startTime: startTimeIso };
+      setActiveSession(updated);
+      setActiveSessionState(updated);
+      onActiveSessionChange?.();
+      onSuccess('Session start time updated.');
+    },
+    [activeSession, onActiveSessionChange, onSuccess]
+  );
+
   return (
     <Box
       sx={{
@@ -154,6 +169,14 @@ export function ResultsTabs({
             <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
               Session in progress since {new Date(activeSession.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
             </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon />}
+              onClick={() => setEditSessionModalOpen(true)}
+            >
+              Edit session
+            </Button>
             <Button
               variant="contained"
               color="error"
@@ -200,6 +223,13 @@ export function ResultsTabs({
         totalHandsSoFar={lastHandsEndedAt}
         onAddSession={onAddSession}
         onSuccess={onSuccess}
+        onError={onError}
+      />
+      <EditActiveSessionModal
+        open={editSessionModalOpen}
+        onClose={() => setEditSessionModalOpen(false)}
+        activeSession={activeSession}
+        onSave={handleEditActiveSessionSave}
         onError={onError}
       />
       {activeSession && (

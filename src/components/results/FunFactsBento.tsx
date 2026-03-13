@@ -470,6 +470,8 @@ function RecoveryProgressBar({
       />
       <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
         {formatDownswing(drop)} from peak · {formatDollar(recovered)} recovered
+        {insights.currentDownswingHands > 0 &&
+          ` · ${insights.currentDownswingHands.toLocaleString()} hands since peak`}
       </Typography>
     </Paper>
   );

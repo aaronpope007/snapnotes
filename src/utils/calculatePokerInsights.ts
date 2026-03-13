@@ -29,6 +29,8 @@ export interface PokerInsights {
   currentPeak: number;
   currentValley: number;
   cumulativeNet: number;
+  /** Hands in current downswing (0 if not in downswing) */
+  currentDownswingHands: number;
   /** Best day of week by $/hr */
   bestDay: string | null;
   bestDayProfitPerHour: number;
@@ -449,6 +451,7 @@ export function calculatePokerInsights(
     currentPeak: peak,
     currentValley: inDownswing ? downswingValley : cumulativeNet,
     cumulativeNet,
+    currentDownswingHands: inDownswing ? downswingHands : 0,
     bestDay,
     bestDayProfitPerHour,
     bestDayTotal,
