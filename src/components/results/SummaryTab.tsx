@@ -256,8 +256,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     const values = chartData.map((d) => d[dataKey] as number).filter((v) => v != null && !Number.isNaN(v));
     if (values.length === 0) return undefined;
     const min = Math.min(...values);
-    const floor = min >= 0 ? 0 : min * 1.1;
-    return [floor, 'auto'] as [number | 'auto', number | 'auto'];
+    return [min, 'auto'] as [number | 'auto', number | 'auto'];
   }, [chartData, chartMode]);
 
   const chartXAxisConfig = useMemo(() => {
