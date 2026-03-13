@@ -26,6 +26,7 @@ interface ResultsTabsProps {
   activeTab: ResultsTabValue;
   onTabChange: (tab: ResultsTabValue) => void;
   lastHandsEndedAt: number;
+  getFreshSessionStartData?: () => Promise<{ lastHandsEndedAt: number }>;
   hasUser: boolean;
   userName: string | null;
   lastEndBankroll: number | null;
@@ -44,6 +45,7 @@ export function ResultsTabs({
   activeTab,
   onTabChange,
   lastHandsEndedAt,
+  getFreshSessionStartData,
   hasUser,
   userName,
   lastEndBankroll,
@@ -58,6 +60,7 @@ export function ResultsTabs({
   const compact = useCompactMode();
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [endModalOpen, setEndModalOpen] = useState(false);
+  const [startingSession, setStartingSession] = useState(false);
   const [activeSession, setActiveSessionState] = useState(() => getActiveSession());
 
   useEffect(() => {
@@ -85,18 +88,30 @@ export function ResultsTabs({
     setActiveSessionState(getActiveSession());
   }, [resetSessionTrigger]);
 
-  const handleStartSession = useCallback(() => {
+  const handleStartSession = useCallback(async () => {
     if (!userName?.trim()) return;
+    let startHandNumber = lastHandsEndedAt;
+    if (getFreshSessionStartData) {
+      setStartingSession(true);
+      try {
+        const fresh = await getFreshSessionStartData();
+        startHandNumber = fresh.lastHandsEndedAt;
+      } catch {
+        // use current lastHandsEndedAt on error
+      } finally {
+        setStartingSession(false);
+      }
+    }
     const session = {
       startTime: new Date().toISOString(),
       userId: userName.trim(),
-      startHandNumber: lastHandsEndedAt,
+      startHandNumber,
     };
     setActiveSession(session);
     setActiveSessionState(session);
     onActiveSessionChange?.();
     onSuccess('Session started. Click End session when done.');
-  }, [userName, lastHandsEndedAt, onSuccess, onActiveSessionChange]);
+  }, [userName, lastHandsEndedAt, getFreshSessionStartData, onSuccess, onActiveSessionChange]);
 
   const handleEndSessionSuccess = useCallback(
     async (payload: SessionResultCreate) => {
@@ -155,10 +170,10 @@ export function ResultsTabs({
             color="success"
             size="small"
             startIcon={<PlayArrowIcon />}
-            onClick={handleStartSession}
-            disabled={!hasUser}
+            onClick={() => void handleStartSession()}
+            disabled={!hasUser || startingSession}
           >
-            Start session
+            {startingSession ? 'Starting…' : 'Start session'}
           </Button>
         )}
         <Button

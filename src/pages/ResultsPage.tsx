@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
 import { fetchSessionResults, createSessionResult, uploadSessionResults, updateSessionResult, deleteSessionResult, fetchWithdrawals, createWithdrawal, updateWithdrawal, deleteWithdrawal } from '../api/results';
 import type { SessionResult, SessionResultCreate, SessionUploadRow, Withdrawal, WithdrawalCreate } from '../types/results';
+import { getMostRecentSession } from '../utils/sessionUtils';
 import { ResultsTabs, type ResultsTabValue, type ResultsViewValue } from '../components/results/ResultsTabs';
 import { SessionsGridTab } from '../components/results/SessionsGridTab';
 import { AddOrUploadTab } from '../components/results/AddOrUploadTab';
@@ -31,19 +32,22 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
   const [loading, setLoading] = useState(true);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
 
-  const loadSessions = useCallback(async () => {
+  const loadSessions = useCallback(async (): Promise<SessionResult[]> => {
     if (!userName?.trim()) {
       setSessions([]);
       setLoading(false);
-      return;
+      return [];
     }
     setLoading(true);
     try {
       const data = await fetchSessionResults(userName);
-      setSessions(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setSessions(list);
+      return list;
     } catch {
       setSessions([]);
       onError?.('Failed to load results');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -158,21 +162,18 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
   );
 
   const totalHands = sessions.reduce((sum, s) => sum + (s.hands ?? 0), 0);
-  const mostRecentSession = useMemo(() => {
-    if (sessions.length === 0) return null;
-    const sorted = [...sessions].sort((a, b) => {
-      const dA = new Date(a.date).toISOString().slice(0, 10);
-      const dB = new Date(b.date).toISOString().slice(0, 10);
-      if (dB !== dA) return dB.localeCompare(dA);
-      const tA = (a.endTime || a.startTime) ? new Date(a.endTime || a.startTime!).getTime() : 0;
-      const tB = (b.endTime || b.startTime) ? new Date(b.endTime || b.startTime!).getTime() : 0;
-      return tB - tA;
-    });
-    return sorted[0];
-  }, [sessions]);
+  const mostRecentSession = useMemo(() => getMostRecentSession(sessions), [sessions]);
   const lastHandsEndedAt =
     mostRecentSession?.handsEndedAt ??
     (sessions.length > 0 ? totalHands : 0);
+
+  const getFreshSessionStartData = useCallback(async () => {
+    const list = await loadSessions();
+    const mostRecent = getMostRecentSession(list);
+    const total = list.reduce((sum, s) => sum + (s.hands ?? 0), 0);
+    const lastHandsEndedAt = mostRecent?.handsEndedAt ?? (list.length > 0 ? total : 0);
+    return { lastHandsEndedAt };
+  }, [loadSessions]);
 
   return (
     <Box sx={{ width: '100%', minWidth: 0, flex: 1, overflow: 'auto' }}>
@@ -182,6 +183,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
             activeTab={activeTab}
             onTabChange={setActiveTab}
             lastHandsEndedAt={lastHandsEndedAt}
+            getFreshSessionStartData={getFreshSessionStartData}
             hasUser={!!userName?.trim()}
             userName={userName}
             lastEndBankroll={mostRecentSession?.endBankroll ?? null}

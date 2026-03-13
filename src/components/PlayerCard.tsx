@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -52,6 +52,11 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
   const [nameValue, setNameValue] = useState(player.username);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setNameValue(player.username);
+    setEditingName(false);
+  }, [player._id, player.username]);
 
   const accentColor = getPlayerTypeColor(player.playerType);
 
