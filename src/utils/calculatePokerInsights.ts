@@ -118,11 +118,12 @@ export interface PokerInsights {
   avgMonthNet: number;
 }
 
-/** Morning 4am-noon, Afternoon noon-8pm, Night 8pm-4am */
+/** Morning 4am-noon, Afternoon noon-8pm, Night 8pm-4am, Unspecified (no start time) */
 const TIME_BUCKET_LABELS: Record<number, string> = {
   0: 'Morning',
   1: 'Afternoon',
   2: 'Night',
+  3: 'Unspecified',
 };
 
 /** Get bucket key (0=Morning, 1=Afternoon, 2=Night) for an hour (0-23). */
@@ -432,14 +433,7 @@ export function calculatePokerInsights(
     }
   }
 
-  // Granular session length buckets (<1, 1-2, 2-3, etc.) - only sessions with startTime and endTime
-  const sessionsWithTimes = sorted.filter(
-    (s) =>
-      s.startTime &&
-      s.endTime &&
-      new Date(s.startTime).getTime() &&
-      new Date(s.endTime).getTime()
-  );
+  // Granular session length buckets (<1, 1-2, 2-3, etc.) - include all sessions with duration (totalTime or start/end)
   const getSessionHours = (s: SessionResult): number => {
     const total = s.totalTime ?? null;
     if (total != null && total > 0) return total;
@@ -454,7 +448,7 @@ export function calculatePokerInsights(
     number,
     { hours: number; profit: number; hands: number; sessionCount: number }
   >();
-  for (const s of sessionsWithTimes) {
+  for (const s of sorted) {
     const h = getSessionHours(s);
     if (h <= 0) continue;
     const bucketIdx = h < 1 ? 0 : Math.floor(h);
@@ -529,27 +523,32 @@ export function calculatePokerInsights(
     };
   });
 
-  // Time of day: use midpoint of session (bulk of time) when start+end exist, else start time
+  // Time of day: use midpoint when start+end exist, else start time; Unspecified for full-day sessions without start
+  const UNSPECIFIED_BUCKET = 3;
   const byTimeBucket = new Map<
     number,
     { hours: number; profit: number; hands: number; sessionCount: number; winningSessions: number }
   >();
   for (const s of sorted) {
     const startDate = s.startTime ? new Date(s.startTime) : null;
-    if (!startDate || Number.isNaN(startDate.getTime())) continue;
-    let hour: number;
-    if (s.endTime) {
-      const endDate = new Date(s.endTime);
-      if (!Number.isNaN(endDate.getTime())) {
-        const midMs = (startDate.getTime() + endDate.getTime()) / 2;
-        hour = new Date(midMs).getHours();
+    let bucketKey: number;
+    if (!startDate || Number.isNaN(startDate.getTime())) {
+      bucketKey = UNSPECIFIED_BUCKET; // Full-day sessions without start/stop
+    } else {
+      let hour: number;
+      if (s.endTime) {
+        const endDate = new Date(s.endTime);
+        if (!Number.isNaN(endDate.getTime())) {
+          const midMs = (startDate.getTime() + endDate.getTime()) / 2;
+          hour = new Date(midMs).getHours();
+        } else {
+          hour = startDate.getHours();
+        }
       } else {
         hour = startDate.getHours();
       }
-    } else {
-      hour = startDate.getHours();
+      bucketKey = getTimeBucketForHour(hour);
     }
-    const bucketKey = getTimeBucketForHour(hour);
     const sessionHours = s.totalTime ?? 0;
     const profit = net(s);
     const hands = s.hands ?? 0;
@@ -568,7 +567,7 @@ export function calculatePokerInsights(
       winningSessions: existing.winningSessions + (profit > 0 ? 1 : 0),
     });
   }
-  const byTimeOfDay = [0, 1, 2].map((key) => {
+  const byTimeOfDay = [0, 1, 2, UNSPECIFIED_BUCKET].map((key) => {
     const data = byTimeBucket.get(key) ?? {
       hours: 0,
       profit: 0,
@@ -591,7 +590,7 @@ export function calculatePokerInsights(
       sessionCount: data.sessionCount,
       winRatePercentage,
     };
-  }).filter((r) => r.hours > 0);
+  }).filter((r) => r.sessionCount > 0 || r.hours > 0);
   // Best time by $/hand (fair when table count varies)
   let bestTimeOfDay: string | null = null;
   let bestTimeOfDayProfitPerHand = 0;
