@@ -253,11 +253,16 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
 
   const chartYDomain = useMemo(() => {
     const dataKey = chartMode === 'perHand' ? 'profitPerHand' : 'value';
-    const values = chartData.map((d) => d[dataKey] as number).filter((v) => v != null && !Number.isNaN(v));
+    const points = chartData.filter((d) => (d.cumulativeHands ?? 0) > 0);
+    const values = points
+      .map((d) => d[dataKey] as number)
+      .filter((v) => v != null && !Number.isNaN(v));
     if (values.length === 0) return undefined;
     const min = Math.min(...values);
-    return [min, 'auto'] as [number | 'auto', number | 'auto'];
-  }, [chartData, chartMode]);
+    const isPerHandInterval = typeof interval === 'object';
+    const floor = isPerHandInterval ? 0 : (min >= 0 ? 0 : min);
+    return [floor, 'auto'] as [number | 'auto', number | 'auto'];
+  }, [chartData, chartMode, interval]);
 
   const chartXAxisConfig = useMemo(() => {
     if (typeof interval !== 'object') return null;
@@ -700,7 +705,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 }
               />
               <YAxis
-                {...(chartYDomain && { domain: chartYDomain })}
+                {...(chartYDomain && { domain: chartYDomain, allowDataOverflow: true })}
                 tick={{ fontSize: 10, fill: axisColor }}
                 stroke={axisStroke}
                 tickFormatter={(v) => (chartMode === 'perHand' ? `$${Number(v).toFixed(2)}` : `$${v}`)}

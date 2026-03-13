@@ -159,11 +159,20 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             value={`${insights.sessionCount} session${insights.sessionCount !== 1 ? 's' : ''}`}
           />
         )}
+        {insights.sessionCount > 0 && (
+          <InsightCard
+            icon={<AttachMoneyIcon sx={{ fontSize: 20 }} />}
+            label="Avg day / month net"
+            value={`${formatDollar(insights.avgDayNet)} / day · ${formatDollar(insights.avgMonthNet)} / month`}
+            accent={insights.avgDayNet >= 0 ? 'success' : 'error'}
+          />
+        )}
         {(insights.longestBreakevenHands > 0 || insights.longestBreakevenDays > 0) && (
           <InsightCard
             icon={<ScheduleIcon sx={{ fontSize: 20 }} />}
             label="Longest breakeven stretch"
             value={`${insights.longestBreakevenHands.toLocaleString()} hands / ${insights.longestBreakevenDays} day${insights.longestBreakevenDays !== 1 ? 's' : ''}`}
+            accent="warning"
           />
         )}
         {insights.maxDrawdown > 0 && (
@@ -236,16 +245,67 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           />
         )}
         {insights.byTimeOfDay.length > 0 && (
-          <InsightCard
-            icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}
-            label="$/hand & $/hr by time of day"
-            value={insights.byTimeOfDay
-              .map(
-                (r) =>
-                  `${r.label}: ${formatDollar(r.profitPerHand)}/hand, ${formatPerHr(r.profitPerHour)}`
-              )
-              .join(' · ')}
-          />
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.75,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'text.secondary' }}>
+                <AccessTimeIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                $/hand & $/hr by time of day
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {insights.byTimeOfDay
+                .filter((r) => r.hours > 0)
+                .map((r) => {
+                  const isPositive = r.profitPerHand >= 0;
+                  const handsStr =
+                    r.hands >= 100_000
+                      ? `${Math.round(r.hands / 1000)}k`
+                      : r.hands.toLocaleString();
+                  const volumeStr = `${handsStr} hands, ${r.hours.toFixed(1)} hrs`;
+                  return (
+                    <Box
+                      key={r.label}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'baseline',
+                        flexWrap: 'wrap',
+                        gap: 0.5,
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                        {r.label}
+                      </Typography>
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: isPositive ? 'success.main' : 'error.main',
+                          }}
+                        >
+                          {formatDollar(r.profitPerHand)}/hand · {formatPerHr(r.profitPerHour)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {volumeStr}
+                          {r.sessionCount > 0 && ` · Win ${r.winRatePercentage.toFixed(0)}%`}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+            </Box>
+          </Paper>
         )}
         {insights.byDayOfWeek.some((r) => r.hands > 0 || r.profit !== 0) && (
           <Paper
@@ -305,29 +365,148 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             </Box>
           </Paper>
         )}
-        {(insights.shortSessionProfitPerHour != null || insights.longSessionProfitPerHour != null) && (
-          <InsightCard
-            icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}
-            label="$/hr by session length"
-            value={
-              [
-                insights.shortSessionHours > 0 && insights.shortSessionProfitPerHour != null
-                  ? `<4hr: ${formatDollar(insights.shortSessionProfitPerHour)}/hr`
-                  : null,
-                insights.longSessionHours > 0 && insights.longSessionProfitPerHour != null
-                  ? `≥4hr: ${formatDollar(insights.longSessionProfitPerHour)}/hr`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(' · ') || '—'
-            }
-          />
+        {insights.bySessionLengthBuckets.length > 0 && (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.75,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'text.secondary' }}>
+                <AccessTimeIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                $/hr by session length
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {insights.bySessionLengthBuckets.map((r) => {
+                const isPositive = r.profitPerHour >= 0;
+                return (
+                  <Box
+                    key={r.label}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                      {r.label}
+                    </Typography>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: isPositive ? 'success.main' : 'error.main',
+                        }}
+                      >
+                        {formatDollar(r.profitPerHour)}/hr
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {r.sessionCount} session{r.sessionCount !== 1 ? 's' : ''} · {r.hands.toLocaleString()} hands · {r.hours.toFixed(1)} hrs
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Paper>
         )}
-        <InsightCard
-          icon={<EmojiEventsIcon sx={{ fontSize: 20 }} />}
-          label="Win %"
-          value={`${insights.winRatePercentage.toFixed(1)}%`}
-        />
+        {insights.byRating.length > 0 && (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.75,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'text.secondary' }}>
+                <EmojiEventsIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Results by A/B/C/D/F game
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {insights.byRating.map((r) => {
+                const isPositive = r.profit >= 0;
+                const handsStr =
+                  r.hands >= 100_000
+                    ? `${Math.round(r.hands / 1000)}k`
+                    : r.hands.toLocaleString();
+                return (
+                  <Box
+                    key={r.rating}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                      {r.label}
+                    </Typography>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: isPositive ? 'success.main' : 'error.main',
+                        }}
+                      >
+                        {formatDollar(r.profit)} · {formatDollar(r.profitPerHand)}/hand · {formatPerHr(r.profitPerHour)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {r.sessionCount} session{r.sessionCount !== 1 ? 's' : ''} · {handsStr} hands · {r.hours.toFixed(1)} hrs
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Paper>
+        )}
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.75,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ color: 'text.secondary' }}>
+              <EmojiEventsIcon sx={{ fontSize: 20 }} />
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              Win %
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              Total: {insights.winRatePercentage.toFixed(1)}%
+            </Typography>
+            {insights.byTimeOfDay.length > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25 }}>
+                {insights.byTimeOfDay.map((r) => `${r.label} ${r.winRatePercentage.toFixed(0)}%`).join(' · ')}
+              </Typography>
+            )}
+          </Box>
+        </Paper>
         <InsightCard
           icon={<TrendingUpIcon sx={{ fontSize: 20 }} />}
           label="Avg session net"
@@ -397,11 +576,19 @@ interface InsightCardProps {
   icon: React.ReactNode;
   label: string;
   value: string;
-  accent?: 'success' | 'error';
+  accent?: 'success' | 'error' | 'warning';
   glow?: boolean;
 }
 
+function getAccentColor(accent?: 'success' | 'error' | 'warning') {
+  if (accent === 'success') return 'success.main';
+  if (accent === 'error') return 'error.main';
+  if (accent === 'warning') return 'warning.main';
+  return 'text.secondary';
+}
+
 function InsightCard({ icon, label, value, accent, glow }: InsightCardProps) {
+  const accentColor = getAccentColor(accent);
   return (
     <Paper
       variant="outlined"
@@ -415,7 +602,7 @@ function InsightCard({ icon, label, value, accent, glow }: InsightCardProps) {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <Box sx={{ color: accent === 'success' ? 'success.main' : accent === 'error' ? 'error.main' : 'text.secondary' }}>
+        <Box sx={{ color: accent ? accentColor : 'text.secondary' }}>
           {icon}
         </Box>
         <Typography variant="caption" color="text.secondary">
@@ -426,7 +613,7 @@ function InsightCard({ icon, label, value, accent, glow }: InsightCardProps) {
         variant="body2"
         sx={{
           fontWeight: 500,
-          color: accent === 'success' ? 'success.main' : accent === 'error' ? 'error.main' : undefined,
+          color: accent ? accentColor : undefined,
         }}
       >
         {value}
