@@ -167,7 +167,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             accent={insights.avgDayNet >= 0 ? 'success' : 'error'}
           />
         )}
-        {insights.topBreakevenStretches.length > 0 && (
+        {(insights.topBreakevenStretches.length > 0 || insights.currentBreakevenStretch) && (
           <Paper
             variant="outlined"
             sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}
@@ -177,14 +177,21 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
                 <ScheduleIcon sx={{ fontSize: 20 }} />
               </Box>
               <Typography variant="caption" color="text.secondary">
-                Top 3 longest breakeven stretches
+                {insights.currentBreakevenStretch ? 'Current & top 3 breakeven stretches' : 'Top 3 longest breakeven stretches'}
               </Typography>
             </Box>
-            {insights.topBreakevenStretches.map((r, i) => (
-              <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
-                {r.hands.toLocaleString()} hands / {r.days} day{r.days !== 1 ? 's' : ''}
+            {insights.currentBreakevenStretch && (
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.main' }}>
+                Current: {insights.currentBreakevenStretch.hands.toLocaleString()} hands / {insights.currentBreakevenStretch.days} day{insights.currentBreakevenStretch.days !== 1 ? 's' : ''}
               </Typography>
-            ))}
+            )}
+            {insights.topBreakevenStretches
+              .filter((r) => !insights.currentBreakevenStretch || r.hands !== insights.currentBreakevenStretch.hands || r.days !== insights.currentBreakevenStretch.days)
+              .map((r, i) => (
+                <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                  {r.hands.toLocaleString()} hands / {r.days} day{r.days !== 1 ? 's' : ''}
+                </Typography>
+              ))}
           </Paper>
         )}
         {insights.topDownswings.length > 0 && (

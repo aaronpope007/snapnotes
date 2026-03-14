@@ -13,6 +13,8 @@ export interface PokerInsights {
   longestBreakevenDays: number;
   /** Top 3 longest breakeven stretches (by hands) */
   topBreakevenStretches: { hands: number; days: number }[];
+  /** Current breakeven stretch (when below peak), null if not in one */
+  currentBreakevenStretch: { hands: number; days: number } | null;
   /** Top 3 biggest downswings (by dollar amount) */
   topDownswings: { amount: number; hands: number }[];
   /** Top 3 biggest upswings (by dollar amount) */
@@ -299,6 +301,7 @@ export function calculatePokerInsights(
     }
   }
 
+  let currentBreakevenStretch: { hands: number; days: number } | null = null;
   if (inStretch && sorted.length > 0) {
     const stretchHands = cumulativeHands - stretchStartCumHands;
     const stretchDays = stretchStartDate
@@ -312,6 +315,7 @@ export function calculatePokerInsights(
       longestStretchDays = stretchDays;
     }
     allBreakevenStretches.push({ hands: stretchHands, days: stretchDays });
+    currentBreakevenStretch = { hands: stretchHands, days: stretchDays };
   }
   if (inDownswing) {
     const drop = downswingPeak - downswingValley;
@@ -643,6 +647,7 @@ export function calculatePokerInsights(
     longestBreakevenHands: longestStretchHands,
     longestBreakevenDays: longestStretchDays,
     topBreakevenStretches,
+    currentBreakevenStretch,
     topDownswings,
     topUpswings,
     biggestUpswing: biggestUpswingAmount,
