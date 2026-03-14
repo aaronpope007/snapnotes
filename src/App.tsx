@@ -29,6 +29,7 @@ import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
@@ -74,7 +75,8 @@ import { fetchReviewers } from './api/reviewers';
 import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
-import { getActiveSession, clearActiveSession } from './utils/activeSession';
+import { getActiveSession, setActiveSession, clearActiveSession } from './utils/activeSession';
+import { getMostRecentSession } from './utils/sessionUtils';
 import { SessionDurationLabel } from './components/SessionDurationLabel';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
 
@@ -166,6 +168,31 @@ export default function App() {
     handleConfirm: handleResetSessionConfirm,
     confirmOptions: resetSessionConfirmOptions,
   } = useConfirm();
+
+  const [startingSession, setStartingSession] = useState(false);
+  const handleStartSession = useCallback(async () => {
+    if (!userName?.trim()) return;
+    setStartingSession(true);
+    try {
+      const list = await fetchSessionResults(userName);
+      const mostRecent = getMostRecentSession(list);
+      const totalHands = list.reduce((sum, s) => sum + (s.hands ?? 0), 0);
+      const lastHandsEndedAt = mostRecent?.handsEndedAt ?? (list.length > 0 ? totalHands : 0);
+      const session = {
+        startTime: new Date().toISOString(),
+        userId: userName.trim(),
+        startHandNumber: lastHandsEndedAt,
+      };
+      setActiveSession(session);
+      setActiveSessionTick((t) => t + 1);
+      setShowResults(true);
+      showSuccess('Session started. Click End session when done.');
+    } catch {
+      showError('Failed to load sessions');
+    } finally {
+      setStartingSession(false);
+    }
+  }, [userName]);
 
   const handleResetSession = useCallback(() => {
     clearActiveSession();
@@ -650,6 +677,18 @@ export default function App() {
         >
           <NoteAddIcon />
         </IconButton>
+        {!showSessionInProgress && userName?.trim() && (
+          <Button
+            size="small"
+            color="success"
+            variant="contained"
+            startIcon={<PlayArrowIcon />}
+            onClick={() => void handleStartSession()}
+            disabled={startingSession}
+          >
+            {startingSession ? 'Starting…' : 'Start session'}
+          </Button>
+        )}
         {showSessionInProgress && activeSession && (
           <>
             <Chip
@@ -955,6 +994,18 @@ export default function App() {
                 >
                   <NoteAddIcon />
                 </IconButton>
+                {!showSessionInProgress && userName?.trim() && (
+                  <Button
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    startIcon={<PlayArrowIcon />}
+                    onClick={() => void handleStartSession()}
+                    disabled={startingSession}
+                  >
+                    {startingSession ? 'Starting…' : 'Start session'}
+                  </Button>
+                )}
                 {showSessionInProgress && activeSession && (
                   <>
                     <Chip
@@ -1134,6 +1185,18 @@ export default function App() {
                 >
                   <NoteAddIcon />
                 </IconButton>
+                {!showSessionInProgress && userName?.trim() && (
+                  <Button
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    startIcon={<PlayArrowIcon />}
+                    onClick={() => void handleStartSession()}
+                    disabled={startingSession}
+                  >
+                    {startingSession ? 'Starting…' : 'Start session'}
+                  </Button>
+                )}
                 {showSessionInProgress && activeSession && (
                   <>
                     <Chip

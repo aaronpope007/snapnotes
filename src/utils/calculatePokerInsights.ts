@@ -192,7 +192,7 @@ export function calculatePokerInsights(
 
   let inStretch = false;
   let stretchStartCumHands = 0;
-  let stretchStartDate: Date | null = null;
+  let stretchSessionDates = new Set<string>(); // unique dates played during stretch
   let longestStretchHands = 0;
   let longestStretchDays = 0;
   const allBreakevenStretches: { hands: number; days: number }[] = [];
@@ -252,9 +252,7 @@ export function calculatePokerInsights(
       peak = cumulativeNet;
       if (inStretch) {
         const stretchHands = cumulativeHands - stretchStartCumHands;
-        const stretchDays = stretchStartDate
-          ? Math.ceil((date.getTime() - stretchStartDate.getTime()) / (24 * 60 * 60 * 1000))
-          : 0;
+        const stretchDays = stretchSessionDates.size;
         if (stretchHands > longestStretchHands || stretchDays > longestStretchDays) {
           longestStretchHands = stretchHands;
           longestStretchDays = stretchDays;
@@ -282,9 +280,9 @@ export function calculatePokerInsights(
       if (!inStretch) {
         inStretch = true;
         stretchStartCumHands = cumulativeHands - hands;
-        stretchStartDate = new Date(date);
-        stretchStartDate.setHours(0, 0, 0, 0);
+        stretchSessionDates = new Set<string>();
       }
+      stretchSessionDates.add(s.date.slice(0, 10));
       if (!inDownswing) {
         inDownswing = true;
         downswingPeak = peak;
@@ -304,12 +302,7 @@ export function calculatePokerInsights(
   let currentBreakevenStretch: { hands: number; days: number } | null = null;
   if (inStretch && sorted.length > 0) {
     const stretchHands = cumulativeHands - stretchStartCumHands;
-    const stretchDays = stretchStartDate
-      ? Math.ceil(
-          (new Date(sorted[sorted.length - 1].date).getTime() - stretchStartDate.getTime()) /
-            (24 * 60 * 60 * 1000)
-        )
-      : 0;
+    const stretchDays = stretchSessionDates.size;
     if (stretchHands > longestStretchHands || stretchDays > longestStretchDays) {
       longestStretchHands = stretchHands;
       longestStretchDays = stretchDays;
