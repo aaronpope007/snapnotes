@@ -116,6 +116,12 @@ export interface PokerInsights {
   /** Worst single session: net and date */
   worstSingleSessionNet: number | null;
   worstSingleSessionDate: string | null;
+  /** Best single calendar day: net and date */
+  bestSingleDayTotal: number | null;
+  bestSingleDayDate: string | null;
+  /** Worst single calendar day: net and date */
+  worstSingleDayTotal: number | null;
+  worstSingleDayDate: string | null;
   /** Avg hours per session */
   avgSessionLengthHours: number;
   /** Avg hands per session */
@@ -429,7 +435,7 @@ export function calculatePokerInsights(
   const byMonth = new Map<string, number>();
   for (const s of sorted) {
     const d = new Date(s.date);
-    const dateKey = d.toISOString().slice(0, 10);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + net(s));
     byMonth.set(monthKey, (byMonth.get(monthKey) ?? 0) + net(s));
@@ -438,6 +444,21 @@ export function calculatePokerInsights(
   const monthCount = byMonth.size;
   const avgDayNet = dayCount > 0 ? [...byDate.values()].reduce((a, b) => a + b, 0) / dayCount : 0;
   const avgMonthNet = monthCount > 0 ? [...byMonth.values()].reduce((a, b) => a + b, 0) / monthCount : 0;
+
+  let bestSingleDayTotal: number | null = null;
+  let bestSingleDayDate: string | null = null;
+  let worstSingleDayTotal: number | null = null;
+  let worstSingleDayDate: string | null = null;
+  for (const [dateKey, profit] of byDate.entries()) {
+    if (profit > 0 && (bestSingleDayTotal === null || profit > bestSingleDayTotal)) {
+      bestSingleDayTotal = profit;
+      bestSingleDayDate = dateKey;
+    }
+    if (profit < 0 && (worstSingleDayTotal === null || profit < worstSingleDayTotal)) {
+      worstSingleDayTotal = profit;
+      worstSingleDayDate = dateKey;
+    }
+  }
 
   // Session duration buckets (<4hr vs >=4hr) - legacy
   const SHORT_THRESHOLD = 4;
@@ -686,6 +707,10 @@ export function calculatePokerInsights(
     bestSingleSessionDate,
     worstSingleSessionNet,
     worstSingleSessionDate,
+    bestSingleDayTotal,
+    bestSingleDayDate,
+    worstSingleDayTotal,
+    worstSingleDayDate,
     avgSessionLengthHours,
     avgHandsPerSession,
     avgDayNet,

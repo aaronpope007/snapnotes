@@ -9,9 +9,6 @@ import TableChartIcon from '@mui/icons-material/TableChart';
 import AddIcon from '@mui/icons-material/Add';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
-import EditIcon from '@mui/icons-material/Edit';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { getActiveSession, setActiveSession, clearActiveSession } from '../../utils/activeSession';
 import { LogNewSessionModal } from './LogNewSessionModal';
@@ -39,6 +36,8 @@ interface ResultsTabsProps {
   resetSessionTrigger?: number;
   requestOpenEndSessionModal?: boolean;
   onClearRequestOpenEndSessionModal?: () => void;
+  requestOpenEditSessionModal?: boolean;
+  onClearRequestOpenEditSessionModal?: () => void;
 }
 
 export function ResultsTabs({
@@ -47,7 +46,6 @@ export function ResultsTabs({
   activeTab,
   onTabChange,
   lastHandsEndedAt,
-  getFreshSessionStartData,
   hasUser,
   userName,
   lastEndBankroll,
@@ -58,12 +56,13 @@ export function ResultsTabs({
   resetSessionTrigger,
   requestOpenEndSessionModal,
   onClearRequestOpenEndSessionModal,
+  requestOpenEditSessionModal,
+  onClearRequestOpenEditSessionModal,
 }: ResultsTabsProps) {
   const compact = useCompactMode();
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [endModalOpen, setEndModalOpen] = useState(false);
   const [editSessionModalOpen, setEditSessionModalOpen] = useState(false);
-  const [startingSession, setStartingSession] = useState(false);
   const [activeSession, setActiveSessionState] = useState(() => getActiveSession());
 
   useEffect(() => {
@@ -74,6 +73,15 @@ export function ResultsTabs({
       if (stored) setEndModalOpen(true);
     }
   }, [requestOpenEndSessionModal, onClearRequestOpenEndSessionModal]);
+
+  useEffect(() => {
+    if (requestOpenEditSessionModal && onClearRequestOpenEditSessionModal) {
+      onClearRequestOpenEditSessionModal();
+      const stored = getActiveSession();
+      setActiveSessionState(stored);
+      if (stored) setEditSessionModalOpen(true);
+    }
+  }, [requestOpenEditSessionModal, onClearRequestOpenEditSessionModal]);
 
   useEffect(() => {
     const stored = getActiveSession();
@@ -90,31 +98,6 @@ export function ResultsTabs({
     if (resetSessionTrigger == null) return;
     setActiveSessionState(getActiveSession());
   }, [resetSessionTrigger]);
-
-  const handleStartSession = useCallback(async () => {
-    if (!userName?.trim()) return;
-    let startHandNumber = lastHandsEndedAt;
-    if (getFreshSessionStartData) {
-      setStartingSession(true);
-      try {
-        const fresh = await getFreshSessionStartData();
-        startHandNumber = fresh.lastHandsEndedAt;
-      } catch {
-        // use current lastHandsEndedAt on error
-      } finally {
-        setStartingSession(false);
-      }
-    }
-    const session = {
-      startTime: new Date().toISOString(),
-      userId: userName.trim(),
-      startHandNumber,
-    };
-    setActiveSession(session);
-    setActiveSessionState(session);
-    onActiveSessionChange?.();
-    onSuccess('Session started. Click End session when done.');
-  }, [userName, lastHandsEndedAt, getFreshSessionStartData, onSuccess, onActiveSessionChange]);
 
   const handleEndSessionSuccess = useCallback(
     async (payload: SessionResultCreate) => {
@@ -164,40 +147,10 @@ export function ResultsTabs({
         >
           Summary
         </Button>
-        {activeSession ? (
-          <>
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-              Session in progress since {new Date(activeSession.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<EditIcon />}
-              onClick={() => setEditSessionModalOpen(true)}
-            >
-              Edit session
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              size="small"
-              startIcon={<StopIcon />}
-              onClick={() => setEndModalOpen(true)}
-            >
-              End session
-            </Button>
-          </>
-        ) : (
-          <Button
-            variant="contained"
-            color="success"
-            size="small"
-            startIcon={<PlayArrowIcon />}
-            onClick={() => void handleStartSession()}
-            disabled={!hasUser || startingSession}
-          >
-            {startingSession ? 'Starting…' : 'Start session'}
-          </Button>
+        {activeSession && (
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+            Session in progress since {new Date(activeSession.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+          </Typography>
         )}
         <Button
           variant="outlined"

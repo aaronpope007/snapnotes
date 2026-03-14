@@ -57,6 +57,13 @@ function formatPerHour(dollars: number, useBB: boolean, bbSize: number): string 
   return `${formatted}/hr`;
 }
 
+/** Format date string as local calendar date (avoids UTC parsing shifting the day) */
+function formatDateForDisplay(dateStr: string): string {
+  const d = new Date(dateStr);
+  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return new Date(key + 'T12:00:00').toLocaleDateString();
+}
+
 export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoProps) {
   const compact = useCompactMode() ?? compactProp ?? false;
   const [dateRange, setDateRange] = useState<InsightsDateRange>('all');
@@ -234,21 +241,40 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             ))}
           </Paper>
         )}
-        {insights.bestSingleSessionNet != null && insights.bestSingleSessionNet > 0 && insights.bestSingleSessionDate && (
-          <InsightCard
-            icon={<TrendingUpIcon sx={{ fontSize: 20 }} />}
-            label="Best single session"
-            value={`${formatDollar(insights.bestSingleSessionNet)} on ${new Date(insights.bestSingleSessionDate).toLocaleDateString()}`}
-            accent="success"
-          />
-        )}
-        {insights.worstSingleSessionNet != null && insights.worstSingleSessionNet < 0 && insights.worstSingleSessionDate && (
-          <InsightCard
-            icon={<TrendingDownIcon sx={{ fontSize: 20 }} />}
-            label="Worst single session"
-            value={`${formatDollar(insights.worstSingleSessionNet)} on ${new Date(insights.worstSingleSessionDate).toLocaleDateString()}`}
-            accent="error"
-          />
+        {(insights.bestSingleSessionNet != null || insights.worstSingleSessionNet != null || insights.bestSingleDayTotal != null || insights.worstSingleDayTotal != null) && (
+          <Paper
+            variant="outlined"
+            sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ color: 'text.secondary' }}>
+                <TrendingUpIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Best / worst session & day
+              </Typography>
+            </Box>
+            {insights.bestSingleSessionNet != null && insights.bestSingleSessionNet > 0 && insights.bestSingleSessionDate && (
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'success.main' }}>
+                Best session: {formatDollar(insights.bestSingleSessionNet)} on {formatDateForDisplay(insights.bestSingleSessionDate)}
+              </Typography>
+            )}
+            {insights.worstSingleSessionNet != null && insights.worstSingleSessionNet < 0 && insights.worstSingleSessionDate && (
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
+                Worst session: {formatDollar(insights.worstSingleSessionNet)} on {formatDateForDisplay(insights.worstSingleSessionDate)}
+              </Typography>
+            )}
+            {insights.bestSingleDayTotal != null && insights.bestSingleDayTotal > 0 && insights.bestSingleDayDate && (
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'success.main' }}>
+                Best day: {formatDollar(insights.bestSingleDayTotal)} on {formatDateForDisplay(insights.bestSingleDayDate)}
+              </Typography>
+            )}
+            {insights.worstSingleDayTotal != null && insights.worstSingleDayTotal < 0 && insights.worstSingleDayDate && (
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
+                Worst day: {formatDollar(insights.worstSingleDayTotal)} on {formatDateForDisplay(insights.worstSingleDayDate)}
+              </Typography>
+            )}
+          </Paper>
         )}
         {insights.bestDay && (
           <InsightCard

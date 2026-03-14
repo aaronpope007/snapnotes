@@ -21,9 +21,11 @@ interface ResultsPageProps {
   resetSessionTrigger?: number;
   requestOpenEndSessionModal?: boolean;
   onClearRequestOpenEndSessionModal?: () => void;
+  requestOpenEditSessionModal?: boolean;
+  onClearRequestOpenEditSessionModal?: () => void;
 }
 
-export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActiveSession, activeSessionStartTime, resetSessionTrigger, requestOpenEndSessionModal, onClearRequestOpenEndSessionModal }: ResultsPageProps) {
+export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActiveSession, activeSessionStartTime, resetSessionTrigger, requestOpenEndSessionModal, onClearRequestOpenEndSessionModal, requestOpenEditSessionModal, onClearRequestOpenEditSessionModal }: ResultsPageProps) {
   const userName = useUserName();
   const [view, setView] = useState<ResultsViewValue>('summary');
   const [activeTab, setActiveTab] = useState<ResultsTabValue>('sessions');
@@ -193,8 +195,10 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
             onActiveSessionChange={onActiveSessionChange}
             resetSessionTrigger={resetSessionTrigger}
             requestOpenEndSessionModal={requestOpenEndSessionModal}
-          onClearRequestOpenEndSessionModal={onClearRequestOpenEndSessionModal}
-        />
+            onClearRequestOpenEndSessionModal={onClearRequestOpenEndSessionModal}
+            requestOpenEditSessionModal={requestOpenEditSessionModal}
+            onClearRequestOpenEditSessionModal={onClearRequestOpenEditSessionModal}
+          />
       {!userName?.trim() ? (
             <Typography variant="body2" color="text.secondary">
               Enter your name to use Results.

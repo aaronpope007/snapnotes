@@ -23,6 +23,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
 import PersonIcon from '@mui/icons-material/Person';
+import EditIcon from '@mui/icons-material/Edit';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import TuneIcon from '@mui/icons-material/Tune';
 import ViewCompactIcon from '@mui/icons-material/ViewCompact';
@@ -37,6 +38,7 @@ import { HandHistoryPanel } from './components/HandHistoryPanel';
 import { HandsToReviewView } from './components/HandsToReviewView';
 import { LearningPage } from './pages/LearningPage';
 import { ResultsPage } from './pages/ResultsPage';
+import { fetchSessionResults } from './api/results';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { ImportModal } from './components/ImportModal';
 import { MergePlayerDialog } from './components/MergePlayerDialog';
@@ -124,6 +126,7 @@ export default function App() {
   const [showLearning, setShowLearning] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [requestOpenEndSessionModal, setRequestOpenEndSessionModal] = useState(false);
+  const [requestOpenEditSessionModal, setRequestOpenEditSessionModal] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeLoading, setMergeLoading] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
@@ -187,8 +190,8 @@ export default function App() {
       setActiveSessionTick((t) => t + 1);
       setShowResults(true);
       showSuccess('Session started. Click End session when done.');
-    } catch {
-      showError('Failed to load sessions');
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to load sessions'));
     } finally {
       setStartingSession(false);
     }
@@ -645,14 +648,14 @@ export default function App() {
         flexShrink: showResults ? 0 : 1,
         flex: horizontal && showResults ? 1 : undefined,
         minWidth: horizontal ? (showResults ? 0 : (compact ? 260 : 320)) : undefined,
-        width: horizontal && !showResults ? (compact ? 520 : 560) : undefined,
+        width: horizontal && !showResults ? '100%' : undefined,
         maxWidth: horizontal ? '100%' : undefined,
         alignSelf: 'flex-start',
         position: horizontal && !showResults ? 'sticky' : undefined,
         top: horizontal && !showResults ? (compact ? 1 : 2) : undefined,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap', minWidth: 0, maxWidth: '100%', width: '100%', overflowX: 'auto' }}>
         <Box sx={{ width: 200, flexShrink: 0, minWidth: 0 }}>
           <SearchBar
             players={players}
@@ -711,6 +714,20 @@ export default function App() {
               }}
             >
               End session
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<EditIcon />}
+              onClick={() => {
+                setSelected(null);
+                setShowHandsToReview(false);
+                setShowLearning(false);
+                setShowResults(true);
+                setRequestOpenEditSessionModal(true);
+              }}
+            >
+              Edit session
             </Button>
             <Button
               size="small"
@@ -858,6 +875,8 @@ export default function App() {
                   resetSessionTrigger={resetSessionTrigger}
                   requestOpenEndSessionModal={requestOpenEndSessionModal}
                   onClearRequestOpenEndSessionModal={() => setRequestOpenEndSessionModal(false)}
+                  requestOpenEditSessionModal={requestOpenEditSessionModal}
+                  onClearRequestOpenEditSessionModal={() => setRequestOpenEditSessionModal(false)}
                 />
               </ErrorBoundary>
             </Box>
@@ -969,7 +988,7 @@ export default function App() {
         <Box sx={{ flex: horizontal && !showResults ? 1 : (horizontal && showResults ? 0 : undefined), minWidth: horizontal ? 0 : undefined, display: horizontal && showResults ? 'none' : 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
           {!horizontal && (
             <Box sx={{ mb: compact ? 1 : 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, flexWrap: 'nowrap', minWidth: 0, maxWidth: '100%', width: '100%', overflowX: 'auto' }}>
                 <Box sx={{ width: 200, flexShrink: 0, minWidth: 0 }}>
                   <SearchBar
                     players={players}
@@ -1028,6 +1047,20 @@ export default function App() {
                       }}
                     >
                       End session
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      onClick={() => {
+                        setSelected(null);
+                        setShowHandsToReview(false);
+                        setShowLearning(false);
+                        setShowResults(true);
+                        setRequestOpenEditSessionModal(true);
+                      }}
+                    >
+                      Edit session
                     </Button>
                     <Button
                       size="small"
@@ -1160,7 +1193,7 @@ export default function App() {
         ) : selected ? (
           <>
             {horizontal && (
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap', minWidth: 0, maxWidth: '100%', overflowX: 'auto' }}>
                 <Box sx={{ width: 200, flexShrink: 0, minWidth: 0 }}>
                   <SearchBar
                     players={players}
@@ -1219,6 +1252,20 @@ export default function App() {
                       }}
                     >
                       End session
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      onClick={() => {
+                        setSelected(null);
+                        setShowHandsToReview(false);
+                        setShowLearning(false);
+                        setShowResults(true);
+                        setRequestOpenEditSessionModal(true);
+                      }}
+                    >
+                      Edit session
                     </Button>
                     <Button
                       size="small"
