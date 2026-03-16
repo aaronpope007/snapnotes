@@ -12,13 +12,13 @@ export interface PokerInsights {
   longestBreakevenHands: number;
   longestBreakevenDays: number;
   /** Top 3 longest breakeven stretches (by hands) */
-  topBreakevenStretches: { hands: number; days: number }[];
+  topBreakevenStretches: { hands: number; days: number; dateEnded: string }[];
   /** Current breakeven stretch (when below peak), null if not in one */
   currentBreakevenStretch: { hands: number; days: number } | null;
   /** Top 3 biggest downswings (by dollar amount) */
-  topDownswings: { amount: number; hands: number }[];
+  topDownswings: { amount: number; hands: number; dateEnded: string }[];
   /** Top 3 biggest upswings (by dollar amount) */
-  topUpswings: { amount: number; hands: number }[];
+  topUpswings: { amount: number; hands: number; dateEnded: string }[];
   /** Biggest upswing from valley to peak */
   biggestUpswing: number;
   biggestUpswingHands: number;
@@ -201,7 +201,7 @@ export function calculatePokerInsights(
   let stretchSessionDates = new Set<string>(); // unique dates played during stretch
   let longestStretchHands = 0;
   let longestStretchDays = 0;
-  const allBreakevenStretches: { hands: number; days: number }[] = [];
+  const allBreakevenStretches: { hands: number; days: number; dateEnded: string }[] = [];
 
   let inDownswing = false;
   let downswingPeak = 0;
@@ -212,8 +212,8 @@ export function calculatePokerInsights(
   let biggestDownswingHands = 0;
   let biggestUpswingAmount = 0;
   let biggestUpswingHands = 0;
-  const allDownswings: { amount: number; hands: number }[] = [];
-  const allUpswings: { amount: number; hands: number }[] = [];
+  const allDownswings: { amount: number; hands: number; dateEnded: string }[] = [];
+  const allUpswings: { amount: number; hands: number; dateEnded: string }[] = [];
 
   let maxWinStreak = 0;
   let maxLoseStreak = 0;
@@ -263,7 +263,7 @@ export function calculatePokerInsights(
           longestStretchHands = stretchHands;
           longestStretchDays = stretchDays;
         }
-        allBreakevenStretches.push({ hands: stretchHands, days: stretchDays });
+        allBreakevenStretches.push({ hands: stretchHands, days: stretchDays, dateEnded: s.date });
         inStretch = false;
       }
       if (inDownswing) {
@@ -272,14 +272,14 @@ export function calculatePokerInsights(
           biggestDownswingAmount = drop;
           biggestDownswingHands = downswingHands;
         }
-        allDownswings.push({ amount: drop, hands: downswingHands });
+        allDownswings.push({ amount: drop, hands: downswingHands, dateEnded: s.date });
         const rise = cumulativeNet - downswingValley;
         const upswingHands = cumulativeHands - valleyCumHands;
         if (rise > biggestUpswingAmount) {
           biggestUpswingAmount = rise;
           biggestUpswingHands = upswingHands;
         }
-        allUpswings.push({ amount: rise, hands: upswingHands });
+        allUpswings.push({ amount: rise, hands: upswingHands, dateEnded: s.date });
         inDownswing = false;
       }
     } else if (cumulativeNet < peak) {
@@ -313,19 +313,21 @@ export function calculatePokerInsights(
       longestStretchHands = stretchHands;
       longestStretchDays = stretchDays;
     }
-    allBreakevenStretches.push({ hands: stretchHands, days: stretchDays });
+    const lastDate = sorted[sorted.length - 1].date;
+    allBreakevenStretches.push({ hands: stretchHands, days: stretchDays, dateEnded: lastDate });
     currentBreakevenStretch = { hands: stretchHands, days: stretchDays };
   }
-  if (inDownswing) {
+  if (inDownswing && sorted.length > 0) {
     const drop = downswingPeak - downswingValley;
     if (drop > biggestDownswingAmount) {
       biggestDownswingAmount = drop;
       biggestDownswingHands = downswingHands;
     }
-    allDownswings.push({ amount: drop, hands: downswingHands });
+    const lastDate = sorted[sorted.length - 1].date;
+    allDownswings.push({ amount: drop, hands: downswingHands, dateEnded: lastDate });
     const rise = cumulativeNet - downswingValley;
     const upswingHands = cumulativeHands - valleyCumHands;
-    allUpswings.push({ amount: rise, hands: upswingHands });
+    allUpswings.push({ amount: rise, hands: upswingHands, dateEnded: lastDate });
   }
 
   const topBreakevenStretches = [...allBreakevenStretches]

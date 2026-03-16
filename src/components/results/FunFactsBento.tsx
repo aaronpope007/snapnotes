@@ -196,7 +196,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
               .filter((r) => !insights.currentBreakevenStretch || r.hands !== insights.currentBreakevenStretch.hands || r.days !== insights.currentBreakevenStretch.days)
               .map((r, i) => (
                 <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
-                  {r.hands.toLocaleString()} hands / {r.days} day{r.days !== 1 ? 's' : ''}
+                  {r.hands.toLocaleString()} hands / {r.days} day{r.days !== 1 ? 's' : ''}{r.dateEnded ? ` · ended ${formatDateForDisplay(r.dateEnded)}` : ''}
                 </Typography>
               ))}
           </Paper>
@@ -216,7 +216,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             </Box>
             {insights.topDownswings.map((r, i) => (
               <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
-                {formatDownswing(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}
+                {formatDownswing(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}{r.dateEnded ? ` · ended ${formatDateForDisplay(r.dateEnded)}` : ''}
               </Typography>
             ))}
           </Paper>
@@ -236,7 +236,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             </Box>
             {insights.topUpswings.map((r, i) => (
               <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'success.main' }}>
-                {formatDollar(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}
+                {formatDollar(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}{r.dateEnded ? ` · ended ${formatDateForDisplay(r.dateEnded)}` : ''}
               </Typography>
             ))}
           </Paper>
