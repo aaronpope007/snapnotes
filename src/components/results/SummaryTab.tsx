@@ -93,6 +93,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [barChartMode, setBarChartMode] = useState<'day' | 'session'>('day');
+  const [barChartValueMode, setBarChartValueMode] = useState<'net' | 'perHand'>('net');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [rangePreset, setRangePreset] = useState<'all' | 'year' | 'month' | 'today' | 'custom'>('all');
   const [customStart, setCustomStart] = useState(() => {
@@ -280,7 +281,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     };
   }, [chartData, interval]);
 
-  type BarChartPoint = { label: string; date: string; profit: number };
+  type BarChartPoint = { label: string; date: string; profit: number; profitPerHand: number };
   const barChartData = useMemo((): BarChartPoint[] => {
     const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const sorted = [...sessions].sort(
@@ -292,22 +293,30 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         const d = new Date(s.date);
         const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
-        return { label, date: dateKey, profit: net(s) };
+        const hands = s.hands ?? 0;
+        const sessionProfit = net(s);
+        const profitPerHand = hands > 0 ? sessionProfit / hands : 0;
+        return { label, date: dateKey, profit: sessionProfit, profitPerHand };
       });
     }
-    const byDate = new Map<string, number>();
+    const byDate = new Map<string, { profit: number; hands: number }>();
     for (const s of sorted) {
       const d = new Date(s.date);
       const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + net(s));
+      const prev = byDate.get(dateKey) ?? { profit: 0, hands: 0 };
+      byDate.set(dateKey, {
+        profit: prev.profit + net(s),
+        hands: prev.hands + (s.hands ?? 0),
+      });
     }
     return [...byDate.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dateKey, profit]) => {
+      .map(([dateKey, { profit, hands }]) => {
         const [y, m, day] = dateKey.split('-').map(Number);
         const d = new Date(y, m - 1, day);
         const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
-        return { label, date: dateKey, profit };
+        const profitPerHand = hands > 0 ? profit / hands : 0;
+        return { label, date: dateKey, profit, profitPerHand };
       });
   }, [sessions, sessionNets, barChartMode]);
 
@@ -670,20 +679,36 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         </AccordionSummary>
         <AccordionDetails>
           <Box>
-            <ToggleButtonGroup
-              value={barChartMode}
-              exclusive
-              onChange={(_, v) => v != null && setBarChartMode(v)}
-              size="small"
-              sx={{ mb: 1, '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
-            >
-              <ToggleButton value="day" aria-label="Profit by calendar day">
-                By day
-              </ToggleButton>
-              <ToggleButton value="session" aria-label="Profit by session">
-                By session
-              </ToggleButton>
-            </ToggleButtonGroup>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+              <ToggleButtonGroup
+                value={barChartMode}
+                exclusive
+                onChange={(_, v) => v != null && setBarChartMode(v)}
+                size="small"
+                sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+              >
+                <ToggleButton value="day" aria-label="Profit by calendar day">
+                  By day
+                </ToggleButton>
+                <ToggleButton value="session" aria-label="Profit by session">
+                  By session
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <ToggleButtonGroup
+                value={barChartValueMode}
+                exclusive
+                onChange={(_, v) => v != null && setBarChartValueMode(v)}
+                size="small"
+                sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+              >
+                <ToggleButton value="net" aria-label="Show net dollars">
+                  Net $
+                </ToggleButton>
+                <ToggleButton value="perHand" aria-label="Show dollars per hand">
+                  $/hand
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
             <Box sx={{ height: compact ? 280 : 320, width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
@@ -699,22 +724,38 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                   <YAxis
                     tick={{ fontSize: 10, fill: axisColor }}
                     stroke={axisStroke}
-                    tickFormatter={(v) => `$${Number(v).toFixed(0)}`}
+                    tickFormatter={(v) =>
+                      barChartValueMode === 'net'
+                        ? `$${Number(v).toFixed(0)}`
+                        : `$${Number(v).toFixed(2)}`
+                    }
                   />
                   <Tooltip
-                    formatter={(value: number) => [`$${Number(value).toFixed(2)}`, 'Profit']}
+                    formatter={(value: number) =>
+                      barChartValueMode === 'net'
+                        ? [`$${Number(value).toFixed(2)}`, 'Net']
+                        : [`$${Number(value).toFixed(2)}`, '$/hand']
+                    }
                     labelFormatter={(label) => String(label)}
                   />
-                  <Bar dataKey="profit" radius={[2, 2, 0, 0]} isAnimationActive={false}>
-                    {barChartData.map((entry, index) => (
-                      <Cell key={index} fill={entry.profit >= 0 ? '#4caf50' : '#f44336'} />
-                    ))}
+                  <Bar
+                    dataKey={barChartValueMode === 'net' ? 'profit' : 'profitPerHand'}
+                    radius={[2, 2, 0, 0]}
+                    isAnimationActive={false}
+                  >
+                    {barChartData.map((entry, index) => {
+                      const val = barChartValueMode === 'net' ? entry.profit : entry.profitPerHand;
+                      return (
+                        <Cell key={index} fill={val >= 0 ? '#4caf50' : '#f44336'} />
+                      );
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              {barChartMode === 'day' ? 'Net profit per calendar day' : 'Net profit per session'} (chronological)
+              {barChartMode === 'day' ? 'Per calendar day' : 'Per session'}
+              {barChartValueMode === 'net' ? ' · Net $' : ' · $/hand'} (chronological)
             </Typography>
           </Box>
         </AccordionDetails>
