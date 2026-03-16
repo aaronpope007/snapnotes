@@ -13,12 +13,16 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -88,6 +92,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const gridStroke = darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
+  const [barChartMode, setBarChartMode] = useState<'day' | 'session'>('day');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [rangePreset, setRangePreset] = useState<'all' | 'year' | 'month' | 'today' | 'custom'>('all');
   const [customStart, setCustomStart] = useState(() => {
@@ -274,6 +279,37 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       tickFormatter: formatHandsAxisLabel,
     };
   }, [chartData, interval]);
+
+  type BarChartPoint = { label: string; date: string; profit: number };
+  const barChartData = useMemo((): BarChartPoint[] => {
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const sorted = [...sessions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    if (sorted.length === 0) return [];
+    if (barChartMode === 'session') {
+      return sorted.map((s) => {
+        const d = new Date(s.date);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+        return { label, date: dateKey, profit: net(s) };
+      });
+    }
+    const byDate = new Map<string, number>();
+    for (const s of sorted) {
+      const d = new Date(s.date);
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + net(s));
+    }
+    return [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([dateKey, profit]) => {
+        const [y, m, day] = dateKey.split('-').map(Number);
+        const d = new Date(y, m - 1, day);
+        const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+        return { label, date: dateKey, profit };
+      });
+  }, [sessions, sessionNets, barChartMode]);
 
   const hourlyPerHandInsights = useMemo(
     () => calculatePokerInsights(sessions, { dateRange: hourlyPerHandRange }),
@@ -621,6 +657,65 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 </Paper>
               ))
             )}
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion variant="outlined" defaultExpanded sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <BarChartIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Sessions / days over time</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box>
+            <ToggleButtonGroup
+              value={barChartMode}
+              exclusive
+              onChange={(_, v) => v != null && setBarChartMode(v)}
+              size="small"
+              sx={{ mb: 1, '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+            >
+              <ToggleButton value="day" aria-label="Profit by calendar day">
+                By day
+              </ToggleButton>
+              <ToggleButton value="session" aria-label="Profit by session">
+                By session
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <Box sx={{ height: compact ? 280 : 320, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barChartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 9, fill: axisColor }}
+                    stroke={axisStroke}
+                    interval="preserveStartEnd"
+                    angle={barChartData.length > 20 ? -35 : 0}
+                    textAnchor={barChartData.length > 20 ? 'end' : 'middle'}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: axisColor }}
+                    stroke={axisStroke}
+                    tickFormatter={(v) => `$${Number(v).toFixed(0)}`}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`$${Number(value).toFixed(2)}`, 'Profit']}
+                    labelFormatter={(label) => String(label)}
+                  />
+                  <Bar dataKey="profit" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+                    {barChartData.map((entry, index) => (
+                      <Cell key={index} fill={entry.profit >= 0 ? '#4caf50' : '#f44336'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              {barChartMode === 'day' ? 'Net profit per calendar day' : 'Net profit per session'} (chronological)
+            </Typography>
           </Box>
         </AccordionDetails>
       </Accordion>
