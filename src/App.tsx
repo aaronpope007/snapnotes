@@ -425,6 +425,9 @@ export default function App() {
           (a, b) => a.username.localeCompare(b.username)
         )
       );
+      setShowHandsToReview(false);
+      setShowLearning(false);
+      setShowResults(false);
       setSelected(created);
       showSuccess('Player added');
     } catch (err) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
@@ -23,6 +23,7 @@ import {
   BarChart,
   Bar,
   Cell,
+  ReferenceLine,
   XAxis,
   YAxis,
   Tooltip,
@@ -76,6 +77,19 @@ function formatIntervalLabel(interval: ChartInterval | undefined): string {
   return interval.charAt(0).toUpperCase() + interval.slice(1);
 }
 
+function quantile(values: number[], q: number): number | null {
+  const v = values.filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  if (v.length === 0) return null;
+  if (v.length === 1) return v[0];
+  const qq = Math.max(0, Math.min(1, q));
+  const idx = (v.length - 1) * qq;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return v[lo];
+  const t = idx - lo;
+  return v[lo] + (v[hi] - v[lo]) * t;
+}
+
 interface SummaryTabProps {
   sessions: SessionResult[];
   withdrawals?: Withdrawal[];
@@ -90,6 +104,9 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
   const axisStroke = darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
   const gridStroke = darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  const percentileExtremeColor = '#ef9a9a'; // light red
+  const percentileMidColor = '#a5d6a7'; // light green
+  const percentileMedianColor = '#ffffff';
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [barChartMode, setBarChartMode] = useState<'day' | 'session'>('day');
@@ -281,7 +298,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     };
   }, [chartData, interval]);
 
-  type BarChartPoint = { label: string; date: string; profit: number; profitPerHand: number };
+  type BarChartPoint = { label: string; date: string; profit: number; profitPerHand: number; hands: number };
   const barChartData = useMemo((): BarChartPoint[] => {
     const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const sorted = [...sessions].sort(
@@ -296,7 +313,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         const hands = s.hands ?? 0;
         const sessionProfit = net(s);
         const profitPerHand = hands > 0 ? sessionProfit / hands : 0;
-        return { label, date: dateKey, profit: sessionProfit, profitPerHand };
+        return { label, date: dateKey, profit: sessionProfit, profitPerHand, hands };
       });
     }
     const byDate = new Map<string, { profit: number; hands: number }>();
@@ -316,9 +333,29 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         const d = new Date(y, m - 1, day);
         const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
         const profitPerHand = hands > 0 ? profit / hands : 0;
-        return { label, date: dateKey, profit, profitPerHand };
+        return { label, date: dateKey, profit, profitPerHand, hands };
       });
   }, [sessions, sessionNets, barChartMode]);
+
+  const barChartPercentiles = useMemo(() => {
+    const values =
+      barChartValueMode === 'net'
+        ? barChartData.map((d) => d.profit)
+        : barChartData.filter((d) => d.hands > 0).map((d) => d.profitPerHand);
+    return {
+      p5: quantile(values, 0.05),
+      p25: quantile(values, 0.25),
+      p50: quantile(values, 0.5),
+      p75: quantile(values, 0.75),
+      p95: quantile(values, 0.95),
+    };
+  }, [barChartData, barChartValueMode]);
+
+  const formatBarValue = useCallback((v: number) => {
+    return barChartValueMode === 'net'
+      ? `$${v.toFixed(0)}`
+      : `$${v.toFixed(2)}`;
+  }, [barChartValueMode]);
 
   const hourlyPerHandInsights = useMemo(
     () => calculatePokerInsights(sessions, { dateRange: hourlyPerHandRange }),
@@ -709,7 +746,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 </ToggleButton>
               </ToggleButtonGroup>
             </Box>
-            <Box sx={{ height: compact ? 280 : 320, width: '100%' }}>
+            <Box sx={{ height: compact ? 640 : 880, width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
@@ -738,6 +775,51 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                     }
                     labelFormatter={(label) => String(label)}
                   />
+                  {barChartPercentiles.p25 != null && (
+                    <ReferenceLine
+                      y={barChartPercentiles.p25}
+                      stroke={percentileMidColor}
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.55}
+                      label={{ value: 'P25', position: 'right', fill: percentileMidColor, fontSize: 10 }}
+                    />
+                  )}
+                  {barChartPercentiles.p5 != null && (
+                    <ReferenceLine
+                      y={barChartPercentiles.p5}
+                      stroke={percentileExtremeColor}
+                      strokeDasharray="2 6"
+                      strokeOpacity={0.9}
+                      label={{ value: 'P5', position: 'right', fill: percentileExtremeColor, fontSize: 10 }}
+                    />
+                  )}
+                  {barChartPercentiles.p50 != null && (
+                    <ReferenceLine
+                      y={barChartPercentiles.p50}
+                      stroke={percentileMedianColor}
+                      strokeDasharray="6 4"
+                      strokeOpacity={0.8}
+                      label={{ value: 'P50', position: 'right', fill: percentileMedianColor, fontSize: 10 }}
+                    />
+                  )}
+                  {barChartPercentiles.p75 != null && (
+                    <ReferenceLine
+                      y={barChartPercentiles.p75}
+                      stroke={percentileMidColor}
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.55}
+                      label={{ value: 'P75', position: 'right', fill: percentileMidColor, fontSize: 10 }}
+                    />
+                  )}
+                  {barChartPercentiles.p95 != null && (
+                    <ReferenceLine
+                      y={barChartPercentiles.p95}
+                      stroke={percentileExtremeColor}
+                      strokeDasharray="2 6"
+                      strokeOpacity={0.9}
+                      label={{ value: 'P95', position: 'right', fill: percentileExtremeColor, fontSize: 10 }}
+                    />
+                  )}
                   <Bar
                     dataKey={barChartValueMode === 'net' ? 'profit' : 'profitPerHand'}
                     radius={[2, 2, 0, 0]}
@@ -757,6 +839,50 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
               {barChartMode === 'day' ? 'Per calendar day' : 'Per session'}
               {barChartValueMode === 'net' ? ' · Net $' : ' · $/hand'} (chronological)
             </Typography>
+            {(barChartPercentiles.p5 != null || barChartPercentiles.p25 != null || barChartPercentiles.p50 != null || barChartPercentiles.p75 != null || barChartPercentiles.p95 != null) && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mt: 0.5 }}>
+                {barChartPercentiles.p5 != null && (
+                  <Typography variant="caption" sx={{ color: percentileExtremeColor }}>
+                    P5{' '}
+                    <Typography component="span" sx={{ color: percentileExtremeColor, fontWeight: 700 }}>
+                      {formatBarValue(barChartPercentiles.p5)}
+                    </Typography>
+                  </Typography>
+                )}
+                {barChartPercentiles.p25 != null && (
+                  <Typography variant="caption" sx={{ color: percentileMidColor }}>
+                    P25{' '}
+                    <Typography component="span" sx={{ color: percentileMidColor, fontWeight: 700 }}>
+                      {formatBarValue(barChartPercentiles.p25)}
+                    </Typography>
+                  </Typography>
+                )}
+                {barChartPercentiles.p50 != null && (
+                  <Typography variant="caption" sx={{ color: percentileMedianColor }}>
+                    P50{' '}
+                    <Typography component="span" sx={{ color: percentileMedianColor, fontWeight: 800 }}>
+                      {formatBarValue(barChartPercentiles.p50)}
+                    </Typography>
+                  </Typography>
+                )}
+                {barChartPercentiles.p75 != null && (
+                  <Typography variant="caption" sx={{ color: percentileMidColor }}>
+                    P75{' '}
+                    <Typography component="span" sx={{ color: percentileMidColor, fontWeight: 700 }}>
+                      {formatBarValue(barChartPercentiles.p75)}
+                    </Typography>
+                  </Typography>
+                )}
+                {barChartPercentiles.p95 != null && (
+                  <Typography variant="caption" sx={{ color: percentileExtremeColor }}>
+                    P95{' '}
+                    <Typography component="span" sx={{ color: percentileExtremeColor, fontWeight: 700 }}>
+                      {formatBarValue(barChartPercentiles.p95)}
+                    </Typography>
+                  </Typography>
+                )}
+              </Box>
+            )}
           </Box>
         </AccordionDetails>
       </Accordion>
