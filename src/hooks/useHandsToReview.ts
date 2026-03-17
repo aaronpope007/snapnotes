@@ -116,9 +116,17 @@ export function useHandsToReview({
   }, [initialHandId, hands]);
 
   useEffect(() => {
+    let cancelled = false;
     fetchReviewers()
-      .then(setReviewersList)
-      .catch(() => setReviewersList([]));
+      .then((list) => {
+        if (cancelled) return;
+        setReviewersList(list);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setReviewersList([]);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const isAddModalDirty = () =>

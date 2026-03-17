@@ -239,7 +239,17 @@ export default function App() {
   }, [loadPlayers]);
 
   useEffect(() => {
-    fetchReviewers().then(setReviewersList).catch(() => setReviewersList([]));
+    let cancelled = false;
+    fetchReviewers()
+      .then((list) => {
+        if (cancelled) return;
+        setReviewersList(list);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setReviewersList([]);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
