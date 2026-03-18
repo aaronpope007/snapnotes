@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -24,6 +24,123 @@ import {
 import type { PlayerTypeKey, PlayerCreate, NoteEntry } from '../types';
 import { STAKE_VALUES, GAME_TYPE_OPTIONS, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
 import { toNoteOneLiner } from '../utils/noteUtils';
+
+interface AddPlayerFormOptionsProps {
+  playerType: PlayerTypeKey;
+  onPlayerTypeChange: (v: PlayerTypeKey) => void;
+  gameTypes: string[];
+  onGameTypeToggle: (g: string) => void;
+  formats: string[];
+  onFormatToggle: (f: string) => void;
+  stakesSeenAt: number[];
+  onStakeToggle: (s: number) => void;
+  origin: string;
+  onOriginChange: (v: string) => void;
+}
+
+const AddPlayerFormOptions = memo(function AddPlayerFormOptions({
+  playerType,
+  onPlayerTypeChange,
+  gameTypes,
+  onGameTypeToggle,
+  formats,
+  onFormatToggle,
+  stakesSeenAt,
+  onStakeToggle,
+  origin,
+  onOriginChange,
+}: AddPlayerFormOptionsProps) {
+  return (
+    <>
+      <FormControl fullWidth margin="normal" size="small">
+        <InputLabel>Player Type</InputLabel>
+        <Select
+          value={playerType}
+          label="Player Type"
+          onChange={(e) => onPlayerTypeChange(e.target.value as PlayerTypeKey)}
+        >
+          {PLAYER_TYPE_KEYS.map((key) => (
+            <MenuItem key={key} value={key}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 1,
+                    bgcolor: getPlayerTypeColor(key),
+                  }}
+                />
+                {getPlayerTypeLabel(key)}
+              </Box>
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+        Games
+      </Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+        {GAME_TYPE_OPTIONS.map((g) => (
+          <FormControlLabel
+            key={g}
+            control={
+              <Checkbox
+                size="small"
+                checked={gameTypes.includes(g)}
+                onChange={() => onGameTypeToggle(g)}
+              />
+            }
+            label={g}
+          />
+        ))}
+      </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+        Format
+      </Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+        {FORMAT_OPTIONS.map((f) => (
+          <FormControlLabel
+            key={f}
+            control={
+              <Checkbox
+                size="small"
+                checked={formats.includes(f)}
+                onChange={() => onFormatToggle(f)}
+              />
+            }
+            label={f}
+          />
+        ))}
+      </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+        Stakes seen at
+      </Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+        {STAKE_VALUES.map((s) => (
+          <FormControlLabel
+            key={s}
+            control={
+              <Checkbox
+                size="small"
+                checked={stakesSeenAt.includes(s)}
+                onChange={() => onStakeToggle(s)}
+              />
+            }
+            label={s}
+          />
+        ))}
+      </Box>
+      <FormControl fullWidth size="small" margin="normal">
+        <InputLabel>Site</InputLabel>
+        <Select value={origin} label="Site" onChange={(e) => onOriginChange(e.target.value)}>
+          {ORIGIN_OPTIONS.map((opt) => (
+            <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </>
+  );
+});
 
 interface AddPlayerModalProps {
   open: boolean;
@@ -56,7 +173,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
 
   useEffect(() => {
     if (open) {
-      if (initialUsername) setUsername(initialUsername);
+      setUsername(initialUsername ?? '');
       setGameTypes(defaultStakes.gameTypes);
       setStakesSeenAt(defaultStakes.stakesSeenAt);
       setFormats(defaultStakes.formats);
@@ -89,23 +206,23 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     onClose();
   };
 
-  const handleStakeToggle = (stake: number) => {
+  const handleStakeToggle = useCallback((stake: number) => {
     setStakesSeenAt((prev) =>
       prev.includes(stake) ? prev.filter((s) => s !== stake) : [...prev, stake].sort((a, b) => a - b)
     );
-  };
+  }, []);
 
-  const handleFormatToggle = (format: string) => {
+  const handleFormatToggle = useCallback((format: string) => {
     setFormats((prev) =>
       prev.includes(format) ? prev.filter((f) => f !== format) : [...prev, format]
     );
-  };
+  }, []);
 
-  const handleGameTypeToggle = (gameType: string) => {
+  const handleGameTypeToggle = useCallback((gameType: string) => {
     setGameTypes((prev) =>
       prev.includes(gameType) ? prev.filter((g) => g !== gameType) : [...prev, gameType]
     );
-  };
+  }, []);
 
   const handleSubmit = async () => {
     const trimmed = username.trim();
@@ -157,96 +274,18 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
           }}
           margin="normal"
         />
-        <FormControl fullWidth margin="normal" size="small">
-          <InputLabel>Player Type</InputLabel>
-          <Select
-            value={playerType}
-            label="Player Type"
-            onChange={(e) => setPlayerType(e.target.value as PlayerTypeKey)}
-          >
-            {PLAYER_TYPE_KEYS.map((key) => (
-              <MenuItem key={key} value={key}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 1,
-                      bgcolor: getPlayerTypeColor(key),
-                    }}
-                  />
-                  {getPlayerTypeLabel(key)}
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Games
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-          {GAME_TYPE_OPTIONS.map((g) => (
-            <FormControlLabel
-              key={g}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={gameTypes.includes(g)}
-                  onChange={() => handleGameTypeToggle(g)}
-                />
-              }
-              label={g}
-            />
-          ))}
-        </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Format
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-          {FORMAT_OPTIONS.map((f) => (
-            <FormControlLabel
-              key={f}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={formats.includes(f)}
-                  onChange={() => handleFormatToggle(f)}
-                />
-              }
-              label={f}
-            />
-          ))}
-        </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Stakes seen at
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-          {STAKE_VALUES.map((s) => (
-            <FormControlLabel
-              key={s}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={stakesSeenAt.includes(s)}
-                  onChange={() => handleStakeToggle(s)}
-                />
-              }
-              label={s}
-            />
-          ))}
-        </Box>
-        <FormControl fullWidth size="small" margin="normal">
-          <InputLabel>Site</InputLabel>
-          <Select
-            value={origin}
-            label="Site"
-            onChange={(e) => setOrigin(e.target.value)}
-          >
-            {ORIGIN_OPTIONS.map((opt) => (
-              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <AddPlayerFormOptions
+          playerType={playerType}
+          onPlayerTypeChange={setPlayerType}
+          gameTypes={gameTypes}
+          onGameTypeToggle={handleGameTypeToggle}
+          formats={formats}
+          onFormatToggle={handleFormatToggle}
+          stakesSeenAt={stakesSeenAt}
+          onStakeToggle={handleStakeToggle}
+          origin={origin}
+          onOriginChange={setOrigin}
+        />
         <TextField
           fullWidth
           label="Initial notes"
