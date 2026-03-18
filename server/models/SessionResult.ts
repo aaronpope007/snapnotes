@@ -18,6 +18,7 @@ const sessionResultSchema = new mongoose.Schema(
     isHU: { type: Boolean, default: null },
     gameType: { type: String, enum: ['NLHE', 'PLO'], default: 'NLHE' },
     rating: { type: String, enum: ['A', 'B', 'C', 'D', 'F'], default: null },
+    notes: { type: String, default: null },
   },
   { timestamps: true }
 );

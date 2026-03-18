@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
 import { fetchSessionResults, createSessionResult, uploadSessionResults, updateSessionResult, deleteSessionResult, fetchWithdrawals, createWithdrawal, updateWithdrawal, deleteWithdrawal } from '../api/results';
+import { createLeak } from '../api/learning';
 import type { SessionResult, SessionResultCreate, SessionUploadRow, Withdrawal, WithdrawalCreate } from '../types/results';
 import { getMostRecentSession } from '../utils/sessionUtils';
 import { ResultsTabs, type ResultsTabValue, type ResultsViewValue } from '../components/results/ResultsTabs';
@@ -169,6 +170,15 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
     mostRecentSession?.handsEndedAt ??
     (sessions.length > 0 ? totalHands : 0);
 
+  const handleAddLeak = useCallback(
+    async (title: string) => {
+      if (!userName?.trim()) return;
+      await createLeak({ userId: userName, title, description: '', category: 'other' });
+      onSuccess?.('Leak tracked.');
+    },
+    [userName, onSuccess]
+  );
+
   const getFreshSessionStartData = useCallback(async () => {
     const list = await loadSessions();
     const mostRecent = getMostRecentSession(list);
@@ -198,6 +208,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
             onClearRequestOpenEndSessionModal={onClearRequestOpenEndSessionModal}
             requestOpenEditSessionModal={requestOpenEditSessionModal}
             onClearRequestOpenEditSessionModal={onClearRequestOpenEditSessionModal}
+            onAddLeak={handleAddLeak}
           />
       {!userName?.trim() ? (
             <Typography variant="body2" color="text.secondary">

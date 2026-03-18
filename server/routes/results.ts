@@ -78,6 +78,7 @@ router.post('/', async (req: Request, res: Response) => {
       isHU?: boolean | null;
       gameType?: 'NLHE' | 'PLO';
       rating?: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+      notes?: string | null;
     };
     const userId = body.userId?.trim() || getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId required' });
@@ -109,6 +110,7 @@ router.post('/', async (req: Request, res: Response) => {
       isHU: body.isHU ?? null,
       gameType: body.gameType ?? 'NLHE',
       rating: body.rating && ['A', 'B', 'C', 'D', 'F'].includes(body.rating) ? body.rating : null,
+      notes: body.notes ?? null,
     });
     await session.save();
     res.status(201).json(session);
@@ -234,6 +236,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       isHU?: boolean | null;
       gameType?: 'NLHE' | 'PLO';
       rating?: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+      notes?: string | null;
     };
     if (body.date !== undefined) {
       const d = parseDate(body.date);
@@ -257,6 +260,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (body.rating !== undefined) {
       session.rating = body.rating && ['A', 'B', 'C', 'D', 'F'].includes(body.rating) ? body.rating : null;
     }
+    if (body.notes !== undefined) session.notes = body.notes;
     await session.save();
     res.json(session);
   } catch (err) {

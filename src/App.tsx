@@ -154,10 +154,33 @@ export default function App() {
     try { return localStorage.getItem('snapnotes_my_recent') === 'true'; } catch { return false; }
   });
   const [myRecentPlayers, setMyRecentPlayers] = useState<PlayerListItem[]>([]);
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('snapnotes_recently_viewed_ids');
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch { return []; }
+  });
+  const searchBarRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try { localStorage.setItem('snapnotes_my_recent', String(myRecent)); } catch { /* ignore */ }
   }, [myRecent]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.key === '/' &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !e.metaKey && !e.ctrlKey && !e.altKey
+      ) {
+        e.preventDefault();
+        searchBarRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const showSuccess = useCallback((msg: string) =>
     setSnackbar({ open: true, message: msg, severity: 'success' }), []);
@@ -303,6 +326,11 @@ export default function App() {
       setShowResults(false);
       const full = await fetchPlayer(p._id);
       setSelected(full);
+      setRecentlyViewedIds((prev) => {
+        const next = [p._id, ...prev.filter((id) => id !== p._id)].slice(0, 30);
+        try { localStorage.setItem('snapnotes_recently_viewed_ids', JSON.stringify(next)); } catch { /* ignore */ }
+        return next;
+      });
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to load player'));
     }
@@ -552,8 +580,24 @@ export default function App() {
   }, []);
 
   const recentPlayers = useMemo(() => {
-    const source = myRecent ? myRecentPlayers : players;
-    return [...source]
+    if (myRecent) {
+      return [...myRecentPlayers]
+        .filter((p) => p.updatedAt ?? p.createdAt)
+        .sort((a, b) => {
+          const aTs = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+          const bTs = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+          return bTs - aTs;
+        })
+        .slice(0, 20);
+    }
+    // Show players in the order they were last opened in this app
+    const viewed = recentlyViewedIds
+      .map((id) => players.find((p) => p._id === id))
+      .filter((p): p is PlayerListItem => p != null)
+      .slice(0, 20);
+    if (viewed.length > 0) return viewed;
+    // Fallback: sort by updatedAt on first use (no viewed history yet)
+    return [...players]
       .filter((p) => p.updatedAt ?? p.createdAt)
       .sort((a, b) => {
         const aTs = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
@@ -561,7 +605,7 @@ export default function App() {
         return bTs - aTs;
       })
       .slice(0, 20);
-  }, [myRecent, myRecentPlayers, players]);
+  }, [myRecent, myRecentPlayers, players, recentlyViewedIds]);
 
   const menuAndInput = (
     <>
@@ -682,6 +726,7 @@ export default function App() {
             players={players}
             onSelect={handleSelectPlayer}
             onNoMatchCreate={handleNoMatchCreate}
+            inputRef={searchBarRef}
             selectedId={selected?._id}
           />
         </Box>
@@ -1012,6 +1057,7 @@ export default function App() {
                     players={players}
                     onSelect={handleSelectPlayer}
                     onNoMatchCreate={handleNoMatchCreate}
+                    inputRef={searchBarRef}
                     selectedId={selected?._id}
                   />
                 </Box>
@@ -1214,6 +1260,7 @@ export default function App() {
                     players={players}
                     onSelect={handleSelectPlayer}
                     onNoMatchCreate={handleNoMatchCreate}
+                    inputRef={searchBarRef}
                     selectedId={selected?._id}
                   />
                 </Box>

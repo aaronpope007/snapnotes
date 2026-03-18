@@ -17,6 +17,9 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import BubbleChartIcon from '@mui/icons-material/BubbleChart';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import MultilineChartIcon from '@mui/icons-material/MultilineChart';
 import {
   LineChart,
   Line,
@@ -29,6 +32,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  ScatterChart,
+  Scatter,
 } from 'recharts';
 import Alert from '@mui/material/Alert';
 import { useCompactMode } from '../../context/CompactModeContext';
@@ -111,6 +116,18 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [barChartMode, setBarChartMode] = useState<'day' | 'session'>('day');
   const [barChartValueMode, setBarChartValueMode] = useState<'net' | 'perHand'>('net');
+  const [barRangePreset, setBarRangePreset] = useState<'all' | 'year' | 'month' | 'today' | 'custom'>('all');
+  const [showHandsOverlay, setShowHandsOverlay] = useState(false);
+  const [stakeChartMode, setStakeChartMode] = useState<'net' | 'perHand'>('net');
+  const [scatterMode, setScatterMode] = useState<'net' | 'perHand'>('net');
+  const [rollingWindow, setRollingWindow] = useState(10000);
+  const [rollingMenuAnchorEl, setRollingMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [barCustomStart, setBarCustomStart] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [barCustomEnd, setBarCustomEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [rangePreset, setRangePreset] = useState<'all' | 'year' | 'month' | 'today' | 'custom'>('all');
   const [customStart, setCustomStart] = useState(() => {
@@ -154,6 +171,49 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       profitPerHourAt240,
       currentAccount,
     };
+  }, [sessions]);
+
+  const streakAndDrawdown = useMemo(() => {
+    const sNets = getSessionNetsMap(sessions);
+    const net = (s: SessionResult) => sNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const sorted = [...sessions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    let currentStreakCount = 0;
+    let currentStreakType: 'win' | 'loss' | null = null;
+    let longestWin = 0;
+    let longestLoss = 0;
+    let tempCount = 0;
+    let tempType: 'win' | 'loss' | null = null;
+
+    let cumProfit = 0;
+    let peak = 0;
+    let maxDrawdown = 0;
+
+    for (const s of sorted) {
+      const n = net(s);
+      const type: 'win' | 'loss' = n >= 0 ? 'win' : 'loss';
+      if (type === tempType) {
+        tempCount++;
+      } else {
+        tempCount = 1;
+        tempType = type;
+      }
+      if (tempType === 'win') longestWin = Math.max(longestWin, tempCount);
+      else longestLoss = Math.max(longestLoss, tempCount);
+
+      cumProfit += n;
+      if (cumProfit > peak) peak = cumProfit;
+      const drawdown = peak - cumProfit;
+      if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+    }
+
+    currentStreakCount = tempCount;
+    currentStreakType = tempType;
+    const currentDrawdown = peak - cumProfit;
+
+    return { currentStreakCount, currentStreakType, longestWin, longestLoss, maxDrawdown, currentDrawdown };
   }, [sessions]);
 
   const sessionNets = useMemo(() => getSessionNetsMap(sessions), [sessions]);
@@ -298,18 +358,53 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     };
   }, [chartData, interval]);
 
+  const barFilteredSessions = useMemo(() => {
+    if (barRangePreset === 'all') return sessions;
+    const now = new Date();
+    return sessions.filter((s) => {
+      const d = new Date(s.date);
+      if (barRangePreset === 'year') return d.getFullYear() === now.getFullYear();
+      if (barRangePreset === 'month')
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      if (barRangePreset === 'today') {
+        return (
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth() &&
+          d.getDate() === now.getDate()
+        );
+      }
+      if (barRangePreset === 'custom') {
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return dateStr >= barCustomStart && dateStr <= barCustomEnd;
+      }
+      return true;
+    });
+  }, [sessions, barRangePreset, barCustomStart, barCustomEnd]);
+
   type BarChartPoint = { label: string; date: string; profit: number; profitPerHand: number; hands: number };
   const barChartData = useMemo((): BarChartPoint[] => {
     const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
-    const sorted = [...sessions].sort(
+    const sorted = [...barFilteredSessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     if (sorted.length === 0) return [];
     if (barChartMode === 'session') {
+      // Count how many sessions each day has so we can number duplicates
+      const dayCounts = new Map<string, number>();
+      for (const s of sorted) {
+        const d = new Date(s.date);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        dayCounts.set(dateKey, (dayCounts.get(dateKey) ?? 0) + 1);
+      }
+      const dayCounters = new Map<string, number>();
       return sorted.map((s) => {
         const d = new Date(s.date);
         const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+        const baseLabel = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+        const total = dayCounts.get(dateKey) ?? 1;
+        const counter = (dayCounters.get(dateKey) ?? 0) + 1;
+        dayCounters.set(dateKey, counter);
+        const label = total > 1 ? `${baseLabel} #${counter}` : baseLabel;
         const hands = s.hands ?? 0;
         const sessionProfit = net(s);
         const profitPerHand = hands > 0 ? sessionProfit / hands : 0;
@@ -335,7 +430,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         const profitPerHand = hands > 0 ? profit / hands : 0;
         return { label, date: dateKey, profit, profitPerHand, hands };
       });
-  }, [sessions, sessionNets, barChartMode]);
+  }, [barFilteredSessions, sessionNets, barChartMode]);
 
   const barChartPercentiles = useMemo(() => {
     const values =
@@ -361,6 +456,79 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     () => calculatePokerInsights(sessions, { dateRange: hourlyPerHandRange }),
     [sessions, hourlyPerHandRange]
   );
+
+  // 5-point moving average overlay for bankroll chart
+  const movingAvgData = useMemo(() => {
+    const maWindow = 5;
+    const key = chartMode === 'perHand' ? 'profitPerHand' : 'value';
+    return chartData.map((point, i) => {
+      const start = Math.max(0, i - maWindow + 1);
+      const slice = chartData.slice(start, i + 1);
+      const avg = slice.reduce((sum, p) => sum + (p[key] as number), 0) / slice.length;
+      return { ...point, movingAvg: avg };
+    });
+  }, [chartData, chartMode]);
+
+  // Session length vs result scatter data
+  type ScatterPoint = { hours: number; net: number; pph: number; hands: number };
+  const scatterData = useMemo((): ScatterPoint[] => {
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
+    return sessions
+      .filter((s) => (s.totalTime ?? 0) > 0)
+      .map((s) => {
+        const sessionNet = net(s);
+        const hands = s.hands ?? 0;
+        return { hours: s.totalTime!, net: sessionNet, pph: hands > 0 ? sessionNet / hands : 0, hands };
+      });
+  }, [sessions, sessionNets]);
+
+  // Time-of-day heatmap: avg result by start hour
+  const timeOfDayData = useMemo(() => {
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const buckets: { sum: number; count: number }[] = Array.from({ length: 24 }, () => ({ sum: 0, count: 0 }));
+    for (const s of sessions) {
+      if (!s.startTime) continue;
+      const d = new Date(s.startTime);
+      if (isNaN(d.getTime())) continue;
+      const hour = d.getHours();
+      buckets[hour].sum += net(s);
+      buckets[hour].count += 1;
+    }
+    return buckets.map((b, h) => ({
+      hour: h,
+      label: `${h === 0 ? 12 : h > 12 ? h - 12 : h}${h < 12 ? 'a' : 'p'}`,
+      avg: b.count > 0 ? b.sum / b.count : 0,
+      count: b.count,
+    }));
+  }, [sessions, sessionNets]);
+
+  const hasTimeOfDayData = timeOfDayData.some((d) => d.count > 0);
+
+  // Rolling $/hand win rate trend
+  const ROLLING_OPTIONS = [5000, 10000, 25000, 50000, 100000];
+  const rollingWinRateData = useMemo(() => {
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const sorted = [...sessions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const result: { cumulativeHands: number; rollingPPH: number }[] = [];
+    let cumHands = 0;
+    for (let right = 0; right < sorted.length; right++) {
+      cumHands += sorted[right].hands ?? 0;
+      let wHands = 0;
+      let wProfit = 0;
+      for (let j = right; j >= 0; j--) {
+        const jh = sorted[j].hands ?? 0;
+        wHands += jh;
+        wProfit += net(sorted[j]);
+        if (wHands >= rollingWindow) break;
+      }
+      if (wHands > 0) {
+        result.push({ cumulativeHands: cumHands, rollingPPH: wProfit / wHands });
+      }
+    }
+    return result;
+  }, [sessions, sessionNets, rollingWindow]);
 
   if (loading) {
     return (
@@ -496,6 +664,47 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           </Typography>
           <Typography variant="body2" color="text.secondary">
             ${stats.profitPerHourAt240.toFixed(2)}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Current streak
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600, color: streakAndDrawdown.currentStreakType === 'win' ? 'success.main' : streakAndDrawdown.currentStreakType === 'loss' ? 'error.main' : 'text.secondary' }}
+          >
+            {streakAndDrawdown.currentStreakType === 'win'
+              ? `W${streakAndDrawdown.currentStreakCount}`
+              : streakAndDrawdown.currentStreakType === 'loss'
+              ? `L${streakAndDrawdown.currentStreakCount}`
+              : '—'}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Longest win / loss
+          </Typography>
+          <Typography variant="body2">
+            <Box component="span" sx={{ color: 'success.main', fontWeight: 600 }}>W{streakAndDrawdown.longestWin}</Box>
+            {' / '}
+            <Box component="span" sx={{ color: 'error.main', fontWeight: 600 }}>L{streakAndDrawdown.longestLoss}</Box>
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Max drawdown
+          </Typography>
+          <Typography variant="body2" sx={{ color: streakAndDrawdown.maxDrawdown > 0 ? 'error.main' : 'text.secondary' }}>
+            {streakAndDrawdown.maxDrawdown > 0 ? `−$${streakAndDrawdown.maxDrawdown.toFixed(2)}` : '—'}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            Current drawdown
+          </Typography>
+          <Typography variant="body2" sx={{ color: streakAndDrawdown.currentDrawdown > 0 ? 'error.main' : 'text.secondary' }}>
+            {streakAndDrawdown.currentDrawdown > 0 ? `−$${streakAndDrawdown.currentDrawdown.toFixed(2)}` : '—'}
           </Typography>
         </Box>
       </Paper>
@@ -716,6 +925,43 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         </AccordionSummary>
         <AccordionDetails>
           <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 0.5, mb: 0.75 }}>
+              <ToggleButtonGroup
+                value={barRangePreset}
+                exclusive
+                onChange={(_, v) => v != null && setBarRangePreset(v)}
+                size="small"
+                sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+              >
+                <ToggleButton value="all">All time</ToggleButton>
+                <ToggleButton value="year">This year</ToggleButton>
+                <ToggleButton value="month">This month</ToggleButton>
+                <ToggleButton value="today">Today</ToggleButton>
+                <ToggleButton value="custom">Custom</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+            {barRangePreset === 'custom' && (
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 0.75 }}>
+                <TextField
+                  size="small"
+                  type="date"
+                  label="From"
+                  value={barCustomStart}
+                  onChange={(e) => setBarCustomStart(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ width: 140 }}
+                />
+                <TextField
+                  size="small"
+                  type="date"
+                  label="To"
+                  value={barCustomEnd}
+                  onChange={(e) => setBarCustomEnd(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ width: 140 }}
+                />
+              </Box>
+            )}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
               <ToggleButtonGroup
                 value={barChartMode}
@@ -768,12 +1014,31 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                     }
                   />
                   <Tooltip
-                    formatter={(value: number) =>
-                      barChartValueMode === 'net'
-                        ? [`$${Number(value).toFixed(2)}`, 'Net']
-                        : [`$${Number(value).toFixed(2)}`, '$/hand']
-                    }
-                    labelFormatter={(label) => String(label)}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length || !label) return null;
+                      const point = payload[0].payload as BarChartPoint;
+                      const contextLabel = barChartMode === 'session' ? 'Session' : 'Day';
+                      const valueLabel = barChartValueMode === 'net' ? 'Net' : '$/hand';
+                      const value = barChartValueMode === 'net' ? point.profit : point.profitPerHand;
+                      const formatted = barChartValueMode === 'net'
+                        ? `$${value.toFixed(2)}`
+                        : `$${value.toFixed(2)}`;
+                      return (
+                        <Paper elevation={3} sx={{ px: 1.5, py: 1, minWidth: 140 }}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {contextLabel}: {String(label)}
+                          </Typography>
+                          <Typography variant="body2" component="span" sx={{ fontWeight: 600 }}>
+                            {valueLabel}: {formatted}
+                          </Typography>
+                          {point.hands != null && point.hands > 0 && (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
+                              {point.hands.toLocaleString()} hands
+                            </Typography>
+                          )}
+                        </Paper>
+                      );
+                    }}
                   />
                   {barChartPercentiles.p25 != null && (
                     <ReferenceLine
@@ -920,13 +1185,26 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
               $/hand
             </ToggleButton>
           </ToggleButtonGroup>
-          <IconButton
-            size="small"
-            onClick={(e) => setAnchorEl(e.currentTarget)}
-            aria-label="Chart interval"
-          >
-            <SettingsIcon fontSize="small" />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {typeof interval !== 'object' && (
+              <ToggleButton
+                value="hands"
+                selected={showHandsOverlay}
+                onChange={() => setShowHandsOverlay((v) => !v)}
+                size="small"
+                sx={{ py: 0.25, px: 1 }}
+              >
+                + Hands
+              </ToggleButton>
+            )}
+            <IconButton
+              size="small"
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              aria-label="Chart interval"
+            >
+              <SettingsIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </Box>
         <Menu
           anchorEl={anchorEl}
@@ -952,7 +1230,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         </Menu>
         <Box sx={{ height: compact ? 640 : 880, width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 24, left: -10 }}>
+            <LineChart data={movingAvgData} margin={{ top: 4, right: showHandsOverlay && typeof interval !== 'object' ? 40 : 4, bottom: 24, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
               <XAxis
                 dataKey={chartXAxisConfig ? 'cumulativeHands' : 'label'}
@@ -967,17 +1245,30 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 }
               />
               <YAxis
+                yAxisId={0}
                 {...(chartYDomain && { domain: chartYDomain, allowDataOverflow: true })}
                 tick={{ fontSize: 10, fill: axisColor }}
                 stroke={axisStroke}
                 tickFormatter={(v) => (chartMode === 'perHand' ? `$${Number(v).toFixed(2)}` : `$${v}`)}
               />
+              {showHandsOverlay && typeof interval !== 'object' && (
+                <YAxis
+                  yAxisId={1}
+                  orientation="right"
+                  tick={{ fontSize: 9, fill: 'rgba(100,181,246,0.8)' }}
+                  stroke="rgba(100,181,246,0.4)"
+                  tickFormatter={formatHandsAxisLabel}
+                  width={40}
+                />
+              )}
               <Tooltip
-                formatter={(value: number | undefined) =>
-                  chartMode === 'perHand'
+                formatter={(value: number | undefined, name: string) => {
+                  if (name === 'cumulativeHands') return [formatHandsAxisLabel(Number(value ?? 0)), 'Hands'];
+                  if (name === 'movingAvg') return [chartMode === 'perHand' ? `$${Number(value ?? 0).toFixed(2)}/hand` : `$${Number(value ?? 0).toFixed(2)}`, '5-pt avg'];
+                  return chartMode === 'perHand'
                     ? [`$${Number(value ?? 0).toFixed(2)}/hand`, '$/hand']
-                    : [`$${Number(value ?? 0).toFixed(2)}`, 'Bankroll']
-                }
+                    : [`$${Number(value ?? 0).toFixed(2)}`, 'Bankroll'];
+                }}
                 labelFormatter={(label) =>
                   chartXAxisConfig && typeof label === 'number'
                     ? formatHandsAxisLabel(label)
@@ -985,6 +1276,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 }
               />
               <Line
+                yAxisId={0}
                 type="monotone"
                 dataKey={chartMode === 'perHand' ? 'profitPerHand' : 'value'}
                 stroke={chartMode === 'perHand' ? '#ff9800' : '#4caf50'}
@@ -992,12 +1284,317 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 dot={{ r: 3 }}
                 isAnimationActive={false}
               />
+              <Line
+                yAxisId={0}
+                type="monotone"
+                dataKey="movingAvg"
+                stroke={chartMode === 'perHand' ? 'rgba(255,152,0,0.45)' : 'rgba(76,175,80,0.45)'}
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                dot={false}
+                isAnimationActive={false}
+                name="movingAvg"
+              />
+              {showHandsOverlay && typeof interval !== 'object' && (
+                <Line
+                  yAxisId={1}
+                  type="monotone"
+                  dataKey="cumulativeHands"
+                  stroke="rgba(100,181,246,0.55)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  isAnimationActive={false}
+                  name="cumulativeHands"
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
           {chartMode === 'perHand' ? '$ per hand over time' : 'Bankroll over time'} · {formatIntervalLabel(interval)}
+          {showHandsOverlay && typeof interval !== 'object' && ' · Cumulative hands (right axis, light blue)'}
+          {' · Dashed = 5-pt avg'}
         </Typography>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* ── Net profit by stake chart ── */}
+      <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <TrendingUpIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Profit by stake</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          {byStake.length === 0 ? (
+            <Typography variant="caption" color="text.secondary">No stake data recorded.</Typography>
+          ) : (
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                <ToggleButtonGroup
+                  value={stakeChartMode}
+                  exclusive
+                  onChange={(_, v) => v != null && setStakeChartMode(v)}
+                  size="small"
+                  sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+                >
+                  <ToggleButton value="net">Net $</ToggleButton>
+                  <ToggleButton value="perHand">$/hand</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              <Box sx={{ height: compact ? 200 : 260, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={byStake} margin={{ top: 4, right: 4, bottom: 4, left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                    <XAxis dataKey="stake" tick={{ fontSize: 10, fill: axisColor }} stroke={axisStroke} />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: axisColor }}
+                      stroke={axisStroke}
+                      tickFormatter={(v) => stakeChartMode === 'net' ? `$${Number(v).toFixed(0)}` : `$${Number(v).toFixed(2)}`}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload as typeof byStake[0];
+                        const val = stakeChartMode === 'net' ? d.totalProfit : d.profitPerHand;
+                        return (
+                          <Paper elevation={3} sx={{ px: 1.5, py: 1 }}>
+                            <Typography variant="caption" color="text.secondary">${d.stake}</Typography>
+                            <Typography variant="body2" sx={{ color: val >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
+                              {stakeChartMode === 'net' ? `$${val.toFixed(2)}` : `$${val.toFixed(2)}/hand`}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">{d.totalHands.toLocaleString()} hands</Typography>
+                          </Paper>
+                        );
+                      }}
+                    />
+                    <Bar dataKey={stakeChartMode === 'net' ? 'totalProfit' : 'profitPerHand'} radius={[3, 3, 0, 0]} isAnimationActive={false}>
+                      {byStake.map((entry, i) => {
+                        const val = stakeChartMode === 'net' ? entry.totalProfit : entry.profitPerHand;
+                        return <Cell key={i} fill={val >= 0 ? '#4caf50' : '#f44336'} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </Box>
+          )}
+        </AccordionDetails>
+      </Accordion>
+
+      {/* ── Session length vs result scatter ── */}
+      <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <BubbleChartIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Session length vs result</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          {scatterData.length === 0 ? (
+            <Typography variant="caption" color="text.secondary">No sessions with recorded duration.</Typography>
+          ) : (
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                <ToggleButtonGroup
+                  value={scatterMode}
+                  exclusive
+                  onChange={(_, v) => v != null && setScatterMode(v)}
+                  size="small"
+                  sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+                >
+                  <ToggleButton value="net">Net $</ToggleButton>
+                  <ToggleButton value="perHand">$/hand</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              <Box sx={{ height: compact ? 280 : 360, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 4, right: 4, bottom: 28, left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                    <XAxis
+                      type="number"
+                      dataKey="hours"
+                      name="Duration"
+                      tick={{ fontSize: 10, fill: axisColor }}
+                      stroke={axisStroke}
+                      label={{ value: 'Hours', position: 'insideBottom', offset: -12, fill: axisStroke, fontSize: 11 }}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey={scatterMode === 'net' ? 'net' : 'pph'}
+                      name={scatterMode === 'net' ? 'Net' : '$/hand'}
+                      tick={{ fontSize: 10, fill: axisColor }}
+                      stroke={axisStroke}
+                      tickFormatter={(v) => scatterMode === 'net' ? `$${Number(v).toFixed(0)}` : `$${Number(v).toFixed(2)}`}
+                    />
+                    <Tooltip
+                      cursor={{ strokeDasharray: '3 3' }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload as ScatterPoint;
+                        const val = scatterMode === 'net' ? d.net : d.pph;
+                        return (
+                          <Paper elevation={3} sx={{ px: 1.5, py: 1 }}>
+                            <Typography variant="caption" color="text.secondary">{d.hours.toFixed(1)}h session</Typography>
+                            <Typography variant="body2" sx={{ color: val >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
+                              {scatterMode === 'net' ? `Net: $${d.net.toFixed(2)}` : `$/hand: $${d.pph.toFixed(2)}`}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">{d.hands.toLocaleString()} hands</Typography>
+                          </Paper>
+                        );
+                      }}
+                    />
+                    <Scatter
+                      data={scatterData}
+                      shape={(props) => {
+                        const { cx, cy, payload } = props as { cx: number; cy: number; payload: ScatterPoint };
+                        const val = scatterMode === 'net' ? payload.net : payload.pph;
+                        return <circle cx={cx} cy={cy} r={4} fill={val >= 0 ? '#4caf50' : '#f44336'} fillOpacity={0.75} />;
+                      }}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                Each dot = one session. {scatterMode === 'net' ? 'Net $' : '$/hand'} vs hours played.
+              </Typography>
+            </Box>
+          )}
+        </AccordionDetails>
+      </Accordion>
+
+      {/* ── Time of day heatmap ── */}
+      <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <AccessTimeIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Time of day</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          {!hasTimeOfDayData ? (
+            <Typography variant="caption" color="text.secondary">No sessions with recorded start time.</Typography>
+          ) : (
+            <Box>
+              <Box sx={{ height: compact ? 200 : 260, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={timeOfDayData} margin={{ top: 4, right: 4, bottom: 4, left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 9, fill: axisColor }} stroke={axisStroke} interval={0} />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: axisColor }}
+                      stroke={axisStroke}
+                      tickFormatter={(v) => `$${Number(v).toFixed(0)}`}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload as typeof timeOfDayData[0];
+                        if (d.count === 0) return null;
+                        return (
+                          <Paper elevation={3} sx={{ px: 1.5, py: 1 }}>
+                            <Typography variant="caption" color="text.secondary">{d.label}</Typography>
+                            <Typography variant="body2">{d.count} session{d.count !== 1 ? 's' : ''}</Typography>
+                            <Typography variant="body2" sx={{ color: d.avg >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
+                              Avg: ${d.avg.toFixed(2)}
+                            </Typography>
+                          </Paper>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="avg" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+                      {timeOfDayData.map((entry, i) => (
+                        <Cell key={i} fill={entry.count === 0 ? 'transparent' : entry.avg >= 0 ? '#4caf50' : '#f44336'} fillOpacity={entry.count === 0 ? 0 : Math.min(0.4 + entry.count * 0.15, 1)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                Avg net $ by session start hour. Opacity reflects session count. Requires start time logged.
+              </Typography>
+            </Box>
+          )}
+        </AccordionDetails>
+      </Accordion>
+
+      {/* ── Rolling $/hand win rate ── */}
+      <Accordion variant="outlined" sx={{ '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <MultilineChartIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">Rolling $/hand trend</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+              <IconButton size="small" onClick={(e) => setRollingMenuAnchorEl(e.currentTarget)} aria-label="Rolling window">
+                <SettingsIcon fontSize="small" />
+              </IconButton>
+              <Menu
+                anchorEl={rollingMenuAnchorEl}
+                open={!!rollingMenuAnchorEl}
+                onClose={() => setRollingMenuAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                {ROLLING_OPTIONS.map((n) => (
+                  <MenuItem
+                    key={n}
+                    selected={rollingWindow === n}
+                    onClick={() => { setRollingWindow(n); setRollingMenuAnchorEl(null); }}
+                  >
+                    Last {n.toLocaleString()} hands
+                  </MenuItem>
+                ))}
+              </Menu>
+            </Box>
+            {rollingWinRateData.length < 2 ? (
+              <Typography variant="caption" color="text.secondary">
+                Not enough hand data yet (need more than one session with hands recorded).
+              </Typography>
+            ) : (
+              <Box sx={{ height: compact ? 280 : 360, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={rollingWinRateData} margin={{ top: 4, right: 4, bottom: 28, left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                    <XAxis
+                      dataKey="cumulativeHands"
+                      type="number"
+                      tick={{ fontSize: 10, fill: axisColor }}
+                      stroke={axisStroke}
+                      tickFormatter={formatHandsAxisLabel}
+                      label={{ value: 'Hands', position: 'insideBottom', offset: -12, fill: axisStroke, fontSize: 11 }}
+                      domain={['dataMin', 'dataMax']}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: axisColor }}
+                      stroke={axisStroke}
+                      tickFormatter={(v) => `$${Number(v).toFixed(2)}`}
+                    />
+                    <ReferenceLine y={0} stroke={axisStroke} strokeDasharray="4 2" />
+                    <Tooltip
+                      formatter={(value: number | undefined) => [`$${Number(value ?? 0).toFixed(3)}/hand`, `Rolling (last ${rollingWindow.toLocaleString()} hands)`]}
+                      labelFormatter={(v) => `At ${formatHandsAxisLabel(Number(v))} hands`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="rollingPPH"
+                      stroke="#ff9800"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Box>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Rolling $/hand over last {rollingWindow.toLocaleString()} hands. Use ⚙ to change window.
+            </Typography>
           </Box>
         </AccordionDetails>
       </Accordion>

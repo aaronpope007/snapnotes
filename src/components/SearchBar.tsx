@@ -16,9 +16,10 @@ interface SearchBarProps {
   onSelect: (player: PlayerListItem) => void;
   onNoMatchCreate?: (username: string) => void;
   selectedId?: string | null;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
-export function SearchBar({ players, onSelect, onNoMatchCreate }: SearchBarProps) {
+export function SearchBar({ players, onSelect, onNoMatchCreate, inputRef }: SearchBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [highlightedOption, setHighlightedOption] = useState<PlayerListItem | null>(null);
 
@@ -86,6 +87,7 @@ export function SearchBar({ players, onSelect, onNoMatchCreate }: SearchBarProps
           {...params}
           placeholder="Search players..."
           onKeyDown={handleKeyDown}
+          inputRef={inputRef}
           InputProps={{
             ...params.InputProps,
             startAdornment: (

@@ -38,6 +38,7 @@ interface ResultsTabsProps {
   onClearRequestOpenEndSessionModal?: () => void;
   requestOpenEditSessionModal?: boolean;
   onClearRequestOpenEditSessionModal?: () => void;
+  onAddLeak?: (title: string) => Promise<void>;
 }
 
 export function ResultsTabs({
@@ -58,6 +59,7 @@ export function ResultsTabs({
   onClearRequestOpenEndSessionModal,
   requestOpenEditSessionModal,
   onClearRequestOpenEditSessionModal,
+  onAddLeak,
 }: ResultsTabsProps) {
   const compact = useCompactMode();
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -177,6 +179,7 @@ export function ResultsTabs({
         onAddSession={onAddSession}
         onSuccess={onSuccess}
         onError={onError}
+        onAddLeak={onAddLeak}
       />
       <EditActiveSessionModal
         open={editSessionModalOpen}
@@ -194,6 +197,7 @@ export function ResultsTabs({
           onEndSession={handleEndSessionSuccess}
           onSuccess={onSuccess}
           onError={onError}
+          onAddLeak={onAddLeak}
         />
       )}
       {view === 'all' && (

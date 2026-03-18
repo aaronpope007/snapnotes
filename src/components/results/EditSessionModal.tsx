@@ -35,6 +35,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
   const [rating, setRating] = useState<SessionRating | ''>('');
   const [isRing, setIsRing] = useState(false);
   const [isHU, setIsHU] = useState(false);
+  const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
   function toTimeString(isoOrDate: string | null | undefined): string {
@@ -68,6 +69,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
       setRating(session.rating ?? '');
       setIsRing(session.isRing ?? false);
       setIsHU(session.isHU ?? false);
+      setNotes(session.notes ?? '');
     }
   }, [session]);
 
@@ -121,6 +123,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
         rating: rating === '' ? null : rating,
         isRing: isRing || null,
         isHU: isHU || null,
+        notes: notes.trim() || null,
       });
       onClose();
     } finally {
@@ -278,6 +281,17 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
               label="HU"
             />
           </Box>
+          <TextField
+            label="Session notes / journal"
+            size="small"
+            multiline
+            minRows={2}
+            maxRows={5}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What went well? What did you do poorly? What to work on?"
+            fullWidth
+          />
         </Box>
       </DialogContent>
       <DialogActions>

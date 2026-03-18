@@ -20,6 +20,7 @@ interface LogNewSessionModalProps {
   onAddSession: (payload: SessionResultCreate) => Promise<void>;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
+  onAddLeak?: (title: string) => Promise<void>;
 }
 
 export function LogNewSessionModal({
@@ -29,6 +30,7 @@ export function LogNewSessionModal({
   onAddSession,
   onSuccess,
   onError,
+  onAddLeak,
 }: LogNewSessionModalProps) {
   const [saving, setSaving] = useState(false);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -42,6 +44,10 @@ export function LogNewSessionModal({
   const [handsStartedAt, setHandsStartedAt] = useState<string>('');
   const [handsEndedAt, setHandsEndedAt] = useState<string>('');
   const [dailyNet, setDailyNet] = useState<string>('');
+  const [notes, setNotes] = useState('');
+  const [trackLeakOpen, setTrackLeakOpen] = useState(false);
+  const [leakTitle, setLeakTitle] = useState('');
+  const [trackingSaving, setTrackingSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -52,8 +58,15 @@ export function LogNewSessionModal({
       setEndTime('');
       setDailyNet('');
       setRating('');
+      setNotes('');
+      setTrackLeakOpen(false);
+      setLeakTitle('');
     }
   }, [open, totalHandsSoFar]);
+
+  useEffect(() => {
+    if (trackLeakOpen) setLeakTitle(notes.trim());
+  }, [trackLeakOpen, notes]);
 
   const totalTimeFromTimes =
     startTime && endTime
@@ -72,6 +85,20 @@ export function LogNewSessionModal({
   const handsPlayed = !Number.isNaN(startNum) && !Number.isNaN(endNum) && endNum >= startNum
     ? endNum - startNum
     : null;
+
+  const handleTrackLeak = useCallback(async () => {
+    if (!leakTitle.trim() || !onAddLeak) return;
+    setTrackingSaving(true);
+    try {
+      await onAddLeak(leakTitle.trim());
+      setTrackLeakOpen(false);
+      setLeakTitle('');
+    } catch {
+      // error handled by parent
+    } finally {
+      setTrackingSaving(false);
+    }
+  }, [leakTitle, onAddLeak]);
 
   const handleSubmit = useCallback(async () => {
     if (handsPlayed == null || handsPlayed < 0) {
@@ -93,6 +120,7 @@ export function LogNewSessionModal({
         isRing: isRing || undefined,
         isHU: isHU || undefined,
         gameType,
+        notes: notes.trim() || null,
       };
       await onAddSession(payload);
       onSuccess('Session logged.');
@@ -113,6 +141,7 @@ export function LogNewSessionModal({
     rating,
     handsPlayed,
     dailyNet,
+    notes,
     totalTimeFromTimes,
     onAddSession,
     onSuccess,
@@ -237,6 +266,45 @@ export function LogNewSessionModal({
               sx={{ width: 110 }}
             />
           </Box>
+          <TextField
+            label="Session notes / journal"
+            size="small"
+            multiline
+            minRows={2}
+            maxRows={5}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What went well? What to work on? Any leaks spotted?"
+            fullWidth
+          />
+          {onAddLeak && notes.trim() && (
+            <Box>
+              {!trackLeakOpen ? (
+                <Box
+                  component="span"
+                  onClick={() => setTrackLeakOpen(true)}
+                  sx={{ fontSize: '0.78rem', color: 'warning.main', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  → Track as leak
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={leakTitle}
+                    onChange={(e) => setLeakTitle(e.target.value)}
+                    placeholder="Leak title"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleTrackLeak(); } }}
+                  />
+                  <Button size="small" variant="outlined" onClick={() => void handleTrackLeak()} disabled={trackingSaving || !leakTitle.trim()} sx={{ whiteSpace: 'nowrap', minWidth: 60 }}>
+                    Add
+                  </Button>
+                  <Button size="small" onClick={() => setTrackLeakOpen(false)} sx={{ minWidth: 0, px: 0.5 }}>✕</Button>
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>

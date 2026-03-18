@@ -23,6 +23,7 @@ interface EndSessionModalProps {
   onEndSession: (payload: SessionResultCreate) => Promise<void>;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
+  onAddLeak?: (title: string) => Promise<void>;
 }
 
 function computeHoursBetween(startIso: string, endDate: Date): number {
@@ -54,6 +55,7 @@ export function EndSessionModal({
   onEndSession,
   onSuccess,
   onError,
+  onAddLeak,
 }: EndSessionModalProps) {
   const [endBankroll, setEndBankroll] = useState('');
   const [startBankroll, setStartBankroll] = useState('');
@@ -65,6 +67,10 @@ export function EndSessionModal({
   const [isHU, setIsHU] = useState(false);
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
   const [saving, setSaving] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [trackLeakOpen, setTrackLeakOpen] = useState(false);
+  const [leakTitle, setLeakTitle] = useState('');
+  const [trackingSaving, setTrackingSaving] = useState(false);
 
   const now = new Date();
   const startTimeIso = startTimeEditable.trim()
@@ -104,8 +110,29 @@ export function EndSessionModal({
       setIsRing(false);
       setIsHU(false);
       setGameType('NLHE');
+      setNotes('');
+      setTrackLeakOpen(false);
+      setLeakTitle('');
     }
   }, [open, lastEndBankroll]);
+
+  useEffect(() => {
+    if (trackLeakOpen) setLeakTitle(notes.trim());
+  }, [trackLeakOpen, notes]);
+
+  const handleTrackLeak = useCallback(async () => {
+    if (!leakTitle.trim() || !onAddLeak) return;
+    setTrackingSaving(true);
+    try {
+      await onAddLeak(leakTitle.trim());
+      setTrackLeakOpen(false);
+      setLeakTitle('');
+    } catch {
+      // error handled by parent
+    } finally {
+      setTrackingSaving(false);
+    }
+  }, [leakTitle, onAddLeak]);
 
   const handleSubmit = useCallback(async () => {
     if (endBankrollNum == null || Number.isNaN(endBankrollNum)) {
@@ -138,6 +165,7 @@ export function EndSessionModal({
         isRing: isRing || undefined,
         isHU: isHU || undefined,
         gameType,
+        notes: notes.trim() || null,
       };
       await onEndSession(payload);
       onSuccess(`Session ended. ${dailyNet != null ? (dailyNet >= 0 ? `+$${dailyNet.toFixed(2)}` : `−$${Math.abs(dailyNet).toFixed(2)}`) : ''}`);
@@ -162,6 +190,7 @@ export function EndSessionModal({
     gameType,
     endHandNum,
     rating,
+    notes,
     onEndSession,
     onSuccess,
     onError,
@@ -296,6 +325,45 @@ export function EndSessionModal({
               label="HU"
             />
           </Box>
+          <TextField
+            label="Session notes / journal"
+            size="small"
+            multiline
+            minRows={2}
+            maxRows={5}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={"What went well? What did you do poorly?\nWhat to focus on next session?"}
+            fullWidth
+          />
+          {onAddLeak && notes.trim() && (
+            <Box>
+              {!trackLeakOpen ? (
+                <Box
+                  component="span"
+                  onClick={() => setTrackLeakOpen(true)}
+                  sx={{ fontSize: '0.78rem', color: 'warning.main', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  → Track as leak
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={leakTitle}
+                    onChange={(e) => setLeakTitle(e.target.value)}
+                    placeholder="Leak title"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleTrackLeak(); } }}
+                  />
+                  <Button size="small" variant="outlined" onClick={() => void handleTrackLeak()} disabled={trackingSaving || !leakTitle.trim()} sx={{ whiteSpace: 'nowrap', minWidth: 60 }}>
+                    Add
+                  </Button>
+                  <Button size="small" onClick={() => setTrackLeakOpen(false)} sx={{ minWidth: 0, px: 0.5 }}>✕</Button>
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>

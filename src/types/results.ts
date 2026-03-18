@@ -22,6 +22,7 @@ export interface SessionResult {
   isHU: boolean | null;
   gameType: SessionGameType;
   rating: SessionRating | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +43,7 @@ export interface SessionResultCreate {
   isHU?: boolean | null;
   gameType?: SessionGameType;
   rating?: SessionRating | null;
+  notes?: string | null;
 }
 
 /** Row format for bulk upload (e.g. CSV: Date, total time, hands, Daily Net, Hands Start, Hands End, Account End) */
