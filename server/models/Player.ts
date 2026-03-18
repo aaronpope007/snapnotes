@@ -113,4 +113,8 @@ const playerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Indexes for the "My Recent" / touchedBy query (filters on nested array subdocuments)
+playerSchema.index({ 'notes.addedBy': 1 });
+playerSchema.index({ 'handHistories.comments.addedBy': 1 });
+
 export const Player = mongoose.model('Player', playerSchema);

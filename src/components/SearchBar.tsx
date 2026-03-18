@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -35,7 +35,10 @@ export function SearchBar({ players, onSelect, onNoMatchCreate }: SearchBarProps
     [onSelect, onNoMatchCreate]
   );
 
-  const filtered = filterPlayers(players, inputValue);
+  const filtered = useMemo(
+    () => filterPlayers(players, inputValue),
+    [players, inputValue]
+  );
 
   const selectPlayer = useCallback(
     (player: PlayerListItem) => {
@@ -77,7 +80,7 @@ export function SearchBar({ players, onSelect, onNoMatchCreate }: SearchBarProps
       autoHighlight
       size="small"
       forcePopupIcon={false}
-      filterOptions={(opts, { inputValue: q }) => filterPlayers(opts, q)}
+      filterOptions={() => filtered}
       renderInput={(params) => (
         <TextField
           {...params}

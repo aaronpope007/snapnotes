@@ -159,10 +159,10 @@ export default function App() {
     try { localStorage.setItem('snapnotes_my_recent', String(myRecent)); } catch { /* ignore */ }
   }, [myRecent]);
 
-  const showSuccess = (msg: string) =>
-    setSnackbar({ open: true, message: msg, severity: 'success' });
-  const showError = (msg: string) =>
-    setSnackbar({ open: true, message: msg, severity: 'error' });
+  const showSuccess = useCallback((msg: string) =>
+    setSnackbar({ open: true, message: msg, severity: 'success' }), []);
+  const showError = useCallback((msg: string) =>
+    setSnackbar({ open: true, message: msg, severity: 'error' }), []);
 
   const {
     confirmOpen: resetSessionConfirmOpen,
@@ -195,7 +195,7 @@ export default function App() {
     } finally {
       setStartingSession(false);
     }
-  }, [userName]);
+  }, [userName, showSuccess, showError]);
 
   const handleResetSession = useCallback(() => {
     clearActiveSession();
@@ -215,7 +215,7 @@ export default function App() {
     } finally {
       if (!opts?.silent) setLoading(false);
     }
-  }, []);
+  }, [showError]);
 
   const loadMyRecentPlayers = useCallback(async () => {
     if (!myRecent || !userName?.trim()) {
@@ -296,7 +296,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [loadPlayers]);
 
-  const handleSelectPlayer = async (p: PlayerListItem) => {
+  const handleSelectPlayer = useCallback(async (p: PlayerListItem) => {
     try {
       setShowHandsToReview(false);
       setShowLearning(false);
@@ -306,7 +306,7 @@ export default function App() {
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to load player'));
     }
-  };
+  }, [showError]);
 
   const handleAddHandFromTempNote = async (
     handText: string,
@@ -388,7 +388,7 @@ export default function App() {
     }
   };
 
-  const handleUpdatePlayer = async (id: string, updates: Partial<Player>) => {
+  const handleUpdatePlayer = useCallback(async (id: string, updates: Partial<Player>) => {
     try {
       const updated = await updatePlayer(id, updates, getAuthHeader());
       setPlayers((prev) =>
@@ -407,27 +407,27 @@ export default function App() {
             : p
         )
       );
-      if (selected?._id === id) setSelected(updated);
+      setSelected((prev) => (prev?._id === id ? updated : prev));
       showSuccess('Player updated');
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to update player'));
       throw new Error('Update failed');
     }
-  };
+  }, [getAuthHeader, showSuccess, showError]);
 
-  const handleDeletePlayer = async (id: string) => {
+  const handleDeletePlayer = useCallback(async (id: string) => {
     try {
       await deletePlayer(id);
       setPlayers((prev) => prev.filter((p) => p._id !== id));
-      if (selected?._id === id) setSelected(null);
+      setSelected((prev) => (prev?._id === id ? null : prev));
       showSuccess('Player deleted');
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to delete player'));
       throw new Error('Delete failed');
     }
-  };
+  }, [showSuccess, showError]);
 
-  const handleAddPlayer = async (player: PlayerCreate) => {
+  const handleAddPlayer = useCallback(async (player: PlayerCreate) => {
     try {
       const created = await createPlayer(player, getAuthHeader());
       setPlayers((prev) =>
@@ -444,9 +444,9 @@ export default function App() {
       showError(getApiErrorMessage(err, 'Failed to add player'));
       throw new Error('Add failed');
     }
-  };
+  }, [getAuthHeader, showSuccess, showError]);
 
-  const handleImport = async (toImport: ImportPlayer[]) => {
+  const handleImport = useCallback(async (toImport: ImportPlayer[]) => {
     try {
       const result = await importPlayers(toImport, getAuthHeader());
       await loadPlayers();
@@ -456,7 +456,7 @@ export default function App() {
       showError(getApiErrorMessage(err, 'Import failed'));
       throw new Error('Import failed');
     }
-  };
+  }, [getAuthHeader, loadPlayers, showSuccess, showError]);
 
   const handleExportBackup = async () => {
     try {
@@ -496,7 +496,7 @@ export default function App() {
     e.target.value = '';
   };
 
-  const handleConfirmRestore = async () => {
+  const handleConfirmRestore = useCallback(async () => {
     if (!restorePayload) return;
     setRestoreLoading(true);
     try {
@@ -511,7 +511,7 @@ export default function App() {
     } finally {
       setRestoreLoading(false);
     }
-  };
+  }, [restorePayload, loadPlayers, showSuccess, showError]);
 
   const handleRefresh = useCallback(async () => {
     await loadPlayers();
@@ -525,7 +525,7 @@ export default function App() {
     }
   }, [loadPlayers, selected]);
 
-  const handleMergeConfirm = async (targetId: string) => {
+  const handleMergeConfirm = useCallback(async (targetId: string) => {
     if (!selected) return;
     setMergeLoading(true);
     try {
@@ -539,9 +539,17 @@ export default function App() {
     } finally {
       setMergeLoading(false);
     }
-  };
+  }, [selected, loadPlayers, showSuccess, showError]);
 
-  const existingUsernames = new Set(players.map((p) => p.username.toLowerCase()));
+  const existingUsernames = useMemo(
+    () => new Set(players.map((p) => p.username.toLowerCase())),
+    [players]
+  );
+
+  const handleNoMatchCreate = useCallback((username: string) => {
+    setAddInitialUsername(username);
+    setAddOpen(true);
+  }, []);
 
   const recentPlayers = useMemo(() => {
     const source = myRecent ? myRecentPlayers : players;
@@ -673,10 +681,7 @@ export default function App() {
           <SearchBar
             players={players}
             onSelect={handleSelectPlayer}
-            onNoMatchCreate={(username) => {
-              setAddInitialUsername(username);
-              setAddOpen(true);
-            }}
+            onNoMatchCreate={handleNoMatchCreate}
             selectedId={selected?._id}
           />
         </Box>
@@ -1006,10 +1011,7 @@ export default function App() {
                   <SearchBar
                     players={players}
                     onSelect={handleSelectPlayer}
-                    onNoMatchCreate={(username) => {
-                      setAddInitialUsername(username);
-                      setAddOpen(true);
-                    }}
+                    onNoMatchCreate={handleNoMatchCreate}
                     selectedId={selected?._id}
                   />
                 </Box>
@@ -1211,10 +1213,7 @@ export default function App() {
                   <SearchBar
                     players={players}
                     onSelect={handleSelectPlayer}
-                    onNoMatchCreate={(username) => {
-                      setAddInitialUsername(username);
-                      setAddOpen(true);
-                    }}
+                    onNoMatchCreate={handleNoMatchCreate}
                     selectedId={selected?._id}
                   />
                 </Box>
