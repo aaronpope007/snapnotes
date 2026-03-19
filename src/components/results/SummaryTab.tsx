@@ -1181,7 +1181,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                         {barPeriodStats.wonCount}
                       </Box>{' '}
                       · {barChartMode === 'day' ? 'Days lost' : 'Sessions lost'}:{' '}
-                      <Box component="span" sx={{ color: 'error.main', fontWeight: 700 }}>
+                      <Box component="span" sx={{ color: '#f44336', fontWeight: 700 }}>
                         {barPeriodStats.lostCount}
                       </Box>
                     </>
