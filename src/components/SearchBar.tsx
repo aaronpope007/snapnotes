@@ -23,6 +23,12 @@ export function SearchBar({ players, onSelect, onNoMatchCreate, inputRef }: Sear
   const [inputValue, setInputValue] = useState('');
   const [highlightedOption, setHighlightedOption] = useState<PlayerListItem | null>(null);
 
+  const exactMatch = useMemo(() => {
+    const v = inputValue.trim().toLowerCase();
+    if (!v) return null;
+    return players.find((p) => p.username.toLowerCase() === v) ?? null;
+  }, [players, inputValue]);
+
   const handleChange = useCallback(
     (_: React.SyntheticEvent, value: PlayerListItem | string | null) => {
       if (typeof value === 'string') {
@@ -59,14 +65,34 @@ export function SearchBar({ players, onSelect, onNoMatchCreate, inputRef }: Sear
           selectPlayer(toSelect);
         }
       } else if (e.key === 'Enter') {
+        // When "freeSolo" is enabled, Enter should create unless the input is an exact match.
+        if (onNoMatchCreate) {
+          const v = inputValue.trim();
+          if (!v) return;
+          if (exactMatch) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectPlayer(exactMatch);
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          void onNoMatchCreate(v);
+          setInputValue('');
+          setHighlightedOption(null);
+          return;
+        }
+
+        // Default behavior when we aren't creating new players.
         const toSelect = highlightedOption ?? (filtered.length === 1 ? filtered[0] : null);
         if (toSelect) {
           e.preventDefault();
+          e.stopPropagation();
           selectPlayer(toSelect);
         }
       }
     },
-    [filtered, highlightedOption, selectPlayer]
+    [exactMatch, filtered, highlightedOption, inputValue, onNoMatchCreate, selectPlayer]
   );
 
   return (
