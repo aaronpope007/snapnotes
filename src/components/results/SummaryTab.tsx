@@ -1106,9 +1106,10 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                     <ReferenceLine
                       y={barChartPercentiles.p5}
                       stroke={p5Color}
-                      strokeDasharray="2 6"
-                      strokeOpacity={0.9}
-                      label={{ value: 'P5', position: 'right', fill: p5Color, fontSize: 10 }}
+                      strokeWidth={3}
+                      strokeDasharray="0"
+                      strokeOpacity={1}
+                      label={{ value: 'P5', position: 'right', fill: p5Color, fontSize: 12, fontWeight: 800 }}
                     />
                   )}
                   {barChartPercentiles.p50 != null && (
