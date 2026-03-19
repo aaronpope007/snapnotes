@@ -1133,9 +1133,11 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                     <ReferenceLine
                       y={barChartPercentiles.p95}
                       stroke={p95Color}
-                      strokeDasharray="2 6"
-                      strokeOpacity={0.9}
-                      label={{ value: 'P95', position: 'right', fill: p95Color, fontSize: 10 }}
+                      strokeWidth={3}
+                      // Solid/thicker line so P95 doesn't get lost on dense/negative charts
+                      strokeDasharray="0"
+                      strokeOpacity={1}
+                      label={{ value: 'P95', position: 'right', fill: p95Color, fontSize: 12, fontWeight: 800 }}
                     />
                   )}
                   <Bar
