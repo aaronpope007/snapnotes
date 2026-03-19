@@ -112,9 +112,9 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   // Percentile line colors:
   // P5 dark red, P25 very light red, P50 white, P75 very light green, P95 vibrant neon green
   const p5Color = '#8b0000';
-  const p25Color = '#ffd6d6';
+  const p25Color = '#f44336'; // same red as loss bars
   const p50Color = '#ffffff';
-  const p75Color = '#d6ffd6';
+  const p75Color = '#39ff14'; // same neon green as P95
   const p95Color = '#39ff14';
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
