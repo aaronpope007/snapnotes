@@ -432,6 +432,55 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       });
   }, [barFilteredSessions, sessionNets, barChartMode]);
 
+  const barPeriodStats = useMemo(() => {
+    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const periodNet = barFilteredSessions.reduce((sum, s) => sum + net(s), 0);
+
+    let wonCount = 0;
+    let lostCount = 0;
+
+    if (barChartMode === 'session') {
+      for (const s of barFilteredSessions) {
+        const n = net(s);
+        if (n >= 0) wonCount++;
+        else lostCount++;
+      }
+    } else {
+      const byDay = new Map<string, number>();
+      for (const s of barFilteredSessions) {
+        const d = new Date(s.date);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        byDay.set(dateKey, (byDay.get(dateKey) ?? 0) + net(s));
+      }
+      for (const [, dayNet] of byDay.entries()) {
+        if (dayNet >= 0) wonCount++;
+        else lostCount++;
+      }
+    }
+
+    const periodLabel =
+      barRangePreset === 'all'
+        ? 'All time'
+        : barRangePreset === 'year'
+          ? 'This year'
+          : barRangePreset === 'month'
+            ? 'This month'
+            : barRangePreset === 'today'
+              ? 'Today'
+              : `Custom (${barCustomStart}–${barCustomEnd})`;
+
+    return { periodNet, wonCount, lostCount, periodLabel };
+  }, [
+    barFilteredSessions,
+    sessionNets,
+    barChartMode,
+    barRangePreset,
+    barCustomStart,
+    barCustomEnd,
+  ]);
+
+  const showWonLostCounts = !(barRangePreset === 'today' && barChartMode === 'day');
+
   const barChartPercentiles = useMemo(() => {
     const values =
       barChartValueMode === 'net'
@@ -1100,10 +1149,38 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 </BarChart>
               </ResponsiveContainer>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              {barChartMode === 'day' ? 'Per calendar day' : 'Per session'}
-              {barChartValueMode === 'net' ? ' · Net $' : ' · $/hand'} (chronological)
-            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                mt: 0.5,
+                gap: 1,
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                {barChartMode === 'day' ? 'Per calendar day' : 'Per session'}
+                {barChartValueMode === 'net' ? ' · Net $' : ' · $/hand'} (chronological)
+              </Typography>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: barPeriodStats.periodNet >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}
+                >
+                  {barPeriodStats.periodLabel} net: {barPeriodStats.periodNet >= 0 ? '+' : '−'}${Math.abs(barPeriodStats.periodNet).toFixed(2)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {showWonLostCounts ? (
+                    <>
+                      {barChartMode === 'day' ? 'Days won' : 'Sessions won'}: {barPeriodStats.wonCount} ·{' '}
+                      {barChartMode === 'day' ? 'Days lost' : 'Sessions lost'}: {barPeriodStats.lostCount}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </Typography>
+              </Box>
+            </Box>
             {(barChartPercentiles.p5 != null || barChartPercentiles.p25 != null || barChartPercentiles.p50 != null || barChartPercentiles.p75 != null || barChartPercentiles.p95 != null) && (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mt: 0.5 }}>
                 {barChartPercentiles.p5 != null && (
