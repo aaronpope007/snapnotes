@@ -1176,8 +1176,14 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 <Typography variant="caption" color="text.secondary" display="block">
                   {showWonLostCounts ? (
                     <>
-                      {barChartMode === 'day' ? 'Days won' : 'Sessions won'}: {barPeriodStats.wonCount} ·{' '}
-                      {barChartMode === 'day' ? 'Days lost' : 'Sessions lost'}: {barPeriodStats.lostCount}
+                      {barChartMode === 'day' ? 'Days won' : 'Sessions won'}:{' '}
+                      <Box component="span" sx={{ color: 'success.main', fontWeight: 700 }}>
+                        {barPeriodStats.wonCount}
+                      </Box>{' '}
+                      · {barChartMode === 'day' ? 'Days lost' : 'Sessions lost'}:{' '}
+                      <Box component="span" sx={{ color: 'error.main', fontWeight: 700 }}>
+                        {barPeriodStats.lostCount}
+                      </Box>
                     </>
                   ) : (
                     '—'
