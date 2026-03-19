@@ -109,9 +109,13 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
   const axisStroke = darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)';
   const gridStroke = darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-  const percentileExtremeColor = '#ef9a9a'; // light red
-  const percentileMidColor = '#a5d6a7'; // light green
-  const percentileMedianColor = '#ffffff';
+  // Percentile line colors:
+  // P5 dark red, P25 very light red, P50 white, P75 very light green, P95 vibrant neon green
+  const p5Color = '#8b0000';
+  const p25Color = '#ffd6d6';
+  const p50Color = '#ffffff';
+  const p75Color = '#d6ffd6';
+  const p95Color = '#39ff14';
   const [interval, setInterval] = useState<ChartInterval>({ perHand: 5000 });
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [barChartMode, setBarChartMode] = useState<'day' | 'session'>('day');
@@ -1092,46 +1096,46 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                   {barChartPercentiles.p25 != null && (
                     <ReferenceLine
                       y={barChartPercentiles.p25}
-                      stroke={percentileMidColor}
+                      stroke={p25Color}
                       strokeDasharray="4 4"
                       strokeOpacity={0.55}
-                      label={{ value: 'P25', position: 'right', fill: percentileMidColor, fontSize: 10 }}
+                      label={{ value: 'P25', position: 'right', fill: p25Color, fontSize: 10 }}
                     />
                   )}
                   {barChartPercentiles.p5 != null && (
                     <ReferenceLine
                       y={barChartPercentiles.p5}
-                      stroke={percentileExtremeColor}
+                      stroke={p5Color}
                       strokeDasharray="2 6"
                       strokeOpacity={0.9}
-                      label={{ value: 'P5', position: 'right', fill: percentileExtremeColor, fontSize: 10 }}
+                      label={{ value: 'P5', position: 'right', fill: p5Color, fontSize: 10 }}
                     />
                   )}
                   {barChartPercentiles.p50 != null && (
                     <ReferenceLine
                       y={barChartPercentiles.p50}
-                      stroke={percentileMedianColor}
+                      stroke={p50Color}
                       strokeDasharray="6 4"
                       strokeOpacity={0.8}
-                      label={{ value: 'P50', position: 'right', fill: percentileMedianColor, fontSize: 10 }}
+                      label={{ value: 'P50', position: 'right', fill: p50Color, fontSize: 10 }}
                     />
                   )}
                   {barChartPercentiles.p75 != null && (
                     <ReferenceLine
                       y={barChartPercentiles.p75}
-                      stroke={percentileMidColor}
+                      stroke={p75Color}
                       strokeDasharray="4 4"
                       strokeOpacity={0.55}
-                      label={{ value: 'P75', position: 'right', fill: percentileMidColor, fontSize: 10 }}
+                      label={{ value: 'P75', position: 'right', fill: p75Color, fontSize: 10 }}
                     />
                   )}
                   {barChartPercentiles.p95 != null && (
                     <ReferenceLine
                       y={barChartPercentiles.p95}
-                      stroke={percentileExtremeColor}
+                      stroke={p95Color}
                       strokeDasharray="2 6"
                       strokeOpacity={0.9}
-                      label={{ value: 'P95', position: 'right', fill: percentileExtremeColor, fontSize: 10 }}
+                      label={{ value: 'P95', position: 'right', fill: p95Color, fontSize: 10 }}
                     />
                   )}
                   <Bar
@@ -1184,41 +1188,41 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
             {(barChartPercentiles.p5 != null || barChartPercentiles.p25 != null || barChartPercentiles.p50 != null || barChartPercentiles.p75 != null || barChartPercentiles.p95 != null) && (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mt: 0.5 }}>
                 {barChartPercentiles.p5 != null && (
-                  <Typography variant="caption" sx={{ color: percentileExtremeColor }}>
+                  <Typography variant="caption" sx={{ color: p5Color }}>
                     P5{' '}
-                    <Typography component="span" sx={{ color: percentileExtremeColor, fontWeight: 700 }}>
+                    <Typography component="span" sx={{ color: p5Color, fontWeight: 700 }}>
                       {formatBarValue(barChartPercentiles.p5)}
                     </Typography>
                   </Typography>
                 )}
                 {barChartPercentiles.p25 != null && (
-                  <Typography variant="caption" sx={{ color: percentileMidColor }}>
+                  <Typography variant="caption" sx={{ color: p25Color }}>
                     P25{' '}
-                    <Typography component="span" sx={{ color: percentileMidColor, fontWeight: 700 }}>
+                    <Typography component="span" sx={{ color: p25Color, fontWeight: 700 }}>
                       {formatBarValue(barChartPercentiles.p25)}
                     </Typography>
                   </Typography>
                 )}
                 {barChartPercentiles.p50 != null && (
-                  <Typography variant="caption" sx={{ color: percentileMedianColor }}>
+                  <Typography variant="caption" sx={{ color: p50Color }}>
                     P50{' '}
-                    <Typography component="span" sx={{ color: percentileMedianColor, fontWeight: 800 }}>
+                    <Typography component="span" sx={{ color: p50Color, fontWeight: 800 }}>
                       {formatBarValue(barChartPercentiles.p50)}
                     </Typography>
                   </Typography>
                 )}
                 {barChartPercentiles.p75 != null && (
-                  <Typography variant="caption" sx={{ color: percentileMidColor }}>
+                  <Typography variant="caption" sx={{ color: p75Color }}>
                     P75{' '}
-                    <Typography component="span" sx={{ color: percentileMidColor, fontWeight: 700 }}>
+                    <Typography component="span" sx={{ color: p75Color, fontWeight: 700 }}>
                       {formatBarValue(barChartPercentiles.p75)}
                     </Typography>
                   </Typography>
                 )}
                 {barChartPercentiles.p95 != null && (
-                  <Typography variant="caption" sx={{ color: percentileExtremeColor }}>
+                  <Typography variant="caption" sx={{ color: p95Color }}>
                     P95{' '}
-                    <Typography component="span" sx={{ color: percentileExtremeColor, fontWeight: 700 }}>
+                    <Typography component="span" sx={{ color: p95Color, fontWeight: 700 }}>
                       {formatBarValue(barChartPercentiles.p95)}
                     </Typography>
                   </Typography>
