@@ -25,7 +25,7 @@ export const PLAYER_TYPE_CONFIG: Record<
     description: 'The ultimate target. Look for ways to isolate them.',
   },
   calling_station: {
-    label: 'Calling Station',
+    label: 'Passive',
     color: '#38bdf8',
     description: "Don't bluff, just value bet. Passive/loose.",
   },

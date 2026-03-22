@@ -3,7 +3,7 @@ import type { ParsedImportPlayer } from '../types';
 
 const PLAYER_TYPE_HINTS: Array<{ keywords: string[]; key: PlayerTypeKey }> = [
   { keywords: ['hu whale', 'whale'], key: 'whale' },
-  { keywords: ['hu fish', 'calling station', 'passive fish'], key: 'calling_station' },
+  { keywords: ['hu fish', 'calling station', 'passive fish', 'passive'], key: 'calling_station' },
   { keywords: ['nit', 'rock'], key: 'nit' },
   { keywords: ['maniac'], key: 'maniac' },
   { keywords: ['fish'], key: 'unknown' },

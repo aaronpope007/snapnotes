@@ -9,7 +9,7 @@ interface StakeNote {
 
 const PLAYER_TYPE_HINTS: Array<{ keywords: string[]; key: PlayerTypeKey }> = [
   { keywords: ['whale'], key: 'whale' },
-  { keywords: ['calling station', 'passive fish'], key: 'calling_station' },
+  { keywords: ['calling station', 'passive fish', 'passive'], key: 'calling_station' },
   { keywords: ['nit', 'rock'], key: 'nit' },
   { keywords: ['maniac'], key: 'maniac' },
   { keywords: ['weak tight', 'weak-tight'], key: 'weak_tight_reg' },
