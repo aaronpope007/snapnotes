@@ -239,7 +239,9 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
                 addedAt: new Date().toISOString(),
               },
             ]
-          : undefined;
+          : userName
+            ? [{ text: '', addedBy: userName, addedAt: new Date().toISOString() }]
+            : undefined;
       await onSubmit({
         username: trimmed,
         playerType,

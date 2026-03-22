@@ -467,6 +467,15 @@ export default function App() {
       setShowLearning(false);
       setShowResults(false);
       setSelected(created);
+      setRecentlyViewedIds((prev) => {
+        const next = [created._id, ...prev.filter((id) => id !== created._id)].slice(0, 30);
+        try {
+          localStorage.setItem('snapnotes_recently_viewed_ids', JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
       showSuccess('Player added');
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to add player'));
