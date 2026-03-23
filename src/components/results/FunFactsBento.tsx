@@ -216,7 +216,8 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             </Box>
             {insights.topDownswings.map((r, i) => (
               <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
-                {formatDownswing(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}{r.dateEnded ? ` · ended ${formatDateForDisplay(r.dateEnded)}` : ''}
+                {formatDownswing(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}
+                {r.ongoing ? ' · current' : r.dateEnded ? ` · ended ${formatDateForDisplay(r.dateEnded)}` : ''}
               </Typography>
             ))}
           </Paper>

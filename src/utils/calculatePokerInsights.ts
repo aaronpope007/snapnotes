@@ -15,8 +15,8 @@ export interface PokerInsights {
   topBreakevenStretches: { hands: number; days: number; dateEnded: string }[];
   /** Current breakeven stretch (when below peak), null if not in one */
   currentBreakevenStretch: { hands: number; days: number } | null;
-  /** Top 3 biggest downswings (by dollar amount) */
-  topDownswings: { amount: number; hands: number; dateEnded: string }[];
+  /** Top 3 biggest downswings (by dollar amount). `ongoing` when still below peak (no recovery yet). */
+  topDownswings: { amount: number; hands: number; dateEnded: string; ongoing?: boolean }[];
   /** Top 3 biggest upswings (by dollar amount) */
   topUpswings: { amount: number; hands: number; dateEnded: string }[];
   /** Biggest upswing from valley to peak */
@@ -324,7 +324,7 @@ export function calculatePokerInsights(
       biggestDownswingHands = downswingHands;
     }
     const lastDate = sorted[sorted.length - 1].date;
-    allDownswings.push({ amount: drop, hands: downswingHands, dateEnded: lastDate });
+    allDownswings.push({ amount: drop, hands: downswingHands, dateEnded: lastDate, ongoing: true });
     const rise = cumulativeNet - downswingValley;
     const upswingHands = cumulativeHands - valleyCumHands;
     allUpswings.push({ amount: rise, hands: upswingHands, dateEnded: lastDate });
