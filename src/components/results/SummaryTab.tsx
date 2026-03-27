@@ -1352,18 +1352,46 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 />
               )}
               <Tooltip
-                formatter={(value: number | undefined, name: string) => {
-                  if (name === 'cumulativeHands') return [formatHandsAxisLabel(Number(value ?? 0)), 'Hands'];
-                  if (name === 'movingAvg') return [chartMode === 'perHand' ? `$${Number(value ?? 0).toFixed(2)}/hand` : `$${Number(value ?? 0).toFixed(2)}`, '5-pt avg'];
-                  return chartMode === 'perHand'
-                    ? [`$${Number(value ?? 0).toFixed(2)}/hand`, '$/hand']
-                    : [`$${Number(value ?? 0).toFixed(2)}`, 'Bankroll'];
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const point = payload[0]?.payload as { cumulativeHands?: number; value?: number; profitPerHand?: number; movingAvg?: number } | undefined;
+                  const hands = point?.cumulativeHands ?? 0;
+                  const mainVal =
+                    chartMode === 'perHand' ? (point?.profitPerHand ?? 0) : (point?.value ?? 0);
+                  const movingAvg = point?.movingAvg;
+                  const formattedMain =
+                    chartMode === 'perHand'
+                      ? `$${Number(mainVal).toFixed(2)}/hand`
+                      : `$${Number(mainVal).toFixed(2)}`;
+                  const formattedMa =
+                    movingAvg != null
+                      ? (chartMode === 'perHand'
+                          ? `$${Number(movingAvg).toFixed(2)}/hand`
+                          : `$${Number(movingAvg).toFixed(2)}`)
+                      : null;
+                  const title =
+                    chartXAxisConfig && typeof label === 'number'
+                      ? formatHandsAxisLabel(label)
+                      : String(label ?? '');
+                  return (
+                    <Paper elevation={3} sx={{ px: 1.5, py: 1, minWidth: 160 }}>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {chartMode === 'perHand' ? '$/hand' : 'Bankroll'}: {formattedMain}
+                      </Typography>
+                      {formattedMa && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          5-pt avg: {formattedMa}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Hands: {Number(hands).toLocaleString()}
+                      </Typography>
+                    </Paper>
+                  );
                 }}
-                labelFormatter={(label) =>
-                  chartXAxisConfig && typeof label === 'number'
-                    ? formatHandsAxisLabel(label)
-                    : String(label)
-                }
               />
               <Line
                 yAxisId={0}
