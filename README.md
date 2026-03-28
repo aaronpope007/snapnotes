@@ -35,7 +35,7 @@ A compact poker player notes app. Designed to be narrow (~400px wide) and used a
    Edit `server/.env`:
 
    - `MONGODB_URI` — your MongoDB connection string
-   - `PORT` — optional, defaults to 5000
+   - `PORT` — optional, defaults to 5001
 
 3. **Run**
 
