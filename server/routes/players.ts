@@ -380,8 +380,15 @@ router.post('/', async (req: Request, res: Response) => {
     const player = new Player(body);
     await player.save();
     res.status(201).json(player);
-  } catch (err) {
-    res.status(400).json({ error: 'Failed to create player' });
+  } catch (err: unknown) {
+    console.error('Create player error:', err);
+    const code = err && typeof err === 'object' && 'code' in err ? (err as { code?: number }).code : undefined;
+    if (code === 11000) {
+      res.status(409).json({ error: 'A player with this username already exists.' });
+      return;
+    }
+    const msg = err instanceof Error ? err.message : 'Failed to create player';
+    res.status(400).json({ error: msg });
   }
 });
 
