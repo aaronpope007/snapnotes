@@ -522,6 +522,15 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     });
   }, [chartData, chartMode]);
 
+  const bankrollIndexByHands = useMemo(() => {
+    const m = new Map<number, number>();
+    for (let i = 0; i < movingAvgData.length; i++) {
+      const h = Number(movingAvgData[i].cumulativeHands ?? NaN);
+      if (!Number.isNaN(h)) m.set(h, i);
+    }
+    return m;
+  }, [movingAvgData]);
+
   // Session length vs result scatter data
   type ScatterPoint = { hours: number; net: number; pph: number; hands: number };
   const scatterData = useMemo((): ScatterPoint[] => {
@@ -1356,6 +1365,18 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                   if (!active || !payload?.length) return null;
                   const point = payload[0]?.payload as { cumulativeHands?: number; value?: number; profitPerHand?: number; movingAvg?: number } | undefined;
                   const hands = point?.cumulativeHands ?? 0;
+                  const idx = bankrollIndexByHands.get(Number(hands)) ?? null;
+                  const prevPoint = idx != null && idx > 0 ? movingAvgData[idx - 1] : null;
+                  const prevValue = prevPoint?.value ?? null;
+                  const prevHands = prevPoint?.cumulativeHands ?? null;
+                  const currentValue = point?.value ?? null;
+                  const deltaNet =
+                    currentValue != null && prevValue != null ? currentValue - prevValue : null;
+                  const deltaHands =
+                    hands != null && prevHands != null ? Number(hands) - Number(prevHands) : null;
+                  const segmentPerHand =
+                    deltaNet != null && deltaHands != null && deltaHands > 0 ? deltaNet / deltaHands : null;
+
                   const mainVal =
                     chartMode === 'perHand' ? (point?.profitPerHand ?? 0) : (point?.value ?? 0);
                   const movingAvg = point?.movingAvg;
@@ -1386,6 +1407,17 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                           5-pt avg: {formattedMa}
                         </Typography>
                       )}
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        sx={{ color: deltaNet != null ? (deltaNet >= 0 ? 'success.main' : 'error.main') : 'text.secondary' }}
+                      >
+                        Δ vs prev: {deltaNet != null ? `${deltaNet >= 0 ? '+' : '−'}$${Math.abs(deltaNet).toFixed(2)}` : '—'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Segment: {segmentPerHand != null ? `$${segmentPerHand.toFixed(3)}/hand` : '—'}
+                        {deltaHands != null && deltaHands > 0 ? ` · ${Math.round(deltaHands).toLocaleString()} hands` : ''}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary" display="block">
                         Hands: {Number(hands).toLocaleString()}
                       </Typography>
