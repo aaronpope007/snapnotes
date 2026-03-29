@@ -10,8 +10,10 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Typography from '@mui/material/Typography';
 import type { SessionResult, SessionResultCreate, SessionRating } from '../../types/results';
 import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
+import { pauseOverlapMsWithinWindow, sumPauseIntervalsDurationMs } from '../../utils/sessionPause';
 
 interface EditSessionModalProps {
   open: boolean;
@@ -96,8 +98,19 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
     const endMins = eh * 60 + em;
     const diffMins = endMins - startMins;
     if (diffMins < 0) return NaN; // end before start
-    return Math.round((diffMins / 60) * 100) / 100; // 2 decimal places
-  }, [startTime, endTime]);
+    let wallHours = diffMins / 60;
+    const intervals = session?.pauseIntervals;
+    const d = date.trim();
+    if (intervals?.length && d) {
+      const ws = new Date(`${d}T${startTime.trim()}:00`);
+      const we = new Date(`${d}T${endTime.trim()}:00`);
+      if (!Number.isNaN(ws.getTime()) && !Number.isNaN(we.getTime()) && we > ws) {
+        const overlapMs = pauseOverlapMsWithinWindow(ws, we, intervals);
+        wallHours -= overlapMs / (1000 * 60 * 60);
+      }
+    }
+    return Math.round(wallHours * 100) / 100;
+  }, [startTime, endTime, date, session?.pauseIntervals]);
 
   const handleSubmit = async () => {
     if (!session) return;
@@ -175,6 +188,13 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
             inputProps={{ step: 60 }}
             fullWidth
           />
+          {session?.pauseIntervals && session.pauseIntervals.length > 0 && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              Logged breaks: {session.pauseIntervals.length} (
+              {Math.max(0, Math.round(sumPauseIntervalsDurationMs(session.pauseIntervals) / (1000 * 60)))} min total).
+              Derived time (hrs) is wall clock between start/end minus overlap with those breaks.
+            </Typography>
+          )}
           <TextField
             label="Hands start"
             type="number"

@@ -207,7 +207,6 @@ export function NotesSection({
   const compact = useCompactMode();
   const [expanded, setExpanded] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
 
   const {
     confirmOpen: deleteNoteConfirmOpen,

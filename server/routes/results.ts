@@ -44,6 +44,25 @@ function parseDate(val: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Optional pause intervals; invalid entries skipped. Omits field when empty for backwards compatibility. */
+function parsePauseIntervals(raw: unknown): Array<{ start: Date; end: Date }> | undefined {
+  if (raw == null) return undefined;
+  if (!Array.isArray(raw)) return undefined;
+  const out: Array<{ start: Date; end: Date }> = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const startVal = (item as { start?: unknown }).start;
+    const endVal = (item as { end?: unknown }).end;
+    if (typeof startVal !== 'string' && typeof startVal !== 'number' && !(startVal instanceof Date)) continue;
+    if (typeof endVal !== 'string' && typeof endVal !== 'number' && !(endVal instanceof Date)) continue;
+    const start = new Date(startVal as string | number | Date);
+    const end = new Date(endVal as string | number | Date);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) continue;
+    out.push({ start, end });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 // GET /api/results?userId=...
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -79,6 +98,7 @@ router.post('/', async (req: Request, res: Response) => {
       gameType?: 'NLHE' | 'PLO';
       rating?: 'A' | 'B' | 'C' | 'D' | 'F' | null;
       notes?: string | null;
+      pauseIntervals?: unknown;
     };
     const userId = body.userId?.trim() || getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId required' });
@@ -93,6 +113,8 @@ router.post('/', async (req: Request, res: Response) => {
       hands = handsEndedAt - handsStartedAt;
     }
 
+    const pauseIntervals = parsePauseIntervals(body.pauseIntervals);
+
     const session = new SessionResult({
       userId,
       date: dateVal,
@@ -105,6 +127,7 @@ router.post('/', async (req: Request, res: Response) => {
       endBankroll: body.endBankroll ?? null,
       startTime: body.startTime ? new Date(body.startTime) : null,
       endTime: body.endTime ? new Date(body.endTime) : null,
+      ...(pauseIntervals != null ? { pauseIntervals } : {}),
       stake: body.stake ?? null,
       isRing: body.isRing ?? null,
       isHU: body.isHU ?? null,
@@ -237,6 +260,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       gameType?: 'NLHE' | 'PLO';
       rating?: 'A' | 'B' | 'C' | 'D' | 'F' | null;
       notes?: string | null;
+      pauseIntervals?: unknown;
     };
     if (body.date !== undefined) {
       const d = parseDate(body.date);
@@ -261,6 +285,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
       session.rating = body.rating && ['A', 'B', 'C', 'D', 'F'].includes(body.rating) ? body.rating : null;
     }
     if (body.notes !== undefined) session.notes = body.notes;
+    if (body.pauseIntervals !== undefined) {
+      const parsed = parsePauseIntervals(body.pauseIntervals);
+      session.pauseIntervals = parsed ?? [];
+    }
     await session.save();
     res.json(session);
   } catch (err) {

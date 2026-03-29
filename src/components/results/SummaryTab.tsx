@@ -45,6 +45,7 @@ import {
   getSessionNetsMap,
 } from '../../utils/sessionUtils';
 import { SessionDurationLabel } from '../SessionDurationLabel';
+import type { ActiveSession } from '../../utils/activeSession';
 import { FunFactsBento } from './FunFactsBento';
 
 export type ChartInterval =
@@ -100,10 +101,10 @@ interface SummaryTabProps {
   withdrawals?: Withdrawal[];
   loading: boolean;
   hasActiveSession?: boolean;
-  activeSessionStartTime?: string | null;
+  activeSessionForLabel?: ActiveSession | null;
 }
 
-export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSession, activeSessionStartTime }: SummaryTabProps) {
+export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSession, activeSessionForLabel }: SummaryTabProps) {
   const compact = useCompactMode();
   const darkMode = useDarkMode();
   const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
@@ -120,7 +121,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const [chartMode, setChartMode] = useState<'bankroll' | 'perHand'>('bankroll');
   const [barChartMode, setBarChartMode] = useState<'day' | 'session'>('day');
   const [barChartValueMode, setBarChartValueMode] = useState<'net' | 'perHand'>('net');
-  const [barRangePreset, setBarRangePreset] = useState<'all' | 'year' | 'month' | 'today' | 'custom'>('all');
+  const [barRangePreset, setBarRangePreset] = useState<'all' | 'year' | 'month' | 'week' | 'today' | 'custom'>('all');
   const [showHandsOverlay, setShowHandsOverlay] = useState(false);
   const [stakeChartMode, setStakeChartMode] = useState<'net' | 'perHand'>('net');
   const [scatterMode, setScatterMode] = useState<'net' | 'perHand'>('net');
@@ -133,7 +134,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   });
   const [barCustomEnd, setBarCustomEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [rangePreset, setRangePreset] = useState<'all' | 'year' | 'month' | 'today' | 'custom'>('all');
+  const [rangePreset, setRangePreset] = useState<'all' | 'year' | 'month' | 'week' | 'today' | 'custom'>('all');
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
@@ -370,6 +371,14 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       if (barRangePreset === 'year') return d.getFullYear() === now.getFullYear();
       if (barRangePreset === 'month')
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      if (barRangePreset === 'week') {
+        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekStart = new Date(day);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const sessionDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return sessionDay >= weekStart && sessionDay <= todayDay;
+      }
       if (barRangePreset === 'today') {
         return (
           d.getFullYear() === now.getFullYear() &&
@@ -469,9 +478,11 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           ? 'This year'
           : barRangePreset === 'month'
             ? 'This month'
-            : barRangePreset === 'today'
-              ? 'Today'
-              : `Custom (${barCustomStart}–${barCustomEnd})`;
+            : barRangePreset === 'week'
+              ? 'This week'
+              : barRangePreset === 'today'
+                ? 'Today'
+                : `Custom (${barCustomStart}–${barCustomEnd})`;
 
     return { periodNet, wonCount, lostCount, periodLabel };
   }, [
@@ -610,9 +621,9 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {hasActiveSession && activeSessionStartTime && (
+      {hasActiveSession && activeSessionForLabel && (
         <Alert severity="error" sx={{ fontWeight: 600 }}>
-          <SessionDurationLabel startTime={activeSessionStartTime} />
+          <SessionDurationLabel activeSession={activeSessionForLabel} />
         </Alert>
       )}
       <Accordion variant="outlined" defaultExpanded sx={{ '&:before': { display: 'none' } }}>
@@ -791,6 +802,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                   <ToggleButton value="all">All time</ToggleButton>
                   <ToggleButton value="year">This year</ToggleButton>
                   <ToggleButton value="month">This month</ToggleButton>
+                  <ToggleButton value="week">This week</ToggleButton>
                   <ToggleButton value="today">Today</ToggleButton>
                   <ToggleButton value="custom">Custom</ToggleButton>
                 </ToggleButtonGroup>
@@ -998,6 +1010,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
                 <ToggleButton value="all">All time</ToggleButton>
                 <ToggleButton value="year">This year</ToggleButton>
                 <ToggleButton value="month">This month</ToggleButton>
+                <ToggleButton value="week">This week</ToggleButton>
                 <ToggleButton value="today">Today</ToggleButton>
                 <ToggleButton value="custom">Custom</ToggleButton>
               </ToggleButtonGroup>

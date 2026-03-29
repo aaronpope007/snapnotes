@@ -12,13 +12,15 @@ import { AddOrUploadTab } from '../components/results/AddOrUploadTab';
 import { SummaryTab } from '../components/results/SummaryTab';
 import { WithdrawalsTab } from '../components/results/WithdrawalsTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import type { ActiveSession } from '../utils/activeSession';
 
 interface ResultsPageProps {
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
   onActiveSessionChange?: () => void;
   hasActiveSession?: boolean;
-  activeSessionStartTime?: string | null;
+  /** When set, summary can show playing-time duration (excludes breaks). */
+  activeSessionForLabel?: ActiveSession | null;
   resetSessionTrigger?: number;
   requestOpenEndSessionModal?: boolean;
   onClearRequestOpenEndSessionModal?: () => void;
@@ -26,7 +28,7 @@ interface ResultsPageProps {
   onClearRequestOpenEditSessionModal?: () => void;
 }
 
-export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActiveSession, activeSessionStartTime, resetSessionTrigger, requestOpenEndSessionModal, onClearRequestOpenEndSessionModal, requestOpenEditSessionModal, onClearRequestOpenEditSessionModal }: ResultsPageProps) {
+export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActiveSession, activeSessionForLabel, resetSessionTrigger, requestOpenEndSessionModal, onClearRequestOpenEndSessionModal, requestOpenEditSessionModal, onClearRequestOpenEditSessionModal }: ResultsPageProps) {
   const userName = useUserName();
   const [view, setView] = useState<ResultsViewValue>('summary');
   const [activeTab, setActiveTab] = useState<ResultsTabValue>('sessions');
@@ -221,7 +223,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
                 withdrawals={withdrawals}
                 loading={loading}
                 hasActiveSession={hasActiveSession}
-                activeSessionStartTime={activeSessionStartTime}
+                activeSessionForLabel={activeSessionForLabel}
               />
             </ErrorBoundary>
           ) : activeTab === 'withdrawals' ? (

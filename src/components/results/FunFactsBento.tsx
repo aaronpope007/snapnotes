@@ -123,6 +123,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           <ToggleButton value="all">All time</ToggleButton>
           <ToggleButton value="year">This year</ToggleButton>
           <ToggleButton value="month">This month</ToggleButton>
+          <ToggleButton value="week">This week</ToggleButton>
           <ToggleButton value="today">Today</ToggleButton>
         </ToggleButtonGroup>
         <ToggleButtonGroup
@@ -293,27 +294,6 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
             accent="error"
           />
         )}
-        {insights.bestTimeOfDay && (
-          <InsightCard
-            icon={<WbSunnyIcon sx={{ fontSize: 20 }} />}
-            label="Best time of day (by $/hand)"
-            value={`${insights.bestTimeOfDay}: ${formatDollar(insights.bestTimeOfDayProfitPerHand)}/hand`}
-            accent="success"
-          />
-        )}
-        {insights.bestTimeOfDayByHourly && (
-          <InsightCard
-            icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}
-            label="Highest $/hr time"
-            value={
-              (() => {
-                const r = insights.byTimeOfDay.find((x) => x.label === insights.bestTimeOfDayByHourly);
-                const handsHr = r ? `${Math.round(r.handsPerHour).toLocaleString()} hands/hr` : '';
-                return `${insights.bestTimeOfDayByHourly}: ${formatPerHr(insights.bestTimeOfDayProfitPerHour)}${handsHr ? ` (${handsHr})` : ''}`;
-              })()
-            }
-          />
-        )}
         {insights.byTimeOfDay.length > 0 && (
           <Paper
             variant="outlined"
@@ -326,22 +306,27 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Box sx={{ color: 'text.secondary' }}>
-                <AccessTimeIcon sx={{ fontSize: 20 }} />
+                <WbSunnyIcon sx={{ fontSize: 20 }} />
               </Box>
               <Typography variant="caption" color="text.secondary">
-                $/hand & $/hr by time of day
+                Time of day (best → worst by session $/hr). 4-tabling = $/hand×240.
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              {insights.byTimeOfDay
+              {[...insights.byTimeOfDay]
                 .filter((r) => r.hours > 0)
-                .map((r) => {
-                  const isPositive = r.profitPerHand >= 0;
+                .sort((a, b) => {
+                  const d = b.profitPerHour - a.profitPerHour;
+                  return d !== 0 ? d : a.label.localeCompare(b.label);
+                })
+                .map((r, idx) => {
+                  const isPositive = r.profitPerHour >= 0;
                   const handsStr =
                     r.hands >= 100_000
                       ? `${Math.round(r.hands / 1000)}k`
                       : r.hands.toLocaleString();
                   const volumeStr = `${handsStr} hands, ${r.hours.toFixed(1)} hrs`;
+                  const fourTabHr = r.profitPerHand * 240;
                   return (
                     <Box
                       key={r.label}
@@ -354,7 +339,7 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
                       }}
                     >
                       <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                        {r.label}
+                        {idx + 1}. {r.label}
                       </Typography>
                       <Box sx={{ textAlign: 'right' }}>
                         <Typography
@@ -364,9 +349,11 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
                             color: isPositive ? 'success.main' : 'error.main',
                           }}
                         >
-                          {formatDollar(r.profitPerHand)}/hand · {formatPerHr(r.profitPerHour)}
+                          {formatPerHr(r.profitPerHour)} session · {formatPerHr(fourTabHr)} 4-tab
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
+                          {formatDollar(r.profitPerHand)}/hand · {Math.round(r.handsPerHour).toLocaleString()} hands/hr
+                          {' · '}
                           {volumeStr}
                           {r.sessionCount > 0 && ` · Win ${r.winRatePercentage.toFixed(0)}%`}
                         </Typography>
@@ -595,7 +582,11 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           <InsightCard
             icon={<AccessTimeIcon sx={{ fontSize: 20 }} />}
             label="Average $ per hour"
-            value={formatPerHr(insights.profitPerHour)}
+            value={
+              insights.totalHands > 0
+                ? `${formatPerHr(insights.profitPerHour)} session · ${formatPerHr(insights.profitPerHand * 240)} 4-tabling ($/hand×240)`
+                : formatPerHr(insights.profitPerHour)
+            }
             accent={insights.profitPerHour >= 0 ? 'success' : 'error'}
           />
         )}
@@ -704,6 +695,8 @@ function RecoveryProgressBar({
   const drop = insights.currentPeak - insights.currentValley;
   const recovered = insights.cumulativeNet - insights.currentValley;
   const progress = drop > 0 ? Math.min(100, (recovered / drop) * 100) : 0;
+  const needToPeak = Math.max(0, insights.currentPeak - insights.cumulativeNet);
+  const needToPeakLabel = formatDollar(needToPeak).replace(/^\++/, '');
 
   return (
     <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
@@ -725,7 +718,12 @@ function RecoveryProgressBar({
           '& .MuiLinearProgress-bar': { bgcolor: 'success.main' },
         }}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+      {needToPeak > 0 && (
+        <Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block', fontWeight: 600 }}>
+          Still need {needToPeakLabel} to reach peak
+        </Typography>
+      )}
+      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, display: 'block' }}>
         {formatDownswing(drop)} from peak · {formatDollar(recovered)} recovered
         {insights.currentDownswingHands > 0 &&
           ` · ${insights.currentDownswingHands.toLocaleString()} hands since peak`}

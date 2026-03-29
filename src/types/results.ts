@@ -1,5 +1,11 @@
 export type SessionGameType = 'NLHE' | 'PLO';
 
+/** Completed break: wall-clock span that does not count toward play time. Optional on older session documents. */
+export interface SessionPauseInterval {
+  start: string;
+  end: string;
+}
+
 export type SessionRating = 'A' | 'B' | 'C' | 'D' | 'F';
 
 export const SESSION_RATING_OPTIONS: SessionRating[] = ['A', 'B', 'C', 'D', 'F'];
@@ -17,6 +23,7 @@ export interface SessionResult {
   endBankroll: number | null;
   startTime: string | null;
   endTime: string | null;
+  pauseIntervals?: SessionPauseInterval[] | null;
   stake: number | null;
   isRing: boolean | null;
   isHU: boolean | null;
@@ -38,6 +45,7 @@ export interface SessionResultCreate {
   endBankroll?: number | null;
   startTime?: string | null;
   endTime?: string | null;
+  pauseIntervals?: SessionPauseInterval[] | null;
   stake?: number | null;
   isRing?: boolean | null;
   isHU?: boolean | null;

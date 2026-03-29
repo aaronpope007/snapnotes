@@ -31,6 +31,7 @@ import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SearchBar } from './components/SearchBar';
 import { PlayerCard } from './components/PlayerCard';
@@ -77,7 +78,14 @@ import { fetchReviewers } from './api/reviewers';
 import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
 import { getPlayerTypeColor, getPlayerTypeLabel } from './constants/playerTypes';
-import { getActiveSession, setActiveSession, clearActiveSession } from './utils/activeSession';
+import {
+  getActiveSession,
+  setActiveSession,
+  clearActiveSession,
+  pauseActiveSession,
+  resumeActiveSession,
+  type ActiveSession,
+} from './utils/activeSession';
 import { getMostRecentSession } from './utils/sessionUtils';
 import { SessionDurationLabel } from './components/SessionDurationLabel';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
@@ -204,10 +212,12 @@ export default function App() {
       const mostRecent = getMostRecentSession(list);
       const totalHands = list.reduce((sum, s) => sum + (s.hands ?? 0), 0);
       const lastHandsEndedAt = mostRecent?.handsEndedAt ?? (list.length > 0 ? totalHands : 0);
-      const session = {
+      const session: ActiveSession = {
         startTime: new Date().toISOString(),
         userId: userName.trim(),
         startHandNumber: lastHandsEndedAt,
+        pauseIntervals: [],
+        pauseStartedAt: null,
       };
       setActiveSession(session);
       setActiveSessionTick((t) => t + 1);
@@ -226,6 +236,16 @@ export default function App() {
     setResetSessionTrigger((t) => t + 1);
     showSuccess('Session reset. You can start a new session when ready.');
   }, [showSuccess]);
+
+  const handleToggleSessionPause = useCallback(() => {
+    const s = getActiveSession();
+    if (!s) return;
+    const next: ActiveSession | null = s.pauseStartedAt ? resumeActiveSession(s) : pauseActiveSession(s);
+    if (next) {
+      setActiveSession(next);
+      setActiveSessionTick((t) => t + 1);
+    }
+  }, []);
 
   const loadPlayers = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -767,12 +787,22 @@ export default function App() {
         {showSessionInProgress && activeSession && (
           <>
             <Chip
-              label={<SessionDurationLabel startTime={activeSession.startTime} />}
+              label={<SessionDurationLabel activeSession={activeSession} />}
               size="small"
               color="error"
               sx={{ fontWeight: 600 }}
               aria-label="Session in progress"
             />
+            <Button
+              size="small"
+              variant="outlined"
+              color={activeSession.pauseStartedAt ? 'success' : 'inherit'}
+              startIcon={activeSession.pauseStartedAt ? <PlayArrowIcon /> : <PauseIcon />}
+              onClick={handleToggleSessionPause}
+              aria-label={activeSession.pauseStartedAt ? 'Resume session' : 'Pause session'}
+            >
+              {activeSession.pauseStartedAt ? 'Resume' : 'Pause'}
+            </Button>
             <Button
               size="small"
               color="error"
@@ -943,7 +973,7 @@ export default function App() {
                   onError={showError}
                   onActiveSessionChange={() => setActiveSessionTick((t) => t + 1)}
                   hasActiveSession={showSessionInProgress}
-                  activeSessionStartTime={activeSession?.startTime ?? null}
+                  activeSessionForLabel={activeSession ?? null}
                   resetSessionTrigger={resetSessionTrigger}
                   requestOpenEndSessionModal={requestOpenEndSessionModal}
                   onClearRequestOpenEndSessionModal={() => setRequestOpenEndSessionModal(false)}
@@ -1098,12 +1128,22 @@ export default function App() {
                 {showSessionInProgress && activeSession && (
                   <>
                     <Chip
-                      label={<SessionDurationLabel startTime={activeSession.startTime} />}
+                      label={<SessionDurationLabel activeSession={activeSession} />}
                       size="small"
                       color="error"
                       sx={{ fontWeight: 600 }}
                       aria-label="Session in progress"
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color={activeSession.pauseStartedAt ? 'success' : 'inherit'}
+                      startIcon={activeSession.pauseStartedAt ? <PlayArrowIcon /> : <PauseIcon />}
+                      onClick={handleToggleSessionPause}
+                      aria-label={activeSession.pauseStartedAt ? 'Resume session' : 'Pause session'}
+                    >
+                      {activeSession.pauseStartedAt ? 'Resume' : 'Pause'}
+                    </Button>
                     <Button
                       size="small"
                       color="error"
@@ -1301,12 +1341,22 @@ export default function App() {
                 {showSessionInProgress && activeSession && (
                   <>
                     <Chip
-                      label={<SessionDurationLabel startTime={activeSession.startTime} />}
+                      label={<SessionDurationLabel activeSession={activeSession} />}
                       size="small"
                       color="error"
                       sx={{ fontWeight: 600 }}
                       aria-label="Session in progress"
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color={activeSession.pauseStartedAt ? 'success' : 'inherit'}
+                      startIcon={activeSession.pauseStartedAt ? <PlayArrowIcon /> : <PauseIcon />}
+                      onClick={handleToggleSessionPause}
+                      aria-label={activeSession.pauseStartedAt ? 'Resume session' : 'Pause session'}
+                    >
+                      {activeSession.pauseStartedAt ? 'Resume' : 'Pause'}
+                    </Button>
                     <Button
                       size="small"
                       color="error"

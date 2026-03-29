@@ -13,6 +13,15 @@ const sessionResultSchema = new mongoose.Schema(
     endBankroll: { type: Number, default: null }, // bankroll $ at end of session (for next session's start bankroll)
     startTime: { type: Date, default: null },
     endTime: { type: Date, default: null },
+    pauseIntervals: {
+      type: [
+        {
+          start: { type: Date, required: true },
+          end: { type: Date, required: true },
+        },
+      ],
+      default: undefined,
+    },
     stake: { type: Number, default: null },
     isRing: { type: Boolean, default: null },
     isHU: { type: Boolean, default: null },

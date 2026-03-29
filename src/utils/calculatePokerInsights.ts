@@ -2,7 +2,13 @@ import type { SessionResult, SessionRating } from '../types/results';
 import { SESSION_RATING_OPTIONS } from '../types/results';
 import { getSessionNetsMap } from './sessionUtils';
 
-export type InsightsDateRange = 'all' | 'month' | 'year' | 'today' | { start: string; end: string };
+export type InsightsDateRange =
+  | 'all'
+  | 'year'
+  | 'month'
+  | 'week'
+  | 'today'
+  | { start: string; end: string };
 
 export interface PokerInsights {
   /** Max drawdown in dollars (peak - valley) */
@@ -75,12 +81,6 @@ export interface PokerInsights {
     profitPerHour: number;
     profitPerHand: number;
   }[];
-  /** Best time of day by $/hand (from startTime) */
-  bestTimeOfDay: string | null;
-  bestTimeOfDayProfitPerHand: number;
-  /** Best time of day by $/hr (for comparison with hands/hr) */
-  bestTimeOfDayByHourly: string | null;
-  bestTimeOfDayProfitPerHour: number;
   /** $/hand and $/hr by time-of-day bucket */
   byTimeOfDay: {
     label: string;
@@ -168,6 +168,17 @@ function filterSessionsByRange(sessions: SessionResult[], range: InsightsDateRan
       return sStr === todayStr;
     });
   }
+  if (range === 'week') {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(day);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return sessions.filter((s) => {
+      const sStr = s.date.slice(0, 10);
+      return sStr >= weekStartStr && sStr <= todayStr;
+    });
+  }
   let cutoff: Date;
   if (range === 'month') {
     cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -212,7 +223,7 @@ export function calculatePokerInsights(
   let biggestDownswingHands = 0;
   let biggestUpswingAmount = 0;
   let biggestUpswingHands = 0;
-  const allDownswings: { amount: number; hands: number; dateEnded: string }[] = [];
+  const allDownswings: { amount: number; hands: number; dateEnded: string; ongoing?: boolean }[] = [];
   const allUpswings: { amount: number; hands: number; dateEnded: string }[] = [];
 
   let maxWinStreak = 0;
@@ -227,7 +238,6 @@ export function calculatePokerInsights(
     const sessionNet = net(s);
     const hands = s.hands ?? 0;
     const hours = s.totalTime ?? 0;
-    const date = new Date(s.date);
     cumulativeNet += sessionNet;
     cumulativeHands += hands;
     totalHours += hours;
@@ -638,24 +648,6 @@ export function calculatePokerInsights(
       winRatePercentage,
     };
   }).filter((r) => r.sessionCount > 0 || r.hours > 0);
-  // Best time by $/hand (fair when table count varies)
-  let bestTimeOfDay: string | null = null;
-  let bestTimeOfDayProfitPerHand = 0;
-  for (const r of byTimeOfDay) {
-    if (r.hands > 0 && r.profitPerHand > bestTimeOfDayProfitPerHand) {
-      bestTimeOfDayProfitPerHand = r.profitPerHand;
-      bestTimeOfDay = r.label;
-    }
-  }
-  // Best time by $/hr (highest hourly; can compare to hands/hr)
-  let bestTimeOfDayByHourly: string | null = null;
-  let bestTimeOfDayProfitPerHour = 0;
-  for (const r of byTimeOfDay) {
-    if (r.profitPerHour > bestTimeOfDayProfitPerHour) {
-      bestTimeOfDayProfitPerHour = r.profitPerHour;
-      bestTimeOfDayByHourly = r.label;
-    }
-  }
 
   return {
     maxDrawdown: biggestDownswingAmount,
@@ -693,10 +685,6 @@ export function calculatePokerInsights(
     longSessionHours: longHours,
     bySessionLengthBuckets,
     byRating,
-    bestTimeOfDay,
-    bestTimeOfDayProfitPerHand,
-    bestTimeOfDayByHourly,
-    bestTimeOfDayProfitPerHour,
     byTimeOfDay,
     byDayOfWeek,
     runningTotal,

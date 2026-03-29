@@ -14,6 +14,8 @@ import MenuItem from '@mui/material/MenuItem';
 import type { SessionResultCreate, SessionRating } from '../../types/results';
 import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
 import type { ActiveSession } from '../../utils/activeSession';
+import { finalizePauseIntervalsForEnd } from '../../utils/activeSession';
+import { getPlayingHoursFromWallAndPauses } from '../../utils/sessionPause';
 
 interface EndSessionModalProps {
   open: boolean;
@@ -24,12 +26,6 @@ interface EndSessionModalProps {
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
   onAddLeak?: (title: string) => Promise<void>;
-}
-
-function computeHoursBetween(startIso: string, endDate: Date): number {
-  const start = new Date(startIso).getTime();
-  const end = endDate.getTime();
-  return (end - start) / (1000 * 60 * 60);
 }
 
 /** Allow only digits, optional one decimal point, optional leading minus. */
@@ -79,7 +75,9 @@ export function EndSessionModal({
         return Number.isNaN(d.getTime()) ? activeSession.startTime : d.toISOString();
       })()
     : activeSession.startTime;
-  const totalTimeHours = computeHoursBetween(startTimeIso, now);
+  const endIso = now.toISOString();
+  const closedPauseIntervals = finalizePauseIntervalsForEnd(activeSession, endIso);
+  const totalTimeHours = getPlayingHoursFromWallAndPauses(startTimeIso, endIso, closedPauseIntervals);
   const startDate = new Date(startTimeIso);
 
   const endBankrollNum = endBankroll.trim() ? parseFloat(endBankroll.replace(/[$,]/g, '')) : null;
@@ -153,8 +151,9 @@ export function EndSessionModal({
       const payload: SessionResultCreate = {
         date: localDateStr,
         startTime: startTimeIso,
-        endTime: now.toISOString(),
+        endTime: endIso,
         totalTime: Math.round(totalTimeHours * 100) / 100,
+        ...(closedPauseIntervals.length > 0 ? { pauseIntervals: closedPauseIntervals } : {}),
         hands: hands ?? undefined,
         handsStartedAt: activeSession.startHandNumber,
         handsEndedAt: endHandNum != null && !Number.isNaN(endHandNum) ? endHandNum : undefined,
@@ -182,8 +181,9 @@ export function EndSessionModal({
     hands,
     totalTimeHours,
     startTimeEditable,
-    activeSession.startTime,
-    activeSession.startHandNumber,
+    activeSession,
+    closedPauseIntervals,
+    endIso,
     stake,
     isRing,
     isHU,
