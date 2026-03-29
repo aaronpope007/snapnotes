@@ -1,6 +1,9 @@
 import { useMemo, useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -12,6 +15,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { SessionResult, SessionResultCreate } from '../../types/results';
 import { EditSessionModal } from './EditSessionModal';
+import { computeHandRangeStats, getLatestHandCounterEnd } from '../../utils/handRangeStats';
 
 interface SessionsGridTabProps {
   sessions: SessionResult[];
@@ -28,10 +32,18 @@ function formatCurrency(value: number | null): string {
   return `${sign}$${Math.abs(n).toFixed(2)}`;
 }
 
+function sanitizeHandCountInput(val: string): string {
+  return val.replace(/\D/g, '');
+}
+
 export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: SessionsGridTabProps) {
   const [editSession, setEditSession] = useState<SessionResult | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [handRangeFrom, setHandRangeFrom] = useState('');
+  const [handRangeTo, setHandRangeTo] = useState('');
+  const [handRangeError, setHandRangeError] = useState<string | null>(null);
+  const [handRangeStats, setHandRangeStats] = useState<ReturnType<typeof computeHandRangeStats> | null>(null);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteId) return;
@@ -83,6 +95,32 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
     }
     return byId;
   }, [sessions]);
+
+  const latestHandEnd = useMemo(() => getLatestHandCounterEnd(sessions), [sessions]);
+
+  const handleHandRangeCalculate = useCallback(() => {
+    setHandRangeError(null);
+    const fromStr = handRangeFrom.trim();
+    const toStr = handRangeTo.trim();
+    if (!fromStr || !toStr) {
+      setHandRangeError('Enter both from and to hand numbers.');
+      setHandRangeStats(null);
+      return;
+    }
+    const fromN = parseInt(fromStr.replace(/,/g, ''), 10);
+    const toN = parseInt(toStr.replace(/,/g, ''), 10);
+    if (Number.isNaN(fromN) || Number.isNaN(toN)) {
+      setHandRangeError('Use whole numbers only.');
+      setHandRangeStats(null);
+      return;
+    }
+    if (fromN > toN) {
+      setHandRangeError('"From" must be less than or equal to "to".');
+      setHandRangeStats(null);
+      return;
+    }
+    setHandRangeStats(computeHandRangeStats(sessions, fromN, toN));
+  }, [handRangeFrom, handRangeTo, sessions]);
 
   const columns = useMemo<GridColDef<SessionResult>[]>(
     () => [
@@ -322,6 +360,88 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
 
   return (
     <>
+      <Paper variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+          Stats for a hand range
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+          From / to are inclusive hand counters (same as the site and the grid). Net profit is split by overlap when a
+          session only partly falls in the range.
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'flex-start' }}>
+          <TextField
+            size="small"
+            label="From hand #"
+            value={handRangeFrom}
+            onChange={(e) => setHandRangeFrom(sanitizeHandCountInput(e.target.value))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleHandRangeCalculate();
+              }
+            }}
+            inputProps={{ inputMode: 'numeric' }}
+            sx={{ width: 120 }}
+          />
+          <TextField
+            size="small"
+            label="To hand #"
+            value={handRangeTo}
+            onChange={(e) => setHandRangeTo(sanitizeHandCountInput(e.target.value))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleHandRangeCalculate();
+              }
+            }}
+            inputProps={{ inputMode: 'numeric' }}
+            sx={{ width: 120 }}
+          />
+          <Button size="small" variant="contained" onClick={handleHandRangeCalculate} sx={{ mt: 0.5 }}>
+            Calculate
+          </Button>
+        </Box>
+        {latestHandEnd != null && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            Highest hands-end counter in your log (approx.): {latestHandEnd.toLocaleString()}
+          </Typography>
+        )}
+        {handRangeError && (
+          <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+            {handRangeError}
+          </Typography>
+        )}
+        {handRangeStats && !handRangeError && (
+          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+            <Typography variant="body2">
+              <Box component="span" color="text.secondary">
+                Net in range:{' '}
+              </Box>
+              <Box
+                component="span"
+                sx={{ fontWeight: 600, color: handRangeStats.totalNet >= 0 ? 'success.main' : 'error.main' }}
+              >
+                {formatCurrency(handRangeStats.totalNet)}
+              </Box>
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Hands in range: {handRangeStats.handsInRange.toLocaleString()}
+              {handRangeStats.profitPerHand != null && (
+                <>
+                  {' · '}
+                  <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {formatCurrency(handRangeStats.profitPerHand)}/hand
+                  </Box>
+                </>
+              )}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {handRangeStats.sessionsTouching} session{handRangeStats.sessionsTouching !== 1 ? 's' : ''} touched this
+              range
+            </Typography>
+          </Box>
+        )}
+      </Paper>
       <Box
         sx={{
           width: '100%',
