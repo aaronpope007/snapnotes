@@ -25,6 +25,11 @@ import type { SessionResult } from '../../types/results';
 interface FunFactsBentoProps {
   sessions: SessionResult[];
   compact?: boolean;
+  /** When provided, this component becomes controlled for date-range filtering. */
+  dateRange?: InsightsDateRange;
+  onDateRangeChange?: (range: InsightsDateRange) => void;
+  /** Hide the date range toggle when the parent provides global controls. */
+  showDateRangeToggle?: boolean;
 }
 
 function getPrimaryStake(sessions: SessionResult[]): number {
@@ -64,10 +69,22 @@ function formatDateForDisplay(dateStr: string): string {
   return new Date(key + 'T12:00:00').toLocaleDateString();
 }
 
-export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoProps) {
+export function FunFactsBento({
+  sessions,
+  compact: compactProp,
+  dateRange: dateRangeProp,
+  onDateRangeChange,
+  showDateRangeToggle = true,
+}: FunFactsBentoProps) {
   const compact = useCompactMode() ?? compactProp ?? false;
-  const [dateRange, setDateRange] = useState<InsightsDateRange>('all');
+  const [dateRangeState, setDateRangeState] = useState<InsightsDateRange>('all');
   const [useBB, setUseBB] = useState(false);
+
+  const dateRange = dateRangeProp ?? dateRangeState;
+  const setDateRange = (r: InsightsDateRange) => {
+    if (dateRangeProp !== undefined) onDateRangeChange?.(r);
+    else setDateRangeState(r);
+  };
 
   const primaryStake = useMemo(() => getPrimaryStake(sessions), [sessions]);
   const bbSize = primaryStake / 100;
@@ -114,18 +131,20 @@ export function FunFactsBento({ sessions, compact: compactProp }: FunFactsBentoP
           gap: 1,
         }}
       >
-        <ToggleButtonGroup
-          value={dateRange}
-          exclusive
-          onChange={(_, v) => v != null && setDateRange(v)}
-          size="small"
-        >
-          <ToggleButton value="all">All time</ToggleButton>
-          <ToggleButton value="year">This year</ToggleButton>
-          <ToggleButton value="month">This month</ToggleButton>
-          <ToggleButton value="week">This week</ToggleButton>
-          <ToggleButton value="today">Today</ToggleButton>
-        </ToggleButtonGroup>
+        {showDateRangeToggle && (
+          <ToggleButtonGroup
+            value={dateRange}
+            exclusive
+            onChange={(_, v) => v != null && setDateRange(v)}
+            size="small"
+          >
+            <ToggleButton value="all">All time</ToggleButton>
+            <ToggleButton value="year">This year</ToggleButton>
+            <ToggleButton value="month">This month</ToggleButton>
+            <ToggleButton value="week">Last 7 days</ToggleButton>
+            <ToggleButton value="today">Today</ToggleButton>
+          </ToggleButtonGroup>
+        )}
         <ToggleButtonGroup
           value={useBB ? 'bb' : 'usd'}
           exclusive

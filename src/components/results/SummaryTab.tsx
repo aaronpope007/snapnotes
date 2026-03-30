@@ -144,13 +144,54 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const hourlyPerHandRange: InsightsDateRange =
     rangePreset === 'custom' ? { start: customStart, end: customEnd } : rangePreset;
 
+  const summaryFilteredSessions = useMemo(() => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const toKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const startDay = (() => {
+      if (rangePreset === 'custom') return null;
+      if (rangePreset === 'today') return now;
+      if (rangePreset === 'week') {
+        const endDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const s = new Date(endDay);
+        s.setDate(s.getDate() - 6);
+        return s;
+      }
+      if (rangePreset === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+      if (rangePreset === 'year') return new Date(now.getFullYear(), 0, 1);
+      return null;
+    })();
+
+    if (rangePreset === 'all') return sessions;
+    if (rangePreset === 'custom') {
+      const start = customStart;
+      const end = customEnd;
+      return sessions.filter((s) => {
+        const sDate = s.date.slice(0, 10);
+        return sDate >= start && sDate <= end;
+      });
+    }
+    if (rangePreset === 'today') {
+      return sessions.filter((s) => {
+        const d = new Date(s.date);
+        return toKey(d) === todayStr;
+      });
+    }
+    if (!startDay) return sessions;
+    const startStr = toKey(startDay);
+    return sessions.filter((s) => {
+      const sDate = s.date.slice(0, 10);
+      return sDate >= startStr && sDate <= todayStr;
+    });
+  }, [sessions, rangePreset, customStart, customEnd]);
+
   const stats = useMemo(() => {
-    const sorted = [...sessions].sort(
+    const sorted = [...summaryFilteredSessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-    const sessionNets = getSessionNetsMap(sessions);
+    const sessionNets = getSessionNetsMap(summaryFilteredSessions);
     const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
-    const mostRecent = getMostRecentSession(sessions);
+    const mostRecent = getMostRecentSession(summaryFilteredSessions);
     const currentAccount = mostRecent?.endBankroll ?? null;
     const totalProfit = sorted.reduce((sum, s) => sum + net(s), 0);
     const totalHours = sorted.reduce(
@@ -176,12 +217,12 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       profitPerHourAt240,
       currentAccount,
     };
-  }, [sessions]);
+  }, [summaryFilteredSessions]);
 
   const streakAndDrawdown = useMemo(() => {
-    const sNets = getSessionNetsMap(sessions);
+    const sNets = getSessionNetsMap(summaryFilteredSessions);
     const net = (s: SessionResult) => sNets.get(s._id) ?? (s.dailyNet ?? 0);
-    const sorted = [...sessions].sort(
+    const sorted = [...summaryFilteredSessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
@@ -219,14 +260,14 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     const currentDrawdown = peak - cumProfit;
 
     return { currentStreakCount, currentStreakType, longestWin, longestLoss, maxDrawdown, currentDrawdown };
-  }, [sessions]);
+  }, [summaryFilteredSessions]);
 
-  const sessionNets = useMemo(() => getSessionNetsMap(sessions), [sessions]);
+  const sessionNets = useMemo(() => getSessionNetsMap(summaryFilteredSessions), [summaryFilteredSessions]);
 
   const byStake = useMemo(() => {
     const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const groups = new Map<number, SessionResult[]>();
-    for (const s of sessions) {
+    for (const s of summaryFilteredSessions) {
       const stake = s.stake ?? 0;
       if (!groups.has(stake)) groups.set(stake, []);
       groups.get(stake)!.push(s);
@@ -261,10 +302,10 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           bbPer100,
         };
       });
-  }, [sessions, sessionNets]);
+  }, [summaryFilteredSessions, sessionNets]);
 
   const chartData = useMemo(() => {
-    const sorted = [...sessions].sort(
+    const sorted = [...summaryFilteredSessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     if (sorted.length === 0) return [];
@@ -337,7 +378,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       }
     }
     return points;
-  }, [sessions, interval, sessionNets]);
+  }, [summaryFilteredSessions, interval, sessionNets]);
 
   const chartYDomain = useMemo(() => {
     const dataKey = chartMode === 'perHand' ? 'profitPerHand' : 'value';
@@ -372,12 +413,11 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       if (barRangePreset === 'month')
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
       if (barRangePreset === 'week') {
-        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekStart = new Date(day);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const endDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startDay = new Date(endDay);
+        startDay.setDate(startDay.getDate() - 6);
         const sessionDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        return sessionDay >= weekStart && sessionDay <= todayDay;
+        return sessionDay >= startDay && sessionDay <= endDay;
       }
       if (barRangePreset === 'today') {
         return (
@@ -479,7 +519,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           : barRangePreset === 'month'
             ? 'This month'
             : barRangePreset === 'week'
-              ? 'This week'
+              ? 'Last 7 days'
               : barRangePreset === 'today'
                 ? 'Today'
                 : `Custom (${barCustomStart}–${barCustomEnd})`;
@@ -517,8 +557,8 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   }, [barChartValueMode]);
 
   const hourlyPerHandInsights = useMemo(
-    () => calculatePokerInsights(sessions, { dateRange: hourlyPerHandRange }),
-    [sessions, hourlyPerHandRange]
+    () => calculatePokerInsights(summaryFilteredSessions, { dateRange: hourlyPerHandRange }),
+    [summaryFilteredSessions, hourlyPerHandRange]
   );
 
   // 5-point moving average overlay for bankroll chart
@@ -626,6 +666,47 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           <SessionDurationLabel activeSession={activeSessionForLabel} />
         </Alert>
       )}
+      <Paper variant="outlined" sx={{ p: 1.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+            Summary range
+          </Typography>
+          <ToggleButtonGroup
+            value={rangePreset}
+            exclusive
+            onChange={(_, v) => v != null && setRangePreset(v)}
+            size="small"
+            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+          >
+            <ToggleButton value="all">All time</ToggleButton>
+            <ToggleButton value="year">This year</ToggleButton>
+            <ToggleButton value="month">This month</ToggleButton>
+            <ToggleButton value="week">Last 7 days</ToggleButton>
+            <ToggleButton value="today">Today</ToggleButton>
+            <ToggleButton value="custom">Custom</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+        {rangePreset === 'custom' && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
+            <TextField
+              size="small"
+              type="date"
+              label="From"
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              size="small"
+              type="date"
+              label="To"
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+        )}
+      </Paper>
       <Accordion variant="outlined" defaultExpanded sx={{ '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -912,7 +993,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           </Box>
         </AccordionSummary>
         <AccordionDetails>
-          <FunFactsBento sessions={sessions} />
+          <FunFactsBento sessions={summaryFilteredSessions} dateRange={hourlyPerHandRange} showDateRangeToggle={false} />
         </AccordionDetails>
       </Accordion>
 

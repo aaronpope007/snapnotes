@@ -169,10 +169,11 @@ function filterSessionsByRange(sessions: SessionResult[], range: InsightsDateRan
     });
   }
   if (range === 'week') {
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(day);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+    // Rolling last 7 days (inclusive), not calendar week.
+    const endDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startDay = new Date(endDay);
+    startDay.setDate(startDay.getDate() - 6);
+    const weekStartStr = `${startDay.getFullYear()}-${String(startDay.getMonth() + 1).padStart(2, '0')}-${String(startDay.getDate()).padStart(2, '0')}`;
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return sessions.filter((s) => {
       const sStr = s.date.slice(0, 10);
