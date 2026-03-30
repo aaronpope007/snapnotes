@@ -4,8 +4,9 @@ import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
 import { fetchSessionResults, createSessionResult, uploadSessionResults, updateSessionResult, deleteSessionResult, fetchWithdrawals, createWithdrawal, updateWithdrawal, deleteWithdrawal } from '../api/results';
 import { createLeak } from '../api/learning';
-import type { SessionResult, SessionResultCreate, SessionUploadRow, Withdrawal, WithdrawalCreate } from '../types/results';
+import type { SessionFormatFilter, SessionResult, SessionResultCreate, SessionUploadRow, Withdrawal, WithdrawalCreate } from '../types/results';
 import { getMostRecentSession } from '../utils/sessionUtils';
+import { filterSessionsByFormat } from '../utils/sessionFormat';
 import { ResultsTabs, type ResultsTabValue, type ResultsViewValue } from '../components/results/ResultsTabs';
 import { SessionsGridTab } from '../components/results/SessionsGridTab';
 import { AddOrUploadTab } from '../components/results/AddOrUploadTab';
@@ -32,6 +33,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
   const userName = useUserName();
   const [view, setView] = useState<ResultsViewValue>('summary');
   const [activeTab, setActiveTab] = useState<ResultsTabValue>('sessions');
+  const [formatFilter, setFormatFilter] = useState<SessionFormatFilter>('all');
   const [sessions, setSessions] = useState<SessionResult[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,9 +169,13 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
   );
 
   const totalHands = sessions.reduce((sum, s) => sum + (s.hands ?? 0), 0);
-  const mostRecentSession = useMemo(() => getMostRecentSession(sessions), [sessions]);
+  const mostRecentSessionAll = useMemo(() => getMostRecentSession(sessions), [sessions]);
+  const formatFilteredSessions = useMemo(
+    () => filterSessionsByFormat(sessions, formatFilter),
+    [sessions, formatFilter]
+  );
   const lastHandsEndedAt =
-    mostRecentSession?.handsEndedAt ??
+    mostRecentSessionAll?.handsEndedAt ??
     (sessions.length > 0 ? totalHands : 0);
 
   const handleAddLeak = useCallback(
@@ -196,11 +202,13 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
             onViewChange={setView}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            formatFilter={formatFilter}
+            onFormatFilterChange={setFormatFilter}
             lastHandsEndedAt={lastHandsEndedAt}
             getFreshSessionStartData={getFreshSessionStartData}
             hasUser={!!userName?.trim()}
             userName={userName}
-            lastEndBankroll={mostRecentSession?.endBankroll ?? null}
+            lastEndBankroll={mostRecentSessionAll?.endBankroll ?? null}
             onAddSession={handleAddSession}
             onSuccess={(msg) => onSuccess?.(msg)}
             onError={(msg) => onError?.(msg)}
@@ -219,7 +227,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
           ) : view === 'summary' ? (
             <ErrorBoundary>
               <SummaryTab
-                sessions={sessions}
+                sessions={formatFilteredSessions}
                 withdrawals={withdrawals}
                 loading={loading}
                 hasActiveSession={hasActiveSession}
@@ -240,7 +248,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
       ) : activeTab === 'sessions' ? (
         <ErrorBoundary>
           <SessionsGridTab
-                sessions={sessions}
+                sessions={formatFilteredSessions}
                 loading={loading}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}

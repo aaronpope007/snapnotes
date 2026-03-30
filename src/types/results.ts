@@ -1,5 +1,7 @@
 export type SessionGameType = 'NLHE' | 'PLO';
 
+export type SessionFormatFilter = 'all' | 'huOnly' | 'ringOnly' | 'both';
+
 /** Completed break: wall-clock span that does not count toward play time. Optional on older session documents. */
 export interface SessionPauseInterval {
   start: string;

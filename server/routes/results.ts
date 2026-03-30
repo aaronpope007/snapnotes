@@ -287,7 +287,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (body.notes !== undefined) session.notes = body.notes;
     if (body.pauseIntervals !== undefined) {
       const parsed = parsePauseIntervals(body.pauseIntervals);
-      session.pauseIntervals = parsed ?? [];
+      session.set('pauseIntervals', parsed ?? []);
     }
     await session.save();
     res.json(session);

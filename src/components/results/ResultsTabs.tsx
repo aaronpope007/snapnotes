@@ -14,7 +14,7 @@ import { getActiveSession, setActiveSession, clearActiveSession } from '../../ut
 import { LogNewSessionModal } from './LogNewSessionModal';
 import { EndSessionModal } from './EndSessionModal';
 import { EditActiveSessionModal } from './EditActiveSessionModal';
-import type { SessionResultCreate } from '../../types/results';
+import type { SessionFormatFilter, SessionResultCreate } from '../../types/results';
 
 export type ResultsViewValue = 'summary' | 'all';
 export type ResultsTabValue = 'sessions' | 'add' | 'withdrawals';
@@ -24,6 +24,8 @@ interface ResultsTabsProps {
   onViewChange: (view: ResultsViewValue) => void;
   activeTab: ResultsTabValue;
   onTabChange: (tab: ResultsTabValue) => void;
+  formatFilter: SessionFormatFilter;
+  onFormatFilterChange: (filter: SessionFormatFilter) => void;
   lastHandsEndedAt: number;
   getFreshSessionStartData?: () => Promise<{ lastHandsEndedAt: number }>;
   hasUser: boolean;
@@ -46,6 +48,8 @@ export function ResultsTabs({
   onViewChange,
   activeTab,
   onTabChange,
+  formatFilter,
+  onFormatFilterChange,
   lastHandsEndedAt,
   hasUser,
   userName,
@@ -171,6 +175,18 @@ export function ResultsTabs({
         >
           All sessions
         </Button>
+        <ToggleButtonGroup
+          value={formatFilter}
+          exclusive
+          onChange={(_, v) => v != null && onFormatFilterChange(v)}
+          size="small"
+          sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+        >
+          <ToggleButton value="all">All</ToggleButton>
+          <ToggleButton value="huOnly">HU only</ToggleButton>
+          <ToggleButton value="ringOnly">Ring only</ToggleButton>
+          <ToggleButton value="both">Both</ToggleButton>
+        </ToggleButtonGroup>
       </Box>
       <LogNewSessionModal
         open={logModalOpen}
