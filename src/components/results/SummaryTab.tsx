@@ -666,47 +666,6 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           <SessionDurationLabel activeSession={activeSessionForLabel} />
         </Alert>
       )}
-      <Paper variant="outlined" sx={{ p: 1.25 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-            Summary range
-          </Typography>
-          <ToggleButtonGroup
-            value={rangePreset}
-            exclusive
-            onChange={(_, v) => v != null && setRangePreset(v)}
-            size="small"
-            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
-          >
-            <ToggleButton value="all">All time</ToggleButton>
-            <ToggleButton value="year">This year</ToggleButton>
-            <ToggleButton value="month">This month</ToggleButton>
-            <ToggleButton value="week">Last 7 days</ToggleButton>
-            <ToggleButton value="today">Today</ToggleButton>
-            <ToggleButton value="custom">Custom</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-        {rangePreset === 'custom' && (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
-            <TextField
-              size="small"
-              type="date"
-              label="From"
-              value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              size="small"
-              type="date"
-              label="To"
-              value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
-        )}
-      </Paper>
       <Accordion variant="outlined" defaultExpanded sx={{ '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<Typography sx={{ color: 'text.secondary' }}>▾</Typography>}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -715,6 +674,42 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           </Box>
         </AccordionSummary>
         <AccordionDetails>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+            <ToggleButtonGroup
+              value={rangePreset}
+              exclusive
+              onChange={(_, v) => v != null && setRangePreset(v)}
+              size="small"
+              sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1 } }}
+            >
+              <ToggleButton value="all">All time</ToggleButton>
+              <ToggleButton value="year">This year</ToggleButton>
+              <ToggleButton value="month">This month</ToggleButton>
+              <ToggleButton value="week">Last 7 days</ToggleButton>
+              <ToggleButton value="today">Today</ToggleButton>
+              <ToggleButton value="custom">Custom</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          {rangePreset === 'custom' && (
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
+              <TextField
+                size="small"
+                type="date"
+                label="From"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                size="small"
+                type="date"
+                label="To"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+          )}
       <Paper
         variant="outlined"
         sx={{
@@ -993,7 +988,20 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           </Box>
         </AccordionSummary>
         <AccordionDetails>
-          <FunFactsBento sessions={summaryFilteredSessions} dateRange={hourlyPerHandRange} showDateRangeToggle={false} />
+          <FunFactsBento
+            sessions={summaryFilteredSessions}
+            dateRange={hourlyPerHandRange}
+            onDateRangeChange={(r) => {
+              if (typeof r === 'object') {
+                setRangePreset('custom');
+                setCustomStart(r.start);
+                setCustomEnd(r.end);
+              } else {
+                setRangePreset(r);
+              }
+            }}
+            showDateRangeToggle
+          />
         </AccordionDetails>
       </Accordion>
 
