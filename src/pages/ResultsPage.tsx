@@ -250,6 +250,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
         <ErrorBoundary>
           <SessionsGridTab
                 sessions={formatFilteredSessions}
+                allSessionsForBankroll={sessions}
                 loading={loading}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}

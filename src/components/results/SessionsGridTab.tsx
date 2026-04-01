@@ -19,6 +19,12 @@ import { computeHandRangeStats, getLatestHandCounterEnd } from '../../utils/hand
 
 interface SessionsGridTabProps {
   sessions: SessionResult[];
+  /**
+   * Optional full session list used only for bankroll carry-forward so that
+   * filtered views (HU-only / Ring-only) still infer Account start correctly
+   * when a session is missing an explicit startBankroll.
+   */
+  allSessionsForBankroll?: SessionResult[];
   loading: boolean;
   onUpdate: (id: string, updates: Partial<SessionResultCreate>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -36,7 +42,7 @@ function sanitizeHandCountInput(val: string): string {
   return val.replace(/\D/g, '');
 }
 
-export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: SessionsGridTabProps) {
+export function SessionsGridTab({ sessions, allSessionsForBankroll, loading, onUpdate, onDelete }: SessionsGridTabProps) {
   const [editSession, setEditSession] = useState<SessionResult | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -44,6 +50,24 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
   const [handRangeTo, setHandRangeTo] = useState('');
   const [handRangeError, setHandRangeError] = useState<string | null>(null);
   const [handRangeStats, setHandRangeStats] = useState<ReturnType<typeof computeHandRangeStats> | null>(null);
+
+  const bankrollMetaById = useMemo(() => {
+    const base = allSessionsForBankroll ?? sessions;
+    const sorted = [...base].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const byId = new Map<string, { accountStart: number | null; accountEnd: number | null; sessionNet: number | null }>();
+    let prevEndBankroll: number | null = null;
+    for (const s of sorted) {
+      const accountStart = s.startBankroll ?? prevEndBankroll;
+      const accountEnd = s.endBankroll ?? null;
+      const sessionNet =
+        accountStart != null && accountEnd != null ? accountEnd - accountStart : (s.dailyNet ?? null);
+      byId.set(s._id, { accountStart, accountEnd, sessionNet });
+      prevEndBankroll = accountEnd;
+    }
+    return byId;
+  }, [allSessionsForBankroll, sessions]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteId) return;
@@ -69,7 +93,6 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     let cumulativeHands = 0;
-    let prevEndBankroll: number | null = null;
     for (const s of sorted) {
       const handsStart = s.handsStartedAt ?? null;
       const handsEnd = s.handsEndedAt ?? null;
@@ -77,10 +100,11 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
       const displayHandsStart = handsStart ?? cumulativeHands;
       const displayHandsEnd = handsEnd ?? cumulativeHands + h;
       cumulativeHands = handsEnd ?? (cumulativeHands + h);
-      const accountStart = s.startBankroll ?? prevEndBankroll;
-      const accountEnd = s.endBankroll ?? null;
+      const bankrollMeta = bankrollMetaById.get(s._id);
+      const accountStart = bankrollMeta?.accountStart ?? s.startBankroll ?? null;
+      const accountEnd = bankrollMeta?.accountEnd ?? s.endBankroll ?? null;
       const sessionNet =
-        accountStart != null && accountEnd != null ? accountEnd - accountStart : (s.dailyNet ?? null);
+        bankrollMeta?.sessionNet ?? (accountStart != null && accountEnd != null ? accountEnd - accountStart : (s.dailyNet ?? null));
       const totalTime = s.totalTime ?? 0;
       const handsPerHour = totalTime > 0 && h > 0 ? Math.round(h / totalTime) : null;
       byId.set(s._id, {
@@ -91,10 +115,9 @@ export function SessionsGridTab({ sessions, loading, onUpdate, onDelete }: Sessi
         sessionNet,
         handsPerHour,
       });
-      prevEndBankroll = accountEnd;
     }
     return byId;
-  }, [sessions]);
+  }, [sessions, bankrollMetaById]);
 
   const latestHandEnd = useMemo(() => getLatestHandCounterEnd(sessions), [sessions]);
 

@@ -584,8 +584,8 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
   }, [barChartValueMode]);
 
   const hourlyPerHandInsights = useMemo(
-    () => calculatePokerInsights(summaryFilteredSessions, { dateRange: hourlyPerHandRange }),
-    [summaryFilteredSessions, hourlyPerHandRange]
+    () => calculatePokerInsights(summaryFilteredSessions, { dateRange: hourlyPerHandRange, allSessionsForNet }),
+    [summaryFilteredSessions, hourlyPerHandRange, allSessionsForNet]
   );
 
   // 5-point moving average overlay for bankroll chart

@@ -191,10 +191,13 @@ function filterSessionsByRange(sessions: SessionResult[], range: InsightsDateRan
 
 export function calculatePokerInsights(
   sessions: SessionResult[],
-  options?: { dateRange?: InsightsDateRange }
+  options?: { dateRange?: InsightsDateRange; allSessionsForNet?: SessionResult[] }
 ): PokerInsights {
   const range = options?.dateRange ?? 'all';
-  const sessionNets = getSessionNetsMap(sessions);
+  // When sessions are a filtered subset (e.g., HU-only or date ranges),
+  // bankroll carry-forward should come from the full history to avoid
+  // pulling a prior bankroll from within the filtered subset.
+  const sessionNets = getSessionNetsMap(options?.allSessionsForNet ?? sessions);
   const filtered = filterSessionsByRange(sessions, range);
   const sorted = [...filtered].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
