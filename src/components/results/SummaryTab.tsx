@@ -97,13 +97,19 @@ function quantile(values: number[], q: number): number | null {
 
 interface SummaryTabProps {
   sessions: SessionResult[];
+  /**
+   * Optional full session list used only for bankroll carry-forward (net calculation).
+   * This lets HU-only / Ring-only views still compute a single-session "Today" net
+   * correctly when the session is missing an explicit startBankroll.
+   */
+  allSessionsForNet?: SessionResult[];
   withdrawals?: Withdrawal[];
   loading: boolean;
   hasActiveSession?: boolean;
   activeSessionForLabel?: ActiveSession | null;
 }
 
-export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSession, activeSessionForLabel }: SummaryTabProps) {
+export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], loading, hasActiveSession, activeSessionForLabel }: SummaryTabProps) {
   const compact = useCompactMode();
   const darkMode = useDarkMode();
   const axisColor = darkMode ? 'rgba(255,255,255,0.87)' : 'rgba(0,0,0,0.87)';
@@ -183,15 +189,17 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   }, [sessions, rangePreset, customStart, customEnd]);
 
   /**
-   * Build a sessionNet map across the full (format-filtered) session list, so that
-   * short date ranges like "Today" still compute a correct net using the prior
-   * session's endBankroll as the start when startBankroll isn't explicitly set.
+   * Build a sessionNet map across the full session list so that short date ranges
+   * like "Today" compute a correct net using the prior session's endBankroll as
+   * the start when startBankroll isn't explicitly set.
    *
-   * This avoids mixing formats because `sessions` is already format-filtered
-   * by the parent (`ResultsPage`).
+   * When a format filter is active (HU-only / Ring-only), using only `sessions`
+   * can incorrectly fall back to an older bankroll from the previous session in
+   * that filtered subset. `allSessionsForNet` preserves true bankroll continuity.
    */
   const sessionNetById = useMemo(() => {
-    const sorted = [...sessions].sort(
+    const base = allSessionsForNet ?? sessions;
+    const sorted = [...base].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
     const byId = new Map<string, number>();
@@ -207,7 +215,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       prevEndBankroll = accountEnd;
     }
     return byId;
-  }, [sessions]);
+  }, [sessions, allSessionsForNet]);
 
   const stats = useMemo(() => {
     const sorted = [...summaryFilteredSessions].sort(

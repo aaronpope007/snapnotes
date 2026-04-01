@@ -228,6 +228,7 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
             <ErrorBoundary>
               <SummaryTab
                 sessions={formatFilteredSessions}
+                allSessionsForNet={sessions}
                 withdrawals={withdrawals}
                 loading={loading}
                 hasActiveSession={hasActiveSession}
