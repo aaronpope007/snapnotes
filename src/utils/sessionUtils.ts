@@ -1,15 +1,19 @@
 import type { SessionResult } from '../types/results';
 
-/** Get session net from account start/end when both present, else dailyNet. */
+/**
+ * Get session net from explicit account start/end when both present, else dailyNet.
+ *
+ * Important: do not infer start bankroll from a "previous session" because many
+ * callers pass filtered subsets (HU-only, ring-only, date ranges). Inferring
+ * across a filtered list can accidentally pull an older start value and make
+ * filtered totals incorrect.
+ */
 export function getSessionNet(
-  session: SessionResult,
-  prevEndBankroll: number | null
+  session: SessionResult
 ): number {
-  const accountStart = session.startBankroll ?? prevEndBankroll;
+  const accountStart = session.startBankroll ?? null;
   const accountEnd = session.endBankroll ?? null;
-  if (accountStart != null && accountEnd != null) {
-    return accountEnd - accountStart;
-  }
+  if (accountStart != null && accountEnd != null) return accountEnd - accountStart;
   return session.dailyNet ?? 0;
 }
 
@@ -19,10 +23,8 @@ export function getSessionNetsMap(sessions: SessionResult[]): Map<string, number
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
   const byId = new Map<string, number>();
-  let prevEndBankroll: number | null = null;
   for (const s of sorted) {
-    byId.set(s._id, getSessionNet(s, prevEndBankroll));
-    prevEndBankroll = s.endBankroll ?? null;
+    byId.set(s._id, getSessionNet(s));
   }
   return byId;
 }

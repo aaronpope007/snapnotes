@@ -54,7 +54,6 @@ export function computeHandRangeStats(
   );
 
   let cumulativeHands = 0;
-  let prevEndBankroll: number | null = null;
   let totalNet = 0;
   let handsInRange = 0;
   let sessionsTouching = 0;
@@ -75,7 +74,7 @@ export function computeHandRangeStats(
     const overlap = Math.max(0, overlapHiEx - overlapLo);
 
     const sessionHands = Math.max(0, sessionHiEx - sessionLo);
-    const net = getSessionNet(s, prevEndBankroll);
+    const net = getSessionNet(s);
 
     if (overlap > 0) {
       sessionsTouching += 1;
@@ -84,8 +83,6 @@ export function computeHandRangeStats(
       }
       handsInRange += overlap;
     }
-
-    prevEndBankroll = s.endBankroll ?? null;
   }
 
   const profitPerHand = handsInRange > 0 ? totalNet / handsInRange : null;

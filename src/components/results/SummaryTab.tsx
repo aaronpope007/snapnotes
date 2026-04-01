@@ -42,7 +42,6 @@ import type { SessionResult, Withdrawal } from '../../types/results';
 import { calculatePokerInsights, type InsightsDateRange } from '../../utils/calculatePokerInsights';
 import {
   getMostRecentSession,
-  getSessionNetsMap,
 } from '../../utils/sessionUtils';
 import { SessionDurationLabel } from '../SessionDurationLabel';
 import type { ActiveSession } from '../../utils/activeSession';
@@ -172,10 +171,8 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       });
     }
     if (rangePreset === 'today') {
-      return sessions.filter((s) => {
-        const d = new Date(s.date);
-        return toKey(d) === todayStr;
-      });
+      // Use string comparison to avoid timezone-related day shifts.
+      return sessions.filter((s) => s.date.slice(0, 10) === todayStr);
     }
     if (!startDay) return sessions;
     const startStr = toKey(startDay);
@@ -185,12 +182,38 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     });
   }, [sessions, rangePreset, customStart, customEnd]);
 
+  /**
+   * Build a sessionNet map across the full (format-filtered) session list, so that
+   * short date ranges like "Today" still compute a correct net using the prior
+   * session's endBankroll as the start when startBankroll isn't explicitly set.
+   *
+   * This avoids mixing formats because `sessions` is already format-filtered
+   * by the parent (`ResultsPage`).
+   */
+  const sessionNetById = useMemo(() => {
+    const sorted = [...sessions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const byId = new Map<string, number>();
+    let prevEndBankroll: number | null = null;
+    for (const s of sorted) {
+      const accountStart = s.startBankroll ?? prevEndBankroll;
+      const accountEnd = s.endBankroll ?? null;
+      const net =
+        accountStart != null && accountEnd != null
+          ? accountEnd - accountStart
+          : (s.dailyNet ?? 0);
+      byId.set(s._id, net);
+      prevEndBankroll = accountEnd;
+    }
+    return byId;
+  }, [sessions]);
+
   const stats = useMemo(() => {
     const sorted = [...summaryFilteredSessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-    const sessionNets = getSessionNetsMap(summaryFilteredSessions);
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const net = (s: SessionResult) => sessionNetById.get(s._id) ?? (s.dailyNet ?? 0);
     const mostRecent = getMostRecentSession(summaryFilteredSessions);
     const currentAccount = mostRecent?.endBankroll ?? null;
     const totalProfit = sorted.reduce((sum, s) => sum + net(s), 0);
@@ -217,11 +240,10 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       profitPerHourAt240,
       currentAccount,
     };
-  }, [summaryFilteredSessions]);
+  }, [summaryFilteredSessions, sessionNetById]);
 
   const streakAndDrawdown = useMemo(() => {
-    const sNets = getSessionNetsMap(summaryFilteredSessions);
-    const net = (s: SessionResult) => sNets.get(s._id) ?? (s.dailyNet ?? 0);
+    const net = (s: SessionResult) => sessionNetById.get(s._id) ?? (s.dailyNet ?? 0);
     const sorted = [...summaryFilteredSessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -260,12 +282,14 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     const currentDrawdown = peak - cumProfit;
 
     return { currentStreakCount, currentStreakType, longestWin, longestLoss, maxDrawdown, currentDrawdown };
-  }, [summaryFilteredSessions]);
+  }, [summaryFilteredSessions, sessionNetById]);
 
-  const sessionNets = useMemo(() => getSessionNetsMap(summaryFilteredSessions), [summaryFilteredSessions]);
+  const netForSession = useCallback(
+    (s: SessionResult) => sessionNetById.get(s._id) ?? (s.dailyNet ?? 0),
+    [sessionNetById]
+  );
 
   const byStake = useMemo(() => {
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const groups = new Map<number, SessionResult[]>();
     for (const s of summaryFilteredSessions) {
       const stake = s.stake ?? 0;
@@ -281,7 +305,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         );
         const totalHours = sorted.reduce((sum, s) => sum + (s.totalTime ?? 0), 0);
         const totalHands = sorted.reduce((sum, s) => sum + (s.hands ?? 0), 0);
-        const totalProfit = sorted.reduce((sum, s) => sum + net(s), 0);
+        const totalProfit = sorted.reduce((sum, s) => sum + netForSession(s), 0);
         const startDate = sorted.length > 0 ? new Date(sorted[0].date) : null;
         const profitPerHand = totalHands > 0 ? totalProfit / totalHands : 0;
         const avgHandsPerHour = totalHours > 0 ? totalHands / totalHours : 0;
@@ -302,7 +326,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
           bbPer100,
         };
       });
-  }, [summaryFilteredSessions, sessionNets]);
+  }, [summaryFilteredSessions, netForSession]);
 
   const chartData = useMemo(() => {
     const sorted = [...summaryFilteredSessions].sort(
@@ -310,7 +334,6 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     );
     if (sorted.length === 0) return [];
 
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const isPerHand = typeof interval === 'object';
     const points: { label: string; value: number; profitPerHand: number; cumulativeHands: number }[] = [];
     let cumulativeProfit = 0;
@@ -323,7 +346,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       let nextHands = step;
       for (const s of sorted) {
         const hands = s.hands ?? 0;
-        const sessionNet = net(s);
+        const sessionNet = netForSession(s);
         cumulativeHands += hands;
         cumulativeProfit += sessionNet;
         while (cumulativeHands >= nextHands) {
@@ -357,7 +380,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         const key = groupBy(new Date(s.date));
         const prev = groups.get(key) ?? { profit: 0, hands: 0 };
         groups.set(key, {
-          profit: prev.profit + net(s),
+          profit: prev.profit + netForSession(s),
           hands: prev.hands + (s.hands ?? 0),
         });
       }
@@ -378,7 +401,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       }
     }
     return points;
-  }, [summaryFilteredSessions, interval, sessionNets]);
+  }, [summaryFilteredSessions, interval, netForSession]);
 
   const chartYDomain = useMemo(() => {
     const dataKey = chartMode === 'perHand' ? 'profitPerHand' : 'value';
@@ -407,6 +430,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   const barFilteredSessions = useMemo(() => {
     if (barRangePreset === 'all') return sessions;
     const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return sessions.filter((s) => {
       const d = new Date(s.date);
       if (barRangePreset === 'year') return d.getFullYear() === now.getFullYear();
@@ -420,11 +444,8 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         return sessionDay >= startDay && sessionDay <= endDay;
       }
       if (barRangePreset === 'today') {
-        return (
-          d.getFullYear() === now.getFullYear() &&
-          d.getMonth() === now.getMonth() &&
-          d.getDate() === now.getDate()
-        );
+        // Use string comparison to avoid timezone-related day shifts.
+        return s.date.slice(0, 10) === todayStr;
       }
       if (barRangePreset === 'custom') {
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -436,7 +457,6 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
 
   type BarChartPoint = { label: string; date: string; profit: number; profitPerHand: number; hands: number };
   const barChartData = useMemo((): BarChartPoint[] => {
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const sorted = [...barFilteredSessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -459,7 +479,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         dayCounters.set(dateKey, counter);
         const label = total > 1 ? `${baseLabel} #${counter}` : baseLabel;
         const hands = s.hands ?? 0;
-        const sessionProfit = net(s);
+        const sessionProfit = netForSession(s);
         const profitPerHand = hands > 0 ? sessionProfit / hands : 0;
         return { label, date: dateKey, profit: sessionProfit, profitPerHand, hands };
       });
@@ -470,7 +490,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const prev = byDate.get(dateKey) ?? { profit: 0, hands: 0 };
       byDate.set(dateKey, {
-        profit: prev.profit + net(s),
+        profit: prev.profit + netForSession(s),
         hands: prev.hands + (s.hands ?? 0),
       });
     }
@@ -483,18 +503,17 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
         const profitPerHand = hands > 0 ? profit / hands : 0;
         return { label, date: dateKey, profit, profitPerHand, hands };
       });
-  }, [barFilteredSessions, sessionNets, barChartMode]);
+  }, [barFilteredSessions, netForSession, barChartMode]);
 
   const barPeriodStats = useMemo(() => {
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
-    const periodNet = barFilteredSessions.reduce((sum, s) => sum + net(s), 0);
+    const periodNet = barFilteredSessions.reduce((sum, s) => sum + netForSession(s), 0);
 
     let wonCount = 0;
     let lostCount = 0;
 
     if (barChartMode === 'session') {
       for (const s of barFilteredSessions) {
-        const n = net(s);
+        const n = netForSession(s);
         if (n >= 0) wonCount++;
         else lostCount++;
       }
@@ -503,7 +522,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       for (const s of barFilteredSessions) {
         const d = new Date(s.date);
         const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        byDay.set(dateKey, (byDay.get(dateKey) ?? 0) + net(s));
+        byDay.set(dateKey, (byDay.get(dateKey) ?? 0) + netForSession(s));
       }
       for (const [, dayNet] of byDay.entries()) {
         if (dayNet >= 0) wonCount++;
@@ -527,7 +546,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
     return { periodNet, wonCount, lostCount, periodLabel };
   }, [
     barFilteredSessions,
-    sessionNets,
+    netForSession,
     barChartMode,
     barRangePreset,
     barCustomStart,
@@ -585,26 +604,24 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
   // Session length vs result scatter data
   type ScatterPoint = { hours: number; net: number; pph: number; hands: number };
   const scatterData = useMemo((): ScatterPoint[] => {
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     return sessions
       .filter((s) => (s.totalTime ?? 0) > 0)
       .map((s) => {
-        const sessionNet = net(s);
+        const sessionNet = netForSession(s);
         const hands = s.hands ?? 0;
         return { hours: s.totalTime!, net: sessionNet, pph: hands > 0 ? sessionNet / hands : 0, hands };
       });
-  }, [sessions, sessionNets]);
+  }, [sessions, netForSession]);
 
   // Time-of-day heatmap: avg result by start hour
   const timeOfDayData = useMemo(() => {
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const buckets: { sum: number; count: number }[] = Array.from({ length: 24 }, () => ({ sum: 0, count: 0 }));
     for (const s of sessions) {
       if (!s.startTime) continue;
       const d = new Date(s.startTime);
       if (isNaN(d.getTime())) continue;
       const hour = d.getHours();
-      buckets[hour].sum += net(s);
+      buckets[hour].sum += netForSession(s);
       buckets[hour].count += 1;
     }
     return buckets.map((b, h) => ({
@@ -613,14 +630,13 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       avg: b.count > 0 ? b.sum / b.count : 0,
       count: b.count,
     }));
-  }, [sessions, sessionNets]);
+  }, [sessions, netForSession]);
 
   const hasTimeOfDayData = timeOfDayData.some((d) => d.count > 0);
 
   // Rolling $/hand win rate trend
   const ROLLING_OPTIONS = [5000, 10000, 25000, 50000, 100000];
   const rollingWinRateData = useMemo(() => {
-    const net = (s: SessionResult) => sessionNets.get(s._id) ?? (s.dailyNet ?? 0);
     const sorted = [...sessions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -633,7 +649,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       for (let j = right; j >= 0; j--) {
         const jh = sorted[j].hands ?? 0;
         wHands += jh;
-        wProfit += net(sorted[j]);
+        wProfit += netForSession(sorted[j]);
         if (wHands >= rollingWindow) break;
       }
       if (wHands > 0) {
@@ -641,7 +657,7 @@ export function SummaryTab({ sessions, withdrawals = [], loading, hasActiveSessi
       }
     }
     return result;
-  }, [sessions, sessionNets, rollingWindow]);
+  }, [sessions, netForSession, rollingWindow]);
 
   if (loading) {
     return (
