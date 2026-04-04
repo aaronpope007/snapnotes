@@ -9,6 +9,7 @@ import TableChartIcon from '@mui/icons-material/TableChart';
 import AddIcon from '@mui/icons-material/Add';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { getActiveSession, setActiveSession, clearActiveSession } from '../../utils/activeSession';
 import { LogNewSessionModal } from './LogNewSessionModal';
@@ -17,7 +18,7 @@ import { EditActiveSessionModal } from './EditActiveSessionModal';
 import type { SessionFormatFilter, SessionResultCreate } from '../../types/results';
 
 export type ResultsViewValue = 'summary' | 'all';
-export type ResultsTabValue = 'sessions' | 'add' | 'withdrawals';
+export type ResultsTabValue = 'sessions' | 'add' | 'withdrawals' | 'audit';
 
 interface ResultsTabsProps {
   view: ResultsViewValue;
@@ -234,6 +235,10 @@ export function ResultsTabs({
           <ToggleButton value="withdrawals" aria-label="Withdrawals">
             <AccountBalanceWalletIcon sx={{ fontSize: 14, mr: 0.25 }} />
             Withdrawals
+          </ToggleButton>
+          <ToggleButton value="audit" aria-label="Audit">
+            <FactCheckIcon sx={{ fontSize: 14, mr: 0.25 }} />
+            Audit
           </ToggleButton>
         </ToggleButtonGroup>
       )}

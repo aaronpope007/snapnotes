@@ -12,6 +12,7 @@ import { SessionsGridTab } from '../components/results/SessionsGridTab';
 import { AddOrUploadTab } from '../components/results/AddOrUploadTab';
 import { SummaryTab } from '../components/results/SummaryTab';
 import { WithdrawalsTab } from '../components/results/WithdrawalsTab';
+import { ResultsAuditTab } from '../components/results/ResultsAuditTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import type { ActiveSession } from '../utils/activeSession';
 
@@ -243,6 +244,17 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
             onAdd={handleAddWithdrawal}
             onUpdate={handleUpdateWithdrawal}
             onDelete={handleDeleteWithdrawal}
+            onError={(msg) => onError?.(msg)}
+          />
+        </ErrorBoundary>
+      ) : activeTab === 'audit' ? (
+        <ErrorBoundary>
+          <ResultsAuditTab
+            allSessions={sessions}
+            formatFilteredSessions={formatFilteredSessions}
+            formatFilter={formatFilter}
+            loading={loading}
+            onSuccess={(msg) => onSuccess?.(msg)}
             onError={(msg) => onError?.(msg)}
           />
         </ErrorBoundary>
