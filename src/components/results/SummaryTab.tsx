@@ -1014,6 +1014,7 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
         <AccordionDetails>
           <FunFactsBento
             sessions={summaryFilteredSessions}
+            allSessionsForNet={allSessionsForNet ?? sessions}
             dateRange={hourlyPerHandRange}
             onDateRangeChange={(r) => {
               if (typeof r === 'object') {

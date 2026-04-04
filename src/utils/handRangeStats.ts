@@ -1,5 +1,5 @@
 import type { SessionResult } from '../types/results';
-import { getSessionNet } from './sessionUtils';
+import { getSessionNetMapWithCarryForward } from './sessionBankrollAudit';
 
 export interface HandRangeStatsResult {
   /** Sum of net attributed to the range (prorated per session by overlapping hands). */
@@ -36,11 +36,15 @@ export function getLatestHandCounterEnd(sessions: SessionResult[]): number | nul
 /**
  * Prorate each session's net by the fraction of its hands overlapping [fromInclusive, toInclusive].
  * Session spans use the same rules as `SessionsGridTab` (half-open [start, end)).
+ *
+ * When `sessions` is format-filtered, pass full history as `allSessionsForNet` so each session's
+ * net matches the grid (bankroll carry-forward).
  */
 export function computeHandRangeStats(
   sessions: SessionResult[],
   fromInclusive: number,
-  toInclusive: number
+  toInclusive: number,
+  allSessionsForNet?: SessionResult[]
 ): HandRangeStatsResult {
   if (!Number.isFinite(fromInclusive) || !Number.isFinite(toInclusive) || fromInclusive > toInclusive) {
     return { totalNet: 0, handsInRange: 0, profitPerHand: null, sessionsTouching: 0 };
@@ -52,6 +56,8 @@ export function computeHandRangeStats(
   const sorted = [...sessions].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+
+  const netById = getSessionNetMapWithCarryForward(allSessionsForNet ?? sessions);
 
   let cumulativeHands = 0;
   let totalNet = 0;
@@ -74,7 +80,7 @@ export function computeHandRangeStats(
     const overlap = Math.max(0, overlapHiEx - overlapLo);
 
     const sessionHands = Math.max(0, sessionHiEx - sessionLo);
-    const net = getSessionNet(s);
+    const net = netById.get(s._id) ?? (s.dailyNet ?? 0);
 
     if (overlap > 0) {
       sessionsTouching += 1;

@@ -24,6 +24,8 @@ import type { SessionResult } from '../../types/results';
 
 interface FunFactsBentoProps {
   sessions: SessionResult[];
+  /** Full history for carry-forward nets when `sessions` is format- or date-filtered. */
+  allSessionsForNet?: SessionResult[];
   compact?: boolean;
   /** When provided, this component becomes controlled for date-range filtering. */
   dateRange?: InsightsDateRange;
@@ -71,6 +73,7 @@ function formatDateForDisplay(dateStr: string): string {
 
 export function FunFactsBento({
   sessions,
+  allSessionsForNet,
   compact: compactProp,
   dateRange: dateRangeProp,
   onDateRangeChange,
@@ -90,8 +93,12 @@ export function FunFactsBento({
   const bbSize = primaryStake / 100;
 
   const insights = useMemo(
-    () => calculatePokerInsights(sessions, { dateRange }),
-    [sessions, dateRange]
+    () =>
+      calculatePokerInsights(sessions, {
+        dateRange,
+        allSessionsForNet: allSessionsForNet ?? sessions,
+      }),
+    [sessions, dateRange, allSessionsForNet]
   );
 
   if (sessions.length < 2) {

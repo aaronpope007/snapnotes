@@ -101,6 +101,12 @@ export function sumAuditNetForIds(rows: BankrollCarryAuditRow[], sessionIds: Set
   return sum;
 }
 
+/** Same per-session net as the grid, Summary, and Audit (full-history bankroll carry-forward). */
+export function getSessionNetMapWithCarryForward(allSessions: SessionResult[]): Map<string, number> {
+  const rows = buildBankrollCarryAuditRows(allSessions);
+  return new Map(rows.map((r) => [r.sessionId, r.netUsed]));
+}
+
 export function auditRowsToCsv(rows: BankrollCarryAuditRow[]): string {
   const header = [
     'sessionId',

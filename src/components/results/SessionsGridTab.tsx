@@ -119,7 +119,10 @@ export function SessionsGridTab({ sessions, allSessionsForBankroll, loading, onU
     return byId;
   }, [sessions, bankrollMetaById]);
 
-  const latestHandEnd = useMemo(() => getLatestHandCounterEnd(sessions), [sessions]);
+  const latestHandEnd = useMemo(
+    () => getLatestHandCounterEnd(allSessionsForBankroll ?? sessions),
+    [allSessionsForBankroll, sessions]
+  );
 
   const handleHandRangeCalculate = useCallback(() => {
     setHandRangeError(null);
@@ -142,8 +145,10 @@ export function SessionsGridTab({ sessions, allSessionsForBankroll, loading, onU
       setHandRangeStats(null);
       return;
     }
-    setHandRangeStats(computeHandRangeStats(sessions, fromN, toN));
-  }, [handRangeFrom, handRangeTo, sessions]);
+    setHandRangeStats(
+      computeHandRangeStats(sessions, fromN, toN, allSessionsForBankroll ?? sessions)
+    );
+  }, [handRangeFrom, handRangeTo, sessions, allSessionsForBankroll]);
 
   const columns = useMemo<GridColDef<SessionResult>[]>(
     () => [

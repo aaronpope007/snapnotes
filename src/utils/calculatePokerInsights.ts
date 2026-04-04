@@ -1,6 +1,6 @@
 import type { SessionResult, SessionRating } from '../types/results';
 import { SESSION_RATING_OPTIONS } from '../types/results';
-import { getSessionNetsMap } from './sessionUtils';
+import { getSessionNetMapWithCarryForward } from './sessionBankrollAudit';
 
 export type InsightsDateRange =
   | 'all'
@@ -194,10 +194,11 @@ export function calculatePokerInsights(
   options?: { dateRange?: InsightsDateRange; allSessionsForNet?: SessionResult[] }
 ): PokerInsights {
   const range = options?.dateRange ?? 'all';
-  // When sessions are a filtered subset (e.g., HU-only or date ranges),
-  // bankroll carry-forward should come from the full history to avoid
-  // pulling a prior bankroll from within the filtered subset.
-  const sessionNets = getSessionNetsMap(options?.allSessionsForNet ?? sessions);
+  // Use the same per-session net as Summary / grid / Audit (bankroll carry-forward
+  // on full history). getSessionNetsMap (explicit start+end or dailyNet only) skews
+  // cumulative equity and inflates drawdown / downswing stats when starts are often inferred.
+  const netSourceSessions = options?.allSessionsForNet ?? sessions;
+  const sessionNets = getSessionNetMapWithCarryForward(netSourceSessions);
   const filtered = filterSessionsByRange(sessions, range);
   const sorted = [...filtered].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -386,9 +387,7 @@ export function calculatePokerInsights(
   const winRatePercentage =
     sorted.length > 0 ? (winningSessions / sorted.length) * 100 : 0;
   const avgSessionNet =
-    sorted.length > 0
-      ? sorted.reduce((sum, s) => sum + (s.dailyNet ?? 0), 0) / sorted.length
-      : 0;
+    sorted.length > 0 ? sorted.reduce((sum, s) => sum + net(s), 0) / sorted.length : 0;
 
   let currentStatus: string | null = null;
   if (currentWin >= 2) currentStatus = `On a ${currentWin}-session heater!`;
