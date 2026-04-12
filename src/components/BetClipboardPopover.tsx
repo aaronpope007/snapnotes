@@ -80,7 +80,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
       }
       try {
         await navigator.clipboard.writeText(text);
-        onSuccess('Copied.');
+        onSuccess(`Copied ${text}.`);
       } catch {
         onError('Could not copy to clipboard.');
       }
