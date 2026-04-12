@@ -53,6 +53,7 @@ import { MDFPanel } from './components/MDFPanel';
 import { FoldEquityPanel } from './components/FoldEquityPanel';
 import { GeoPanel } from './components/GeoPanel';
 import { RngButton } from './components/RngButton';
+import { BetClipboardPopover } from './components/BetClipboardPopover';
 import { TopNotificationBar } from './components/TopNotificationBar';
 import { TempNoteModal } from './components/TempNoteModal';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
@@ -849,6 +850,7 @@ export default function App() {
             </Button>
           </>
         )}
+        <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
         <IconButton
           size="medium"
           onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -1190,6 +1192,7 @@ export default function App() {
                     </Button>
                   </>
                 )}
+                <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
                 <IconButton
                   size="medium"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
