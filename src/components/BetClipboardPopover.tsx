@@ -25,6 +25,7 @@ const STORAGE_SELECTED_STAKE_PRESET = 'snapnotes-bet-clipboard-selected-stake-pr
 const STORAGE_SRP_POT_BLINDS = 'snapnotes-bet-clipboard-srp-pot-blinds-v1';
 const STORAGE_3B_POT_BLINDS = 'snapnotes-bet-clipboard-3b-pot-blinds-v1';
 const STORAGE_4B_POT_BLINDS = 'snapnotes-bet-clipboard-4b-pot-blinds-v1';
+const STORAGE_5B_POT_BLINDS = 'snapnotes-bet-clipboard-5b-pot-blinds-v1';
 
 const DEFAULT_STAKE_PRESET_NAME = 'WPT Gold';
 
@@ -148,6 +149,10 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
     const n = loadOptionalNumber(STORAGE_4B_POT_BLINDS, 40);
     return formatPlainNumber(n);
   });
+  const [fiveBetPotBlindsStr, setFiveBetPotBlindsStr] = useState<string>(() => {
+    const n = loadOptionalNumber(STORAGE_5B_POT_BLINDS, 60);
+    return formatPlainNumber(n);
+  });
 
   useEffect(() => {
     saveJsonStakePresets(STORAGE_STAKE_PRESETS, stakePresets);
@@ -174,6 +179,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
   const srpPotBlindsNum = useMemo(() => parseOptionalNumber(srpPotBlindsStr), [srpPotBlindsStr]);
   const threeBetPotBlindsNum = useMemo(() => parseOptionalNumber(threeBetPotBlindsStr), [threeBetPotBlindsStr]);
   const fourBetPotBlindsNum = useMemo(() => parseOptionalNumber(fourBetPotBlindsStr), [fourBetPotBlindsStr]);
+  const fiveBetPotBlindsNum = useMemo(() => parseOptionalNumber(fiveBetPotBlindsStr), [fiveBetPotBlindsStr]);
 
   const copyText = useCallback(
     async (text: string) => {
@@ -219,6 +225,16 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
       // Auto-set 4-bet pot (in blinds) similar to 3-bet: 2x 4-bet size + 0.5 (antes).
       const nextPotBlinds = 2 * fourBetSizeBb + 0.5;
       setFourBetPotBlindsStr(formatPlainNumber(nextPotBlinds));
+    },
+    [copyBbMultiple]
+  );
+
+  const handleCopyBbFiveBetToSize = useCallback(
+    (fiveBetToBb: number) => {
+      copyBbMultiple(fiveBetToBb);
+      // Auto-set 5-bet pot (in blinds) similar to 3-bet/4-bet helpers.
+      const nextPotBlinds = 2 * fiveBetToBb + 0.5;
+      setFiveBetPotBlindsStr(formatPlainNumber(nextPotBlinds));
     },
     [copyBbMultiple]
   );
@@ -319,6 +335,12 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
       saveOptionalNumber(STORAGE_4B_POT_BLINDS, fourBetPotBlindsNum);
     }
   }, [fourBetPotBlindsNum]);
+
+  useEffect(() => {
+    if (fiveBetPotBlindsNum != null && fiveBetPotBlindsNum > 0) {
+      saveOptionalNumber(STORAGE_5B_POT_BLINDS, fiveBetPotBlindsNum);
+    }
+  }, [fiveBetPotBlindsNum]);
 
   return (
     <>
@@ -513,7 +535,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.5 }}>
                 <Box />
                 {[56.3, 76.3, 9999].map((m) => (
-                  <Button key={m} size="small" variant="outlined" onClick={() => copyBbMultiple(m)}>
+                  <Button key={m} size="small" variant="outlined" onClick={() => handleCopyBbFiveBetToSize(m)}>
                     {formatPlainNumber(m)}
                   </Button>
                 ))}
@@ -595,34 +617,71 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
             <Divider orientation="vertical" flexItem sx={{ my: 0.25 }} />
 
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                C-bet (3-bet pots)
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
-                Pot is in blinds (default 20). Clicking a % copies pot × % × BB.
-              </Typography>
-              <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
-                <TextField
-                  size="small"
-                  label="3B pot (blinds)"
-                  value={threeBetPotBlindsStr}
-                  onChange={(e) => setThreeBetPotBlindsStr(e.target.value)}
-                  inputProps={{ inputMode: 'decimal' }}
-                  sx={{ maxWidth: 170 }}
-                />
+              <Stack spacing={1.25}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    C-bet (3-bet pots)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                    Pot is in blinds (default 20). Clicking a % copies pot × % × BB.
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
+                    <TextField
+                      size="small"
+                      label="3B pot (blinds)"
+                      value={threeBetPotBlindsStr}
+                      onChange={(e) => setThreeBetPotBlindsStr(e.target.value)}
+                      inputProps={{ inputMode: 'decimal' }}
+                      sx={{ maxWidth: 170 }}
+                    />
+                  </Stack>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {[25, 40, 72, 100, 141].map((pct) => (
+                      <Button
+                        key={pct}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => copyPotPctFromBlinds(threeBetPotBlindsNum, pct)}
+                      >
+                        {`${pct}%`}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
+
+                <Divider />
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    C-bet (5-bet pots)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                    Clicking a % copies pot × % × BB. BB 5-bet-to sizes auto-fill the pot.
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
+                    <TextField
+                      size="small"
+                      label="5B pot (blinds)"
+                      value={fiveBetPotBlindsStr}
+                      onChange={(e) => setFiveBetPotBlindsStr(e.target.value)}
+                      inputProps={{ inputMode: 'decimal' }}
+                      sx={{ maxWidth: 170 }}
+                    />
+                  </Stack>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {[15, 30, 37.5, 49.5, 60, 75].map((pct) => (
+                      <Button
+                        key={pct}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => copyPotPctFromBlinds(fiveBetPotBlindsNum, pct)}
+                      >
+                        {`${pct}%`}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
               </Stack>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {[25, 40, 72, 100, 141].map((pct) => (
-                  <Button
-                    key={pct}
-                    size="small"
-                    variant="outlined"
-                    onClick={() => copyPotPctFromBlinds(threeBetPotBlindsNum, pct)}
-                  >
-                    {`${pct}%`}
-                  </Button>
-                ))}
-              </Box>
             </Box>
           </Box>
         </Stack>
