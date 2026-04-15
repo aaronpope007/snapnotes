@@ -24,6 +24,7 @@ const STORAGE_SELECTED_STAKE_PRESET = 'snapnotes-bet-clipboard-selected-stake-pr
 
 const STORAGE_SRP_POT_BLINDS = 'snapnotes-bet-clipboard-srp-pot-blinds-v1';
 const STORAGE_3B_POT_BLINDS = 'snapnotes-bet-clipboard-3b-pot-blinds-v1';
+const STORAGE_4B_POT_BLINDS = 'snapnotes-bet-clipboard-4b-pot-blinds-v1';
 
 const DEFAULT_STAKE_PRESET_NAME = 'WPT Gold';
 
@@ -143,6 +144,10 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
     const n = loadOptionalNumber(STORAGE_3B_POT_BLINDS, 20);
     return formatPlainNumber(n);
   });
+  const [fourBetPotBlindsStr, setFourBetPotBlindsStr] = useState<string>(() => {
+    const n = loadOptionalNumber(STORAGE_4B_POT_BLINDS, 40);
+    return formatPlainNumber(n);
+  });
 
   useEffect(() => {
     saveJsonStakePresets(STORAGE_STAKE_PRESETS, stakePresets);
@@ -168,6 +173,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
   const anteNum = useMemo(() => parseOptionalNumber(anteStr), [anteStr]);
   const srpPotBlindsNum = useMemo(() => parseOptionalNumber(srpPotBlindsStr), [srpPotBlindsStr]);
   const threeBetPotBlindsNum = useMemo(() => parseOptionalNumber(threeBetPotBlindsStr), [threeBetPotBlindsStr]);
+  const fourBetPotBlindsNum = useMemo(() => parseOptionalNumber(fourBetPotBlindsStr), [fourBetPotBlindsStr]);
 
   const copyText = useCallback(
     async (text: string) => {
@@ -205,6 +211,41 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
       setThreeBetPotBlindsStr(formatPlainNumber(nextPotBlinds));
     },
     [copyBbMultiple]
+  );
+
+  const handleCopySbFourBetSize = useCallback(
+    (fourBetSizeBb: number) => {
+      copyBbMultiple(fourBetSizeBb);
+      // Auto-set 4-bet pot (in blinds) similar to 3-bet: 2x 4-bet size + 0.5 (antes).
+      const nextPotBlinds = 2 * fourBetSizeBb + 0.5;
+      setFourBetPotBlindsStr(formatPlainNumber(nextPotBlinds));
+    },
+    [copyBbMultiple]
+  );
+
+  const setSrpPotFromOpenSize = useCallback(
+    (openSizeBb: number) => {
+      if (bbNum == null || bbNum <= 0) {
+        onError('Enter a valid BB amount first.');
+        return;
+      }
+      if (anteNum == null || anteNum < 0) {
+        onError('Enter a valid ante first.');
+        return;
+      }
+      const anteInBlinds = anteNum / bbNum;
+      const nextPotBlinds = openSizeBb * 2 + 2 * anteInBlinds;
+      setSrpPotBlindsStr(formatPlainNumber(nextPotBlinds));
+    },
+    [anteNum, bbNum, onError]
+  );
+
+  const handleCopySbOpenSize = useCallback(
+    (openSizeBb: number) => {
+      copyBbMultiple(openSizeBb);
+      setSrpPotFromOpenSize(openSizeBb);
+    },
+    [copyBbMultiple, setSrpPotFromOpenSize]
   );
 
   const copyPotPctFromBlinds = useCallback(
@@ -273,6 +314,12 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
     }
   }, [threeBetPotBlindsNum]);
 
+  useEffect(() => {
+    if (fourBetPotBlindsNum != null && fourBetPotBlindsNum > 0) {
+      saveOptionalNumber(STORAGE_4B_POT_BLINDS, fourBetPotBlindsNum);
+    }
+  }, [fourBetPotBlindsNum]);
+
   return (
     <>
       <IconButton
@@ -290,7 +337,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { p: 1.5, maxWidth: 720, width: 'min(720px, calc(100vw - 24px))' } } }}
+        slotProps={{ paper: { sx: { p: 1.5, maxWidth: 900, width: 'min(900px, calc(100vw - 24px))' } } }}
       >
         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75 }}>
           Bet clipboard
@@ -386,8 +433,8 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
 
           <Divider />
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.25 }}>
-            <Box>
+          <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'stretch' }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
                 SB
               </Typography>
@@ -396,7 +443,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
               </Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.5 }}>
                 {[2, 2.5, 3, 4].map((m) => (
-                  <Button key={m} size="small" variant="outlined" onClick={() => copyBbMultiple(m)}>
+                  <Button key={m} size="small" variant="outlined" onClick={() => handleCopySbOpenSize(m)}>
                     {`${formatPlainNumber(m)}bb`}
                   </Button>
                 ))}
@@ -404,8 +451,8 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75, mb: 0.25 }}>
                 vs 3-bet
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.5 }}>
-                {[9, 12, 13.5, 15].map((n) => (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 0.5 }}>
+                {[9, 12, 13.5, 15, 20, 22].map((n) => (
                   <Box key={n} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>
                     {formatPlainNumber(n)}
                   </Box>
@@ -414,16 +461,18 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75, mb: 0.25 }}>
                 4-bet size
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.5 }}>
-                {[29.3, 36, 37.1, 37.5].map((m) => (
-                  <Button key={m} size="small" variant="outlined" onClick={() => copyBbMultiple(m)}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 0.5 }}>
+                {[29.3, 36, 37.1, 37.5, 45, 49.5].map((m) => (
+                  <Button key={m} size="small" variant="outlined" onClick={() => handleCopySbFourBetSize(m)}>
                     {formatPlainNumber(m)}
                   </Button>
                 ))}
               </Box>
             </Box>
 
-            <Box>
+            <Divider orientation="vertical" flexItem sx={{ my: 0.25 }} />
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
                 BB
               </Typography>
@@ -474,65 +523,106 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
 
           <Divider />
 
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-              C-bet (single-raised pots)
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
-              Pot is in blinds (default 6.5). Clicking a % copies pot × % × BB.
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
-              <TextField
-                size="small"
-                label="SRP pot (blinds)"
-                value={srpPotBlindsStr}
-                onChange={(e) => setSrpPotBlindsStr(e.target.value)}
-                inputProps={{ inputMode: 'decimal' }}
-                sx={{ maxWidth: 170 }}
-              />
-            </Stack>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {[25, 40, 68, 100, 148, 342].map((pct) => (
-                <Button
-                  key={pct}
-                  size="small"
-                  variant="outlined"
-                  onClick={() => copyPotPctFromBlinds(srpPotBlindsNum, pct)}
-                >
-                  {`${pct}%`}
-                </Button>
-              ))}
-            </Box>
-          </Box>
+          <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'stretch' }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Stack spacing={1.25}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    C-bet (single-raised pots)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                    Pot is in blinds (default 6.5). Clicking a % copies pot × % × BB.
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
+                    <TextField
+                      size="small"
+                      label="SRP pot (blinds)"
+                      value={srpPotBlindsStr}
+                      onChange={(e) => setSrpPotBlindsStr(e.target.value)}
+                      inputProps={{ inputMode: 'decimal' }}
+                      sx={{ maxWidth: 170 }}
+                    />
+                  </Stack>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {[25, 40, 68, 100, 148, 342].map((pct) => (
+                      <Button
+                        key={pct}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => copyPotPctFromBlinds(srpPotBlindsNum, pct)}
+                      >
+                        {`${pct}%`}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
 
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-              C-bet (3-bet pots)
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
-              Pot is in blinds (default 20). Clicking a % copies pot × % × BB.
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
-              <TextField
-                size="small"
-                label="3B pot (blinds)"
-                value={threeBetPotBlindsStr}
-                onChange={(e) => setThreeBetPotBlindsStr(e.target.value)}
-                inputProps={{ inputMode: 'decimal' }}
-                sx={{ maxWidth: 170 }}
-              />
-            </Stack>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {[25, 40, 72, 100, 141].map((pct) => (
-                <Button
-                  key={pct}
+                <Divider />
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    C-bet (4-bet pots)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                    Clicking a % copies pot × % × BB. SB 4-bet sizes auto-fill the pot.
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
+                    <TextField
+                      size="small"
+                      label="4B pot (blinds)"
+                      value={fourBetPotBlindsStr}
+                      onChange={(e) => setFourBetPotBlindsStr(e.target.value)}
+                      inputProps={{ inputMode: 'decimal' }}
+                      sx={{ maxWidth: 170 }}
+                    />
+                  </Stack>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {[10, 20, 25, 33, 40, 50].map((pct) => (
+                      <Button
+                        key={pct}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => copyPotPctFromBlinds(fourBetPotBlindsNum, pct)}
+                      >
+                        {`${pct}%`}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Divider orientation="vertical" flexItem sx={{ my: 0.25 }} />
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                C-bet (3-bet pots)
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                Pot is in blinds (default 20). Clicking a % copies pot × % × BB.
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.75 }}>
+                <TextField
                   size="small"
-                  variant="outlined"
-                  onClick={() => copyPotPctFromBlinds(threeBetPotBlindsNum, pct)}
-                >
-                  {`${pct}%`}
-                </Button>
-              ))}
+                  label="3B pot (blinds)"
+                  value={threeBetPotBlindsStr}
+                  onChange={(e) => setThreeBetPotBlindsStr(e.target.value)}
+                  inputProps={{ inputMode: 'decimal' }}
+                  sx={{ maxWidth: 170 }}
+                />
+              </Stack>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {[25, 40, 72, 100, 141].map((pct) => (
+                  <Button
+                    key={pct}
+                    size="small"
+                    variant="outlined"
+                    onClick={() => copyPotPctFromBlinds(threeBetPotBlindsNum, pct)}
+                  >
+                    {`${pct}%`}
+                  </Button>
+                ))}
+              </Box>
             </Box>
           </Box>
         </Stack>
