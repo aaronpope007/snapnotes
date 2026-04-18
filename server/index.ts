@@ -10,6 +10,7 @@ import meRouter from './routes/me.js';
 import learningRouter from './routes/learning.js';
 import resultsRouter from './routes/results.js';
 import withdrawalsRouter from './routes/withdrawals.js';
+import betClipboardSyncRouter from './routes/betClipboardSync.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -25,6 +26,7 @@ app.use('/api/me', meRouter);
 app.use('/api/learning', learningRouter);
 app.use('/api/results', resultsRouter);
 app.use('/api/withdrawals', withdrawalsRouter);
+app.use('/api/bet-clipboard-sync', betClipboardSyncRouter);
 
 const start = async () => {
   const uri = process.env.MONGODB_URI;

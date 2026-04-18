@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import axios from 'axios';
 import IconButton from '@mui/material/IconButton';
 import Popover from '@mui/material/Popover';
 import Box from '@mui/material/Box';
@@ -23,6 +24,12 @@ import MuiPopover from '@mui/material/Popover';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PercentIcon from '@mui/icons-material/Percent';
 import { formatPlainNumber } from '../utils/plainNumberString';
+import {
+  BET_CLIPBOARD_CLOUD_VERSION,
+  BET_CLIPBOARD_SYNC_ID_RE,
+  type BetClipboardCloudPayloadV1,
+} from '../types/betClipboardCloud';
+import { createBetClipboardSync, fetchBetClipboardSync, saveBetClipboardSync } from '../api/betClipboardSync';
 
 const STORAGE_STAKE_PRESETS = 'snapnotes-bet-clipboard-stake-presets-v1';
 const STORAGE_SELECTED_STAKE_PRESET = 'snapnotes-bet-clipboard-selected-stake-preset-v1';
@@ -32,18 +39,26 @@ const STORAGE_3B_POT_BLINDS = 'snapnotes-bet-clipboard-3b-pot-blinds-v1';
 const STORAGE_4B_POT_BLINDS = 'snapnotes-bet-clipboard-4b-pot-blinds-v1';
 const STORAGE_5B_POT_BLINDS = 'snapnotes-bet-clipboard-5b-pot-blinds-v1';
 
-const STORAGE_SIZINGS_BY_STACK = 'snapnotes-bet-clipboard-sizings-by-stack-v1';
+const STORAGE_SIZINGS_LEGACY = 'snapnotes-bet-clipboard-sizings-by-stack-v1';
+const STORAGE_SIZINGS = 'snapnotes-bet-clipboard-sizings-by-stack-v2';
 const STORAGE_SELECTED_STACK_TAB = 'snapnotes-bet-clipboard-selected-stack-tab-v1';
+const STORAGE_SELECTED_OPEN_KEY = 'snapnotes-bet-clipboard-selected-open-key-v1';
+const STORAGE_BET_CLIPBOARD_SYNC_ID = 'snapnotes-bet-clipboard-cloud-sync-id-v1';
 
 const DEFAULT_STAKE_PRESET_NAME = 'WPT Gold';
 
-type StackDepth = '50' | '100' | '150' | '200';
+type StackDepth = '50' | '75' | '100' | '150' | '200';
 const STACK_DEPTHS: { value: StackDepth; label: string }[] = [
   { value: '50', label: '50bb' },
+  { value: '75', label: '75bb' },
   { value: '100', label: '100bb' },
   { value: '150', label: '150bb' },
   { value: '200', label: '200bb' },
 ];
+
+function openBbKey(n: number): string {
+  return formatPlainNumber(n);
+}
 
 interface StakePreset {
   name: string;
@@ -52,7 +67,7 @@ interface StakePreset {
   ante: number; // ante amount (chips)
 }
 
-interface BetSizings {
+interface LegacyFlatSizings {
   sbOpenSizes: number[];
   sbVs3Bet: number[];
   sbFourBetSizes: number[];
@@ -66,7 +81,45 @@ interface BetSizings {
   cbet5BetPcts: number[];
 }
 
-const DEFAULT_SIZINGS: BetSizings = {
+interface OpenKeyedSizings {
+  sbVs3Bet: number[];
+  sbFourBetSizes: number[];
+  bbThreeBetSizes: number[];
+  /** Subset of `bbThreeBetSizes` to show with a GTO-style border. */
+  bbThreeBetGtoValues: number[];
+  bbVs4Bet: (number | null)[];
+  bbFiveBetTo: (number | null)[];
+}
+
+interface StackSizingsState {
+  openSizeKeys: number[];
+  byOpen: Record<string, OpenKeyedSizings>;
+  /** Default / solver open size (bb) for this stack depth — used to highlight the matching open subtab. */
+  gtoOpenBb: number;
+  cbetSrpPcts: number[];
+  cbet3BetPcts: number[];
+  cbet4BetPcts: number[];
+  cbet5BetPcts: number[];
+}
+
+const DEFAULT_GTO_OPEN_BB: Record<StackDepth, number> = {
+  '50': 2.7,
+  '75': 3.25,
+  '100': 3,
+  '150': 3,
+  '200': 3,
+};
+
+/** Default open subtabs (bb) for new / reset stack depth — 2bb is always included. */
+const DEFAULT_OPEN_SIZE_KEYS: Record<StackDepth, number[]> = {
+  '50': [2],
+  '75': [2, 2.5, 3, 3.25],
+  '100': [2],
+  '150': [2],
+  '200': [2],
+};
+
+const LEGACY_DEFAULT_FLAT: LegacyFlatSizings = {
   sbOpenSizes: [2, 2.5, 2.75, 3, 4],
   sbVs3Bet: [9, 12, 13.5, 15, 20, 22],
   sbFourBetSizes: [29.3, 36, 37.1, 37.5, 45, 49.5],
@@ -80,61 +133,219 @@ const DEFAULT_SIZINGS: BetSizings = {
   cbet5BetPcts: [15, 30, 37.5, 49.5, 60, 75],
 };
 
-function loadSizingsByStack(fallback: Record<StackDepth, BetSizings>): Record<StackDepth, BetSizings> {
+function createDefaultOpenKeyed(): OpenKeyedSizings {
+  return {
+    sbVs3Bet: [...LEGACY_DEFAULT_FLAT.sbVs3Bet],
+    sbFourBetSizes: [...LEGACY_DEFAULT_FLAT.sbFourBetSizes],
+    bbThreeBetSizes: [...LEGACY_DEFAULT_FLAT.bbThreeBetSizes],
+    bbThreeBetGtoValues: [],
+    bbVs4Bet: [...LEGACY_DEFAULT_FLAT.bbVs4Bet],
+    bbFiveBetTo: [...LEGACY_DEFAULT_FLAT.bbFiveBetTo],
+  };
+}
+
+function cloneOpenKeyed(o: OpenKeyedSizings): OpenKeyedSizings {
+  return JSON.parse(JSON.stringify(o)) as OpenKeyedSizings;
+}
+
+function createDefaultStackStateForDepth(depth: StackDepth): StackSizingsState {
+  const base = createDefaultOpenKeyed();
+  const opens = uniqueSortedPositive([2, ...DEFAULT_OPEN_SIZE_KEYS[depth]]);
+  const byOpen: Record<string, OpenKeyedSizings> = {};
+  for (const o of opens) {
+    byOpen[openBbKey(o)] = cloneOpenKeyed(base);
+  }
+  return {
+    openSizeKeys: opens,
+    byOpen,
+    gtoOpenBb: DEFAULT_GTO_OPEN_BB[depth],
+    cbetSrpPcts: [...LEGACY_DEFAULT_FLAT.cbetSrpPcts],
+    cbet3BetPcts: [...LEGACY_DEFAULT_FLAT.cbet3BetPcts],
+    cbet4BetPcts: [...LEGACY_DEFAULT_FLAT.cbet4BetPcts],
+    cbet5BetPcts: [...LEGACY_DEFAULT_FLAT.cbet5BetPcts],
+  };
+}
+
+function defaultAllStacks(): Record<StackDepth, StackSizingsState> {
+  return Object.fromEntries(STACK_DEPTHS.map(({ value }) => [value, createDefaultStackStateForDepth(value)])) as Record<
+    StackDepth,
+    StackSizingsState
+  >;
+}
+
+function filterGtoThreeBetValues(sizes: number[], gtoVals: number[]): number[] {
+  const set = new Set(sizes);
+  return uniqueSortedPositive(gtoVals.filter((g) => set.has(g)));
+}
+
+function sanitizeOpenKeyed(row: OpenKeyedSizings): OpenKeyedSizings {
+  const gtoRaw = (row as OpenKeyedSizings & { bbThreeBetGtoValues?: unknown }).bbThreeBetGtoValues;
+  const gtoVals = Array.isArray(gtoRaw)
+    ? gtoRaw.map((x) => (typeof x === 'number' ? x : Number(x))).filter((n) => Number.isFinite(n) && n > 0)
+    : [];
+  return {
+    ...createDefaultOpenKeyed(),
+    ...row,
+    bbThreeBetGtoValues: filterGtoThreeBetValues(row.bbThreeBetSizes, gtoVals),
+  };
+}
+
+function sanitizeStackSizingsState(depth: StackDepth, st: StackSizingsState): StackSizingsState {
+  const keysFromState = Array.isArray(st.openSizeKeys)
+    ? st.openSizeKeys.filter((n) => Number.isFinite(n) && n > 0)
+    : [2];
+  const requiredOpens = uniqueSortedPositive([...keysFromState, ...DEFAULT_OPEN_SIZE_KEYS[depth]]);
+  const k2 = openBbKey(2);
+  const baseRow = sanitizeOpenKeyed(st.byOpen[k2] ?? createDefaultOpenKeyed());
+
+  const mergedByOpen: Record<string, OpenKeyedSizings> = {};
+  for (const o of requiredOpens) {
+    const k = openBbKey(o);
+    const existing = st.byOpen[k];
+    mergedByOpen[k] = existing ? sanitizeOpenKeyed(existing) : cloneOpenKeyed(baseRow);
+  }
+
+  let gtoOpenBb =
+    typeof st.gtoOpenBb === 'number' && Number.isFinite(st.gtoOpenBb) && st.gtoOpenBb > 0
+      ? st.gtoOpenBb
+      : DEFAULT_GTO_OPEN_BB[depth];
+  if (depth === '75' && Math.abs(gtoOpenBb - 3.5) < 1e-9) {
+    gtoOpenBb = DEFAULT_GTO_OPEN_BB['75'];
+  }
+
+  return {
+    ...st,
+    openSizeKeys: requiredOpens,
+    gtoOpenBb,
+    byOpen: mergedByOpen,
+  };
+}
+
+function sanitizeAllStacks(m: Record<StackDepth, StackSizingsState>): Record<StackDepth, StackSizingsState> {
+  const out = {} as Record<StackDepth, StackSizingsState>;
+  for (const { value } of STACK_DEPTHS) {
+    out[value] = sanitizeStackSizingsState(value, m[value] ?? createDefaultStackStateForDepth(value));
+  }
+  return out;
+}
+
+function uniqueSortedPositive(nums: number[]): number[] {
+  const deduped = [...new Set(nums.filter((n) => Number.isFinite(n) && n > 0))];
+  return deduped.sort((a, b) => a - b);
+}
+
+function readNumsFromRecord(r: Record<string, unknown>, key: string): number[] | null {
+  const arr = r[key];
+  if (!Array.isArray(arr)) return null;
+  const nums = arr.map((x) => (typeof x === 'number' ? x : Number(x))).filter((n) => Number.isFinite(n));
+  return nums.length ? nums : null;
+}
+
+function readNumsNullableFromRecord(r: Record<string, unknown>, key: string): (number | null)[] | null {
+  const arr = r[key];
+  if (!Array.isArray(arr)) return null;
+  const out = arr.map((x) => {
+    if (x == null) return null;
+    const n = typeof x === 'number' ? x : Number(x);
+    return Number.isFinite(n) ? n : null;
+  });
+  return out.length ? out : null;
+}
+
+function legacyRowFromRecord(r: Record<string, unknown>): LegacyFlatSizings {
+  return {
+    sbOpenSizes: readNumsFromRecord(r, 'sbOpenSizes') ?? LEGACY_DEFAULT_FLAT.sbOpenSizes,
+    sbVs3Bet: readNumsFromRecord(r, 'sbVs3Bet') ?? LEGACY_DEFAULT_FLAT.sbVs3Bet,
+    sbFourBetSizes: readNumsFromRecord(r, 'sbFourBetSizes') ?? LEGACY_DEFAULT_FLAT.sbFourBetSizes,
+    bbVsOpen: readNumsFromRecord(r, 'bbVsOpen') ?? LEGACY_DEFAULT_FLAT.bbVsOpen,
+    bbThreeBetSizes: readNumsFromRecord(r, 'bbThreeBetSizes') ?? LEGACY_DEFAULT_FLAT.bbThreeBetSizes,
+    bbVs4Bet: readNumsNullableFromRecord(r, 'bbVs4Bet') ?? LEGACY_DEFAULT_FLAT.bbVs4Bet,
+    bbFiveBetTo: readNumsNullableFromRecord(r, 'bbFiveBetTo') ?? LEGACY_DEFAULT_FLAT.bbFiveBetTo,
+    cbetSrpPcts: readNumsFromRecord(r, 'cbetSrpPcts') ?? LEGACY_DEFAULT_FLAT.cbetSrpPcts,
+    cbet3BetPcts: readNumsFromRecord(r, 'cbet3BetPcts') ?? LEGACY_DEFAULT_FLAT.cbet3BetPcts,
+    cbet4BetPcts: readNumsFromRecord(r, 'cbet4BetPcts') ?? LEGACY_DEFAULT_FLAT.cbet4BetPcts,
+    cbet5BetPcts: readNumsFromRecord(r, 'cbet5BetPcts') ?? LEGACY_DEFAULT_FLAT.cbet5BetPcts,
+  };
+}
+
+function openKeyedFromLegacy(old: LegacyFlatSizings): OpenKeyedSizings {
+  return {
+    sbVs3Bet: [...old.sbVs3Bet],
+    sbFourBetSizes: [...old.sbFourBetSizes],
+    bbThreeBetSizes: [...old.bbThreeBetSizes],
+    bbThreeBetGtoValues: [],
+    bbVs4Bet: [...old.bbVs4Bet],
+    bbFiveBetTo: [...old.bbFiveBetTo],
+  };
+}
+
+function stackStateFromLegacy(old: LegacyFlatSizings, depth: StackDepth): StackSizingsState {
+  const opens = uniqueSortedPositive([2, ...old.sbOpenSizes, ...old.bbVsOpen]);
+  const slice = openKeyedFromLegacy(old);
+  const byOpen: Record<string, OpenKeyedSizings> = {};
+  for (const o of opens) {
+    byOpen[openBbKey(o)] = cloneOpenKeyed(slice);
+  }
+  return {
+    openSizeKeys: opens,
+    byOpen,
+    gtoOpenBb: DEFAULT_GTO_OPEN_BB[depth],
+    cbetSrpPcts: [...old.cbetSrpPcts],
+    cbet3BetPcts: [...old.cbet3BetPcts],
+    cbet4BetPcts: [...old.cbet4BetPcts],
+    cbet5BetPcts: [...old.cbet5BetPcts],
+  };
+}
+
+function isStackSizingsState(x: unknown): x is Record<StackDepth, StackSizingsState> {
+  if (typeof x !== 'object' || x == null) return false;
+  const rec = x as Record<string, unknown>;
+  for (const { value } of STACK_DEPTHS) {
+    const v = rec[value];
+    if (typeof v !== 'object' || v == null) return false;
+    const r = v as Record<string, unknown>;
+    if (!Array.isArray(r.openSizeKeys)) return false;
+    if (typeof r.byOpen !== 'object' || r.byOpen == null) return false;
+  }
+  return true;
+}
+
+function loadStackSizingsState(): Record<StackDepth, StackSizingsState> {
+  const fallback = defaultAllStacks();
   try {
-    const raw = localStorage.getItem(STORAGE_SIZINGS_BY_STACK);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== 'object' || parsed == null) return fallback;
-    const rec = parsed as Record<string, unknown>;
-    const result: Partial<Record<StackDepth, BetSizings>> = {};
-    for (const { value } of STACK_DEPTHS) {
-      const v = rec[value];
-      if (typeof v !== 'object' || v == null) continue;
-      const r = v as Record<string, unknown>;
-      const readNums = (key: keyof BetSizings): number[] | null => {
-        const arr = r[key as string];
-        if (!Array.isArray(arr)) return null;
-        const nums = arr
-          .map((x) => (typeof x === 'number' ? x : Number(x)))
-          .filter((n) => Number.isFinite(n));
-        return nums.length ? nums : null;
-      };
-      const readNumsNullable = (key: keyof BetSizings): (number | null)[] | null => {
-        const arr = r[key as string];
-        if (!Array.isArray(arr)) return null;
-        const out = arr.map((x) => {
-          if (x == null) return null;
-          const n = typeof x === 'number' ? x : Number(x);
-          return Number.isFinite(n) ? n : null;
-        });
-        return out.length ? out : null;
-      };
-      const maybe: BetSizings = {
-        sbOpenSizes: readNums('sbOpenSizes') ?? DEFAULT_SIZINGS.sbOpenSizes,
-        sbVs3Bet: readNums('sbVs3Bet') ?? DEFAULT_SIZINGS.sbVs3Bet,
-        sbFourBetSizes: readNums('sbFourBetSizes') ?? DEFAULT_SIZINGS.sbFourBetSizes,
-        bbVsOpen: readNums('bbVsOpen') ?? DEFAULT_SIZINGS.bbVsOpen,
-        bbThreeBetSizes: readNums('bbThreeBetSizes') ?? DEFAULT_SIZINGS.bbThreeBetSizes,
-        bbVs4Bet: readNumsNullable('bbVs4Bet') ?? DEFAULT_SIZINGS.bbVs4Bet,
-        bbFiveBetTo: readNumsNullable('bbFiveBetTo') ?? DEFAULT_SIZINGS.bbFiveBetTo,
-        cbetSrpPcts: readNums('cbetSrpPcts') ?? DEFAULT_SIZINGS.cbetSrpPcts,
-        cbet3BetPcts: readNums('cbet3BetPcts') ?? DEFAULT_SIZINGS.cbet3BetPcts,
-        cbet4BetPcts: readNums('cbet4BetPcts') ?? DEFAULT_SIZINGS.cbet4BetPcts,
-        cbet5BetPcts: readNums('cbet5BetPcts') ?? DEFAULT_SIZINGS.cbet5BetPcts,
-      };
-      result[value] = maybe;
+    const rawV2 = localStorage.getItem(STORAGE_SIZINGS);
+    if (rawV2) {
+      const parsed = JSON.parse(rawV2) as unknown;
+      if (isStackSizingsState(parsed)) return sanitizeAllStacks(parsed);
     }
-    const completed = result as Record<StackDepth, BetSizings>;
-    return (completed['50'] && completed['100'] && completed['150'] && completed['200']) ? completed : fallback;
+    const rawLegacy = localStorage.getItem(STORAGE_SIZINGS_LEGACY);
+    if (rawLegacy) {
+      const parsed = JSON.parse(rawLegacy) as unknown;
+      if (typeof parsed === 'object' && parsed != null) {
+        const rec = parsed as Record<string, unknown>;
+        const migrated: Record<StackDepth, StackSizingsState> = { ...fallback };
+        for (const d of ['50', '100', '150', '200'] as const) {
+          const v = rec[d];
+          if (typeof v !== 'object' || v == null) continue;
+          migrated[d] = stackStateFromLegacy(legacyRowFromRecord(v as Record<string, unknown>), d);
+        }
+        try {
+          localStorage.setItem(STORAGE_SIZINGS, JSON.stringify(sanitizeAllStacks(migrated)));
+        } catch {
+          // ignore
+        }
+        return sanitizeAllStacks(migrated);
+      }
+    }
   } catch {
     return fallback;
   }
+  return fallback;
 }
 
-function saveSizingsByStack(value: Record<StackDepth, BetSizings>): void {
+function saveStackSizingsState(value: Record<StackDepth, StackSizingsState>): void {
   try {
-    localStorage.setItem(STORAGE_SIZINGS_BY_STACK, JSON.stringify(value));
+    localStorage.setItem(STORAGE_SIZINGS, JSON.stringify(value));
   } catch {
     // ignore quota
   }
@@ -158,9 +369,10 @@ interface ChipNumberListEditorProps {
   label: string;
   values: number[];
   onChange: (next: number[]) => void;
+  preventDelete?: (n: number) => boolean;
 }
 
-function ChipNumberListEditor({ label, values, onChange }: ChipNumberListEditorProps) {
+function ChipNumberListEditor({ label, values, onChange, preventDelete }: ChipNumberListEditorProps) {
   const [addStr, setAddStr] = useState('');
   const [editAnchorEl, setEditAnchorEl] = useState<HTMLElement | null>(null);
   const [editValueStr, setEditValueStr] = useState('');
@@ -220,7 +432,7 @@ function ChipNumberListEditor({ label, values, onChange }: ChipNumberListEditorP
             size="small"
             label={formatPlainNumber(n)}
             onClick={(e) => openEdit(idx, e.currentTarget)}
-            onDelete={() => handleDelete(n)}
+            onDelete={preventDelete?.(n) ? undefined : () => handleDelete(n)}
             sx={{ cursor: 'pointer' }}
           />
         ))}
@@ -277,37 +489,143 @@ function parseOptionalNumber(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function parseOpenBbKey(key: string): number | null {
+  const n = parseOptionalNumber(key);
+  return n != null && n > 0 ? n : null;
+}
+
+function normalizeNullableSlots(values: (number | null)[], slots: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < slots; i += 1) {
+    out.push(values[i] ?? null);
+  }
+  return out;
+}
+
+interface NullableFourSlotEditorProps {
+  label: string;
+  helperText?: string;
+  values: (number | null)[];
+  onChange: (next: (number | null)[]) => void;
+}
+
+function NullableFourSlotEditor({ label, helperText, values, onChange }: NullableFourSlotEditorProps) {
+  const normalized = useMemo(() => normalizeNullableSlots(values, 4), [values]);
+  const [slotStrs, setSlotStrs] = useState<string[]>(() => normalized.map((v) => (v == null ? '' : formatPlainNumber(v))));
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (dirty) return;
+    setSlotStrs(normalized.map((v) => (v == null ? '' : formatPlainNumber(v))));
+  }, [dirty, normalized]);
+
+  const commitFromStrs = useCallback(
+    (nextStrs: string[]) => {
+      setSlotStrs(nextStrs);
+      const nextVals = nextStrs.map((s) => {
+        const t = s.trim();
+        if (t === '') return null;
+        const n = parseOptionalNumber(t);
+        return n == null ? null : n;
+      });
+      onChange(nextVals);
+    },
+    [onChange]
+  );
+
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+        {label}
+      </Typography>
+      {helperText && (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+          {helperText}
+        </Typography>
+      )}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.75 }}>
+        {slotStrs.map((s, idx) => (
+          <TextField
+            key={idx}
+            size="small"
+            label={`Col ${idx + 1}`}
+            value={s}
+            onFocus={() => setDirty(true)}
+            onChange={(e) => {
+              const next = [...slotStrs];
+              next[idx] = e.target.value;
+              setSlotStrs(next);
+              setDirty(true);
+            }}
+            onBlur={(e) => {
+              const next = [...slotStrs];
+              next[idx] = e.target.value;
+              commitFromStrs(next);
+              setDirty(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              const next = [...slotStrs];
+              next[idx] = (e.target as HTMLInputElement).value;
+              commitFromStrs(next);
+              setDirty(false);
+            }}
+            placeholder={idx === 0 ? 'empty' : ''}
+            inputProps={{ inputMode: 'decimal' }}
+          />
+        ))}
+      </Box>
+      <Stack direction="row" spacing={1} sx={{ mt: 0.75 }}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            onChange([null, null, null, null]);
+            setSlotStrs(['', '', '', '']);
+            setDirty(false);
+          }}
+        >
+          Clear all
+        </Button>
+      </Stack>
+    </Box>
+  );
+}
+
 function clampToReasonable(n: number, { min, max }: { min: number; max: number }): number {
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, n));
+}
+
+function normalizeStakePresetsArray(parsed: unknown, fallback: StakePreset[]): StakePreset[] {
+  if (!Array.isArray(parsed)) return fallback;
+  const presets: StakePreset[] = parsed
+    .map((x) => {
+      if (typeof x !== 'object' || x == null) return null;
+      const rec = x as Record<string, unknown>;
+      const name = typeof rec.name === 'string' ? rec.name.trim() : '';
+      const sb = typeof rec.sb === 'number' ? rec.sb : Number(rec.sb);
+      const bb = typeof rec.bb === 'number' ? rec.bb : Number(rec.bb);
+      const ante = typeof rec.ante === 'number' ? rec.ante : Number(rec.ante);
+      if (!name) return null;
+      if (![sb, bb, ante].every((n) => Number.isFinite(n) && n >= 0)) return null;
+      const safeSb = clampToReasonable(sb, { min: 0, max: 1_000_000 });
+      const safeBb = clampToReasonable(bb, { min: 0.000001, max: 1_000_000 });
+      const safeAnte = clampToReasonable(ante, { min: 0, max: 1_000_000 });
+      return { name, sb: safeSb, bb: safeBb, ante: safeAnte };
+    })
+    .filter((p): p is StakePreset => p != null);
+  const deduped = new Map<string, StakePreset>();
+  for (const p of presets) deduped.set(p.name, p);
+  const list = [...deduped.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return list.length ? list : fallback;
 }
 
 function loadJsonStakePresets(key: string, fallback: StakePreset[]): StakePreset[] {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return fallback;
-    const presets: StakePreset[] = parsed
-      .map((x) => {
-        if (typeof x !== 'object' || x == null) return null;
-        const rec = x as Record<string, unknown>;
-        const name = typeof rec.name === 'string' ? rec.name.trim() : '';
-        const sb = typeof rec.sb === 'number' ? rec.sb : Number(rec.sb);
-        const bb = typeof rec.bb === 'number' ? rec.bb : Number(rec.bb);
-        const ante = typeof rec.ante === 'number' ? rec.ante : Number(rec.ante);
-        if (!name) return null;
-        if (![sb, bb, ante].every((n) => Number.isFinite(n) && n >= 0)) return null;
-        const safeSb = clampToReasonable(sb, { min: 0, max: 1_000_000 });
-        const safeBb = clampToReasonable(bb, { min: 0.000001, max: 1_000_000 });
-        const safeAnte = clampToReasonable(ante, { min: 0, max: 1_000_000 });
-        return { name, sb: safeSb, bb: safeBb, ante: safeAnte };
-      })
-      .filter((p): p is StakePreset => p != null);
-    const deduped = new Map<string, StakePreset>();
-    for (const p of presets) deduped.set(p.name, p);
-    const list = [...deduped.values()].sort((a, b) => a.name.localeCompare(b.name));
-    return list.length ? list : fallback;
+    return normalizeStakePresetsArray(JSON.parse(raw) as unknown, fallback);
   } catch {
     return fallback;
   }
@@ -340,6 +658,110 @@ function saveOptionalNumber(key: string, value: number): void {
   }
 }
 
+function loadLinkedBetClipboardSyncId(): string | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_BET_CLIPBOARD_SYNC_ID)?.trim() ?? '';
+    if (!raw || !BET_CLIPBOARD_SYNC_ID_RE.test(raw)) return null;
+    return raw.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function persistLinkedBetClipboardSyncId(syncId: string | null): void {
+  try {
+    if (!syncId) localStorage.removeItem(STORAGE_BET_CLIPBOARD_SYNC_ID);
+    else localStorage.setItem(STORAGE_BET_CLIPBOARD_SYNC_ID, syncId);
+  } catch {
+    // ignore quota
+  }
+}
+
+function isStackDepthValue(v: unknown): v is StackDepth {
+  return v === '50' || v === '75' || v === '100' || v === '150' || v === '200';
+}
+
+function cloudPayloadHasSizings(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload == null) return false;
+  return isStackSizingsState((payload as Record<string, unknown>).sizingsByStack);
+}
+
+function buildBetClipboardCloudPayload(
+  sizingsByStack: Record<StackDepth, StackSizingsState>,
+  stakePresets: StakePreset[],
+  selectedStakePresetName: string,
+  srpPotBlindsNum: number | null,
+  threeBetPotBlindsNum: number | null,
+  fourBetPotBlindsNum: number | null,
+  fiveBetPotBlindsNum: number | null,
+  stackDepth: StackDepth,
+  selectedOpenKey: string
+): BetClipboardCloudPayloadV1 {
+  return {
+    version: BET_CLIPBOARD_CLOUD_VERSION,
+    sizingsByStack: sanitizeAllStacks(sizingsByStack),
+    stakePresets: [...stakePresets],
+    selectedStakePresetName: selectedStakePresetName.trim() || DEFAULT_STAKE_PRESET_NAME,
+    srpPotBlinds: srpPotBlindsNum != null && srpPotBlindsNum > 0 ? srpPotBlindsNum : 6.5,
+    threeBetPotBlinds: threeBetPotBlindsNum != null && threeBetPotBlindsNum > 0 ? threeBetPotBlindsNum : 20,
+    fourBetPotBlinds: fourBetPotBlindsNum != null && fourBetPotBlindsNum > 0 ? fourBetPotBlindsNum : 40,
+    fiveBetPotBlinds: fiveBetPotBlindsNum != null && fiveBetPotBlindsNum > 0 ? fiveBetPotBlindsNum : 60,
+    stackDepth,
+    selectedOpenKey,
+  };
+}
+
+type AppliedBetClipboardFromCloud = {
+  sizingsByStack: Record<StackDepth, StackSizingsState>;
+  stakePresets: StakePreset[];
+  selectedStakePresetName: string;
+  srpPotBlinds: number;
+  threeBetPotBlinds: number;
+  fourBetPotBlinds: number;
+  fiveBetPotBlinds: number;
+  stackDepth: StackDepth;
+  selectedOpenKey: string;
+};
+
+function readBetClipboardCloudPayload(raw: unknown): AppliedBetClipboardFromCloud | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const p = raw as Record<string, unknown>;
+  if (p.version !== BET_CLIPBOARD_CLOUD_VERSION) return null;
+  if (!isStackSizingsState(p.sizingsByStack)) return null;
+  const presets = normalizeStakePresetsArray(p.stakePresets, DEFAULT_STAKE_PRESETS);
+  const nm =
+    typeof p.selectedStakePresetName === 'string' && p.selectedStakePresetName.trim()
+      ? p.selectedStakePresetName.trim()
+      : DEFAULT_STAKE_PRESET_NAME;
+  const readPot = (k: string, def: number): number => {
+    const n = typeof p[k] === 'number' ? p[k] : Number(p[k]);
+    return Number.isFinite(n) && n > 0 ? n : def;
+  };
+  const stackDepth = isStackDepthValue(p.stackDepth) ? p.stackDepth : '100';
+  const selectedOpenKey =
+    typeof p.selectedOpenKey === 'string' && p.selectedOpenKey.trim() ? p.selectedOpenKey.trim() : openBbKey(2);
+  return {
+    sizingsByStack: sanitizeAllStacks(p.sizingsByStack),
+    stakePresets: presets,
+    selectedStakePresetName: nm,
+    srpPotBlinds: readPot('srpPotBlinds', 6.5),
+    threeBetPotBlinds: readPot('threeBetPotBlinds', 20),
+    fourBetPotBlinds: readPot('fourBetPotBlinds', 40),
+    fiveBetPotBlinds: readPot('fiveBetPotBlinds', 60),
+    stackDepth,
+    selectedOpenKey,
+  };
+}
+
+function axiosBetClipboardErrorMessage(err: unknown): string {
+  if (!axios.isAxiosError(err)) return 'Could not reach server.';
+  const d = err.response?.data;
+  if (typeof d === 'object' && d != null && 'error' in d && typeof (d as { error: unknown }).error === 'string') {
+    return (d as { error: string }).error;
+  }
+  return err.message || 'Sync request failed.';
+}
+
 interface BetClipboardPopoverProps {
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
@@ -351,28 +773,36 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
   const [stackDepth, setStackDepth] = useState<StackDepth>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_SELECTED_STACK_TAB);
-      if (raw === '50' || raw === '100' || raw === '150' || raw === '200') return raw;
+      if (raw === '50' || raw === '75' || raw === '100' || raw === '150' || raw === '200') return raw;
       return '100';
     } catch {
       return '100';
     }
   });
 
-  const defaultByStack = useMemo<Record<StackDepth, BetSizings>>(
-    () => ({
-      '50': DEFAULT_SIZINGS,
-      '100': DEFAULT_SIZINGS,
-      '150': DEFAULT_SIZINGS,
-      '200': DEFAULT_SIZINGS,
-    }),
-    []
+  const [selectedOpenKey, setSelectedOpenKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem(STORAGE_SELECTED_OPEN_KEY) || openBbKey(2);
+    } catch {
+      return openBbKey(2);
+    }
+  });
+
+  const [sizingsByStack, setSizingsByStack] = useState<Record<StackDepth, StackSizingsState>>(() => loadStackSizingsState());
+
+  const currentStack = useMemo(
+    () => sizingsByStack[stackDepth] ?? createDefaultStackStateForDepth(stackDepth),
+    [sizingsByStack, stackDepth]
   );
 
-  const [sizingsByStack, setSizingsByStack] = useState<Record<StackDepth, BetSizings>>(() =>
-    loadSizingsByStack(defaultByStack)
-  );
+  const currentOpenSizings = useMemo(() => {
+    const row = currentStack.byOpen[selectedOpenKey];
+    if (row) return sanitizeOpenKeyed(row);
+    const k2 = openBbKey(2);
+    return sanitizeOpenKeyed(currentStack.byOpen[k2] ?? createDefaultOpenKeyed());
+  }, [currentStack, selectedOpenKey]);
 
-  const currentSizings = useMemo(() => sizingsByStack[stackDepth] ?? DEFAULT_SIZINGS, [sizingsByStack, stackDepth]);
+  const currentOpenBb = useMemo(() => parseOpenBbKey(selectedOpenKey) ?? 2, [selectedOpenKey]);
 
   const [editMode, setEditMode] = useState(false);
 
@@ -414,12 +844,56 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
     return formatPlainNumber(n);
   });
 
+  const [linkedSyncId, setLinkedSyncId] = useState<string | null>(() => loadLinkedBetClipboardSyncId());
+  const [syncIdDraft, setSyncIdDraft] = useState(() => loadLinkedBetClipboardSyncId() ?? '');
+  const [syncBusy, setSyncBusy] = useState(false);
+  const skipNextDebouncedPushRef = useRef(false);
+
+  useEffect(() => {
+    setSyncIdDraft(linkedSyncId ?? '');
+  }, [linkedSyncId]);
+
+  const applyFromCloud = useCallback((data: AppliedBetClipboardFromCloud) => {
+    skipNextDebouncedPushRef.current = true;
+    setSizingsByStack(data.sizingsByStack);
+    setStakePresets(data.stakePresets);
+    setSelectedStakePresetName(data.selectedStakePresetName);
+    setSrpPotBlindsStr(formatPlainNumber(data.srpPotBlinds));
+    setThreeBetPotBlindsStr(formatPlainNumber(data.threeBetPotBlinds));
+    setFourBetPotBlindsStr(formatPlainNumber(data.fourBetPotBlinds));
+    setFiveBetPotBlindsStr(formatPlainNumber(data.fiveBetPotBlinds));
+    setStackDepth(data.stackDepth);
+    setSelectedOpenKey(data.selectedOpenKey);
+    saveOptionalNumber(STORAGE_SRP_POT_BLINDS, data.srpPotBlinds);
+    saveOptionalNumber(STORAGE_3B_POT_BLINDS, data.threeBetPotBlinds);
+    saveOptionalNumber(STORAGE_4B_POT_BLINDS, data.fourBetPotBlinds);
+    saveOptionalNumber(STORAGE_5B_POT_BLINDS, data.fiveBetPotBlinds);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !linkedSyncId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const doc = await fetchBetClipboardSync(linkedSyncId);
+        if (cancelled) return;
+        const parsed = readBetClipboardCloudPayload(doc.payload);
+        if (parsed) applyFromCloud(parsed);
+      } catch (err) {
+        if (!cancelled) onError(axiosBetClipboardErrorMessage(err));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, linkedSyncId, applyFromCloud, onError]);
+
   useEffect(() => {
     saveJsonStakePresets(STORAGE_STAKE_PRESETS, stakePresets);
   }, [stakePresets]);
 
   useEffect(() => {
-    saveSizingsByStack(sizingsByStack);
+    saveStackSizingsState(sizingsByStack);
   }, [sizingsByStack]);
 
   useEffect(() => {
@@ -429,6 +903,21 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
       // ignore
     }
   }, [stackDepth]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_SELECTED_OPEN_KEY, selectedOpenKey);
+    } catch {
+      // ignore
+    }
+  }, [selectedOpenKey]);
+
+  useEffect(() => {
+    const keys = new Set(currentStack.openSizeKeys.map((n) => openBbKey(n)));
+    if (!keys.has(selectedOpenKey)) {
+      setSelectedOpenKey(openBbKey(currentStack.openSizeKeys[0] ?? 2));
+    }
+  }, [currentStack, selectedOpenKey]);
 
   useEffect(() => {
     try {
@@ -452,6 +941,43 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
   const threeBetPotBlindsNum = useMemo(() => parseOptionalNumber(threeBetPotBlindsStr), [threeBetPotBlindsStr]);
   const fourBetPotBlindsNum = useMemo(() => parseOptionalNumber(fourBetPotBlindsStr), [fourBetPotBlindsStr]);
   const fiveBetPotBlindsNum = useMemo(() => parseOptionalNumber(fiveBetPotBlindsStr), [fiveBetPotBlindsStr]);
+
+  useEffect(() => {
+    if (!linkedSyncId) return;
+    if (skipNextDebouncedPushRef.current) {
+      skipNextDebouncedPushRef.current = false;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      const payload = buildBetClipboardCloudPayload(
+        sizingsByStack,
+        stakePresets,
+        selectedStakePresetName,
+        srpPotBlindsNum,
+        threeBetPotBlindsNum,
+        fourBetPotBlindsNum,
+        fiveBetPotBlindsNum,
+        stackDepth,
+        selectedOpenKey
+      );
+      void saveBetClipboardSync(linkedSyncId, payload).catch((err: unknown) => {
+        onError(axiosBetClipboardErrorMessage(err));
+      });
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, [
+    linkedSyncId,
+    sizingsByStack,
+    stakePresets,
+    selectedStakePresetName,
+    srpPotBlindsNum,
+    threeBetPotBlindsNum,
+    fourBetPotBlindsNum,
+    fiveBetPotBlindsNum,
+    stackDepth,
+    selectedOpenKey,
+    onError,
+  ]);
 
   const copyText = useCallback(
     async (text: string) => {
@@ -591,15 +1117,57 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
   }, [onError, onSuccess, selectedStakePreset.name]);
 
   const resetCurrentTabSizings = useCallback(() => {
-    setSizingsByStack((prev) => ({ ...prev, [stackDepth]: DEFAULT_SIZINGS }));
-    onSuccess('Reset sizings to defaults for this tab.');
+    setSizingsByStack((prev) => ({ ...prev, [stackDepth]: createDefaultStackStateForDepth(stackDepth) }));
+    setSelectedOpenKey(openBbKey(2));
+    onSuccess('Reset sizings to defaults for this stack depth.');
   }, [onSuccess, stackDepth]);
 
-  const updateCurrentSizings = useCallback(
-    (patch: Partial<BetSizings>) => {
+  const applyOpenSizeKeys = useCallback(
+    (nextOpens: number[]) => {
+      const sorted = uniqueSortedPositive([2, ...nextOpens]);
       setSizingsByStack((prev) => {
-        const cur = prev[stackDepth] ?? DEFAULT_SIZINGS;
-        return { ...prev, [stackDepth]: { ...cur, ...patch } };
+        const st = { ...(prev[stackDepth] ?? createDefaultStackStateForDepth(stackDepth)) };
+        const base = st.byOpen[openBbKey(2)] ?? createDefaultOpenKeyed();
+        const byOpen: Record<string, OpenKeyedSizings> = { ...st.byOpen };
+        for (const o of sorted) {
+          const k = openBbKey(o);
+          if (!byOpen[k]) byOpen[k] = cloneOpenKeyed(base);
+        }
+        for (const k of Object.keys(byOpen)) {
+          if (!sorted.some((o) => openBbKey(o) === k)) delete byOpen[k];
+        }
+        return { ...prev, [stackDepth]: { ...st, openSizeKeys: sorted, byOpen } };
+      });
+      onSuccess('Saved.');
+    },
+    [onSuccess, stackDepth]
+  );
+
+  const updateOpenKeyed = useCallback(
+    (patch: Partial<OpenKeyedSizings>) => {
+      setSizingsByStack((prev) => {
+        const st = { ...(prev[stackDepth] ?? createDefaultStackStateForDepth(stackDepth)) };
+        const curRow = sanitizeOpenKeyed(st.byOpen[selectedOpenKey] ?? createDefaultOpenKeyed());
+        const merged: OpenKeyedSizings = { ...curRow, ...patch };
+        merged.bbThreeBetGtoValues = filterGtoThreeBetValues(merged.bbThreeBetSizes, merged.bbThreeBetGtoValues);
+        return {
+          ...prev,
+          [stackDepth]: {
+            ...st,
+            byOpen: { ...st.byOpen, [selectedOpenKey]: merged },
+          },
+        };
+      });
+      onSuccess('Saved.');
+    },
+    [onSuccess, stackDepth, selectedOpenKey]
+  );
+
+  const updateStackShared = useCallback(
+    (patch: Partial<Pick<StackSizingsState, 'cbetSrpPcts' | 'cbet3BetPcts' | 'cbet4BetPcts' | 'cbet5BetPcts' | 'gtoOpenBb'>>) => {
+      setSizingsByStack((prev) => {
+        const st = { ...(prev[stackDepth] ?? createDefaultStackStateForDepth(stackDepth)) };
+        return { ...prev, [stackDepth]: { ...st, ...patch } };
       });
       onSuccess('Saved.');
     },
@@ -630,6 +1198,133 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
     }
   }, [fiveBetPotBlindsNum]);
 
+  const pushFullBetClipboardToCloud = useCallback(
+    async (syncId: string) => {
+      const payload = buildBetClipboardCloudPayload(
+        sizingsByStack,
+        stakePresets,
+        selectedStakePresetName,
+        srpPotBlindsNum,
+        threeBetPotBlindsNum,
+        fourBetPotBlindsNum,
+        fiveBetPotBlindsNum,
+        stackDepth,
+        selectedOpenKey
+      );
+      await saveBetClipboardSync(syncId, payload);
+    },
+    [
+      fiveBetPotBlindsNum,
+      fourBetPotBlindsNum,
+      sizingsByStack,
+      selectedOpenKey,
+      selectedStakePresetName,
+      srpPotBlindsNum,
+      stakePresets,
+      stackDepth,
+      threeBetPotBlindsNum,
+    ]
+  );
+
+  const handleGenerateBetClipboardSyncId = useCallback(async () => {
+    setSyncBusy(true);
+    try {
+      const created = await createBetClipboardSync();
+      const id = created.syncId.toLowerCase();
+      await pushFullBetClipboardToCloud(id);
+      persistLinkedBetClipboardSyncId(id);
+      setLinkedSyncId(id);
+      skipNextDebouncedPushRef.current = true;
+      onSuccess('Created a sync id and uploaded your bet clipboard settings.');
+    } catch (err) {
+      onError(axiosBetClipboardErrorMessage(err));
+    } finally {
+      setSyncBusy(false);
+    }
+  }, [onError, onSuccess, pushFullBetClipboardToCloud]);
+
+  const handleLinkBetClipboardSync = useCallback(async () => {
+    const raw = syncIdDraft.trim().toLowerCase();
+    if (!BET_CLIPBOARD_SYNC_ID_RE.test(raw)) {
+      onError('Enter a valid UUID sync id.');
+      return;
+    }
+    setSyncBusy(true);
+    try {
+      const doc = await fetchBetClipboardSync(raw);
+      persistLinkedBetClipboardSyncId(raw);
+      setLinkedSyncId(raw);
+      const parsed = readBetClipboardCloudPayload(doc.payload);
+      if (parsed) {
+        applyFromCloud(parsed);
+        onSuccess('Linked and loaded settings from the cloud.');
+      } else if (!cloudPayloadHasSizings(doc.payload)) {
+        await pushFullBetClipboardToCloud(raw);
+        skipNextDebouncedPushRef.current = true;
+        onSuccess('Linked; uploaded this browser’s settings (cloud copy was empty).');
+      } else {
+        persistLinkedBetClipboardSyncId(null);
+        setLinkedSyncId(null);
+        onError('Cloud data uses an unsupported format.');
+      }
+    } catch (err) {
+      onError(axiosBetClipboardErrorMessage(err));
+    } finally {
+      setSyncBusy(false);
+    }
+  }, [applyFromCloud, onError, onSuccess, pushFullBetClipboardToCloud, syncIdDraft]);
+
+  const handleDisconnectBetClipboardSync = useCallback(() => {
+    persistLinkedBetClipboardSyncId(null);
+    setLinkedSyncId(null);
+    onSuccess('Cloud sync unlinked from this browser.');
+  }, [onSuccess]);
+
+  const handleCopyBetClipboardSyncId = useCallback(() => {
+    if (!linkedSyncId) {
+      onError('Generate or link a sync id first.');
+      return;
+    }
+    void copyText(linkedSyncId);
+  }, [copyText, linkedSyncId, onError]);
+
+  const flushBetClipboardSync = useCallback(async () => {
+    if (!linkedSyncId) return;
+    try {
+      const payload = buildBetClipboardCloudPayload(
+        sizingsByStack,
+        stakePresets,
+        selectedStakePresetName,
+        srpPotBlindsNum,
+        threeBetPotBlindsNum,
+        fourBetPotBlindsNum,
+        fiveBetPotBlindsNum,
+        stackDepth,
+        selectedOpenKey
+      );
+      await saveBetClipboardSync(linkedSyncId, payload);
+    } catch (err) {
+      onError(axiosBetClipboardErrorMessage(err));
+    }
+  }, [
+    fiveBetPotBlindsNum,
+    fourBetPotBlindsNum,
+    linkedSyncId,
+    onError,
+    sizingsByStack,
+    selectedOpenKey,
+    selectedStakePresetName,
+    srpPotBlindsNum,
+    stakePresets,
+    stackDepth,
+    threeBetPotBlindsNum,
+  ]);
+
+  const handleClosePopover = useCallback(() => {
+    void flushBetClipboardSync();
+    setAnchorEl(null);
+  }, [flushBetClipboardSync]);
+
   return (
     <>
       <IconButton
@@ -644,7 +1339,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
       <Popover
         open={open}
         anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
+        onClose={handleClosePopover}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{ paper: { sx: { p: 1.5, maxWidth: 900, width: 'min(900px, calc(100vw - 24px))' } } }}
@@ -660,15 +1355,50 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
           <Tabs
             value={stackDepth}
             onChange={(_, v) => {
-              if (v === '50' || v === '100' || v === '150' || v === '200') setStackDepth(v);
+              if (v === '50' || v === '75' || v === '100' || v === '150' || v === '200') setStackDepth(v);
             }}
-            variant="fullWidth"
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{ mb: 0.25 }}
           >
             {STACK_DEPTHS.map((d) => (
               <Tab key={d.value} value={d.value} label={d.label} />
             ))}
           </Tabs>
+
+          <Tabs
+            value={selectedOpenKey}
+            onChange={(_, v) => setSelectedOpenKey(String(v))}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ mb: 0.25, minHeight: 40 }}
+          >
+            {currentStack.openSizeKeys.map((n) => {
+              const isGtoOpen = openBbKey(n) === openBbKey(currentStack.gtoOpenBb);
+              return (
+                <Tab
+                  key={openBbKey(n)}
+                  value={openBbKey(n)}
+                  label={`${formatPlainNumber(n)}bb`}
+                  sx={{
+                    ...(isGtoOpen
+                      ? {
+                          border: 1,
+                          borderStyle: 'solid',
+                          borderColor: 'warning.main',
+                          borderRadius: 1,
+                        }
+                      : {}),
+                  }}
+                />
+              );
+            })}
+          </Tabs>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+            Amber outline = GTO open for this stack depth (editable in Settings).
+          </Typography>
 
           <Accordion defaultExpanded={false} disableGutters elevation={0} sx={{ bgcolor: 'transparent' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -753,6 +1483,45 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
 
                 <Divider sx={{ my: 1 }} />
 
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                  Cross-device sync
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                  Use the same sync id in each browser. Settings upload automatically after you change them; opening the bet
+                  clipboard downloads the latest copy from the server.
+                </Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  label="Sync id (UUID)"
+                  value={syncIdDraft}
+                  onChange={(e) => setSyncIdDraft(e.target.value)}
+                  disabled={syncBusy}
+                  sx={{ mb: 0.75 }}
+                  inputProps={{ spellCheck: false, autoCapitalize: 'off', autoCorrect: 'off' }}
+                />
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+                  <Button size="small" variant="contained" disabled={syncBusy} onClick={handleGenerateBetClipboardSyncId}>
+                    New id + upload
+                  </Button>
+                  <Button size="small" variant="outlined" disabled={syncBusy} onClick={handleLinkBetClipboardSync}>
+                    Link this id
+                  </Button>
+                  <Button size="small" variant="outlined" disabled={syncBusy || !linkedSyncId} onClick={handleCopyBetClipboardSyncId}>
+                    Copy id
+                  </Button>
+                  <Button size="small" variant="outlined" color="warning" disabled={syncBusy || !linkedSyncId} onClick={handleDisconnectBetClipboardSync}>
+                    Unlink
+                  </Button>
+                </Stack>
+                {linkedSyncId && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.25 }}>
+                    Linked — changes sync to the cloud after a short delay.
+                  </Typography>
+                )}
+
+                <Divider sx={{ my: 1 }} />
+
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                     <Box sx={{ minWidth: 0 }}>
@@ -774,49 +1543,109 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
                   {editMode && (
                     <Stack spacing={1.25} sx={{ mt: 0.5 }}>
                       <ChipNumberListEditor
-                        label="SB open sizes (buttons, bb)"
-                        values={currentSizings.sbOpenSizes}
-                        onChange={(next) => updateCurrentSizings({ sbOpenSizes: next })}
+                        label="Open sizes / subtabs (bb) — 2bb always included"
+                        values={currentStack.openSizeKeys}
+                        preventDelete={(n) => n === 2}
+                        onChange={(next) => applyOpenSizeKeys(next)}
                       />
-                      <ChipNumberListEditor
-                        label="BB vs open (text, bb)"
-                        values={currentSizings.bbVsOpen}
-                        onChange={(next) => updateCurrentSizings({ bbVsOpen: next })}
-                      />
-                      <ChipNumberListEditor
-                        label="BB 3-bet sizes (buttons, bb)"
-                        values={currentSizings.bbThreeBetSizes}
-                        onChange={(next) => updateCurrentSizings({ bbThreeBetSizes: next })}
-                      />
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Rows below apply to the open subtab you have selected above ({formatPlainNumber(currentOpenBb)}bb).
+                      </Typography>
                       <ChipNumberListEditor
                         label="SB vs 3-bet (text, bb)"
-                        values={currentSizings.sbVs3Bet}
-                        onChange={(next) => updateCurrentSizings({ sbVs3Bet: next })}
+                        values={currentOpenSizings.sbVs3Bet}
+                        onChange={(next) => updateOpenKeyed({ sbVs3Bet: next })}
                       />
                       <ChipNumberListEditor
                         label="SB 4-bet sizes (buttons, bb)"
-                        values={currentSizings.sbFourBetSizes}
-                        onChange={(next) => updateCurrentSizings({ sbFourBetSizes: next })}
+                        values={currentOpenSizings.sbFourBetSizes}
+                        onChange={(next) => updateOpenKeyed({ sbFourBetSizes: next })}
                       />
                       <ChipNumberListEditor
-                        label="C-bet SRP (buttons, %)"
-                        values={currentSizings.cbetSrpPcts}
-                        onChange={(next) => updateCurrentSizings({ cbetSrpPcts: next })}
+                        label="BB 3-bet sizes (buttons, bb)"
+                        values={currentOpenSizings.bbThreeBetSizes}
+                        onChange={(next) => updateOpenKeyed({ bbThreeBetSizes: next })}
+                      />
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                          GTO 3-bet sizes (border on main grid) — toggles for this open subtab
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          {currentOpenSizings.bbThreeBetSizes.map((m) => {
+                            const checked = currentOpenSizings.bbThreeBetGtoValues.includes(m);
+                            return (
+                              <FormControlLabel
+                                key={m}
+                                sx={{ ml: 0 }}
+                                control={
+                                  <Switch
+                                    size="small"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      const nextGto = e.target.checked
+                                        ? uniqueSortedPositive([...currentOpenSizings.bbThreeBetGtoValues, m])
+                                        : currentOpenSizings.bbThreeBetGtoValues.filter((x) => x !== m);
+                                      updateOpenKeyed({ bbThreeBetGtoValues: filterGtoThreeBetValues(currentOpenSizings.bbThreeBetSizes, nextGto) });
+                                    }}
+                                  />
+                                }
+                                label={
+                                  <Typography variant="caption">
+                                    {`${formatPlainNumber(m)}bb`}
+                                  </Typography>
+                                }
+                              />
+                            );
+                          })}
+                        </Stack>
+                      </Box>
+                      <TextField
+                        key={`gto-open-${stackDepth}-${currentStack.gtoOpenBb}`}
+                        size="small"
+                        label="GTO open (bb) for this stack depth"
+                        defaultValue={formatPlainNumber(currentStack.gtoOpenBb)}
+                        onBlur={(e) => {
+                          const n = parsePositiveNumberOrNull(e.target.value);
+                          if (n == null) {
+                            onError('Enter a positive GTO open size.');
+                            return;
+                          }
+                          updateStackShared({ gtoOpenBb: n });
+                        }}
+                        inputProps={{ inputMode: 'decimal' }}
+                        helperText="Highlights the matching open subtab (add that open if missing)."
+                      />
+                      <NullableFourSlotEditor
+                        label="BB vs 4-bet (text, bb)"
+                        helperText="4 columns, left to right. Leave a column empty to show a blank/“—” slot."
+                        values={currentOpenSizings.bbVs4Bet}
+                        onChange={(next) => updateOpenKeyed({ bbVs4Bet: next })}
+                      />
+                      <NullableFourSlotEditor
+                        label="BB 5-bet to (buttons, bb)"
+                        helperText="4 columns, left to right. Leave a column empty to leave a blank button slot."
+                        values={currentOpenSizings.bbFiveBetTo}
+                        onChange={(next) => updateOpenKeyed({ bbFiveBetTo: next })}
                       />
                       <ChipNumberListEditor
-                        label="C-bet 3-bet pots (buttons, %)"
-                        values={currentSizings.cbet3BetPcts}
-                        onChange={(next) => updateCurrentSizings({ cbet3BetPcts: next })}
+                        label="C-bet SRP (buttons, %) — shared for this stack depth"
+                        values={currentStack.cbetSrpPcts}
+                        onChange={(next) => updateStackShared({ cbetSrpPcts: next })}
                       />
                       <ChipNumberListEditor
-                        label="C-bet 4-bet pots (buttons, %)"
-                        values={currentSizings.cbet4BetPcts}
-                        onChange={(next) => updateCurrentSizings({ cbet4BetPcts: next })}
+                        label="C-bet 3-bet pots (buttons, %) — shared for this stack depth"
+                        values={currentStack.cbet3BetPcts}
+                        onChange={(next) => updateStackShared({ cbet3BetPcts: next })}
                       />
                       <ChipNumberListEditor
-                        label="C-bet 5-bet pots (buttons, %)"
-                        values={currentSizings.cbet5BetPcts}
-                        onChange={(next) => updateCurrentSizings({ cbet5BetPcts: next })}
+                        label="C-bet 4-bet pots (buttons, %) — shared for this stack depth"
+                        values={currentStack.cbet4BetPcts}
+                        onChange={(next) => updateStackShared({ cbet4BetPcts: next })}
+                      />
+                      <ChipNumberListEditor
+                        label="C-bet 5-bet pots (buttons, %) — shared for this stack depth"
+                        values={currentStack.cbet5BetPcts}
+                        onChange={(next) => updateStackShared({ cbet5BetPcts: next })}
                       />
                     </Stack>
                   )}
@@ -833,21 +1662,40 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
                 SB
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                Open size
+                Open (SB)
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0.5 }}>
-                {currentSizings.sbOpenSizes.map((m) => (
-                  <Button key={m} size="small" variant="outlined" onClick={() => handleCopySbOpenSize(m)}>
-                    {`${formatPlainNumber(m)}bb`}
-                  </Button>
-                ))}
-              </Box>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                Facing {formatPlainNumber(currentOpenBb)}bb open (use open subtab above).
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleCopySbOpenSize(currentOpenBb)}
+                sx={{
+                  mb: 0.75,
+                  ...(openBbKey(currentOpenBb) === openBbKey(currentStack.gtoOpenBb)
+                    ? {
+                        borderWidth: 2,
+                        borderStyle: 'solid',
+                        borderColor: 'warning.main',
+                      }
+                    : {}),
+                }}
+              >
+                {`${formatPlainNumber(currentOpenBb)}bb`}
+              </Button>
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75, mb: 0.25 }}>
                 vs 3-bet
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 0.5 }}>
-                {currentSizings.sbVs3Bet.map((n) => (
-                  <Box key={n} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.max(1, currentOpenSizings.sbVs3Bet.length)}, 1fr)`,
+                  gap: 0.5,
+                }}
+              >
+                {currentOpenSizings.sbVs3Bet.map((n, idx) => (
+                  <Box key={`sb3-${idx}-${n}`} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>
                     {formatPlainNumber(n)}
                   </Box>
                 ))}
@@ -855,8 +1703,14 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75, mb: 0.25 }}>
                 4-bet size
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 0.5 }}>
-                {currentSizings.sbFourBetSizes.map((m) => (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.max(1, currentOpenSizings.sbFourBetSizes.length)}, 1fr)`,
+                  gap: 0.5,
+                }}
+              >
+                {currentOpenSizings.sbFourBetSizes.map((m) => (
                   <Button key={m} size="small" variant="outlined" onClick={() => handleCopySbFourBetSize(m)}>
                     {formatPlainNumber(m)}
                   </Button>
@@ -870,37 +1724,57 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
                 BB
               </Typography>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                vs open
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                vs {formatPlainNumber(currentOpenBb)}bb open
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0.5 }}>
-                {currentSizings.bbVsOpen.map((n) => (
-                  <Box key={n} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>
-                    {formatPlainNumber(n)}
-                  </Box>
-                ))}
-              </Box>
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75, mb: 0.25 }}>
                 3-bet size
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0.5 }}>
-                {currentSizings.bbThreeBetSizes.map((m) => (
-                  <Button key={m} size="small" variant="outlined" onClick={() => handleCopyBbThreeBetSize(m)}>
-                    {`${formatPlainNumber(m)}bb`}
-                  </Button>
-                ))}
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.35 }}>
+                Thicker amber border = GTO 3-bet (set in Settings for this open subtab).
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.max(1, currentOpenSizings.bbThreeBetSizes.length)}, 1fr)`,
+                  gap: 0.5,
+                }}
+              >
+                {currentOpenSizings.bbThreeBetSizes.map((m) => {
+                  const gto3 = currentOpenSizings.bbThreeBetGtoValues.includes(m);
+                  return (
+                    <Button
+                      key={m}
+                      size="small"
+                      variant="outlined"
+                      title={gto3 ? 'GTO 3-bet size' : undefined}
+                      onClick={() => handleCopyBbThreeBetSize(m)}
+                      sx={{
+                        ...(gto3
+                          ? {
+                              borderWidth: 2,
+                              borderStyle: 'solid',
+                              borderColor: 'warning.main',
+                            }
+                          : {}),
+                      }}
+                    >
+                      {`${formatPlainNumber(m)}bb`}
+                    </Button>
+                  );
+                })}
               </Box>
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75, mb: 0.25 }}>
                 vs 4-bet
               </Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.5 }}>
-                {currentSizings.bbVs4Bet.map((n, idx) =>
+                {currentOpenSizings.bbVs4Bet.map((n, idx) =>
                   n == null ? (
                     <Box key={`dash-${idx}`} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>
                       —
                     </Box>
                   ) : (
-                    <Box key={n} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>
+                    <Box key={`n-${idx}-${n}`} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>
                       {formatPlainNumber(n)}
                     </Box>
                   )
@@ -910,11 +1784,11 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
                 5-bet to
               </Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.5 }}>
-                {currentSizings.bbFiveBetTo.map((n, idx) =>
+                {currentOpenSizings.bbFiveBetTo.map((n, idx) =>
                   n == null ? (
                     <Box key={`blank-${idx}`} />
                   ) : (
-                    <Button key={n} size="small" variant="outlined" onClick={() => handleCopyBbFiveBetToSize(n)}>
+                    <Button key={`btn-${idx}-${n}`} size="small" variant="outlined" onClick={() => handleCopyBbFiveBetToSize(n)}>
                       {formatPlainNumber(n)}
                     </Button>
                   )
@@ -946,7 +1820,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
                     />
                   </Stack>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {currentSizings.cbetSrpPcts.map((pct) => (
+                    {currentStack.cbetSrpPcts.map((pct) => (
                       <Button
                         key={pct}
                         size="small"
@@ -979,7 +1853,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
                     />
                   </Stack>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {currentSizings.cbet4BetPcts.map((pct) => (
+                    {currentStack.cbet4BetPcts.map((pct) => (
                       <Button
                         key={pct}
                         size="small"
@@ -1016,7 +1890,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
                     />
                   </Stack>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {currentSizings.cbet3BetPcts.map((pct) => (
+                    {currentStack.cbet3BetPcts.map((pct) => (
                       <Button
                         key={pct}
                         size="small"
@@ -1049,7 +1923,7 @@ export function BetClipboardPopover({ onSuccess, onError }: BetClipboardPopoverP
                     />
                   </Stack>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {currentSizings.cbet5BetPcts.map((pct) => (
+                    {currentStack.cbet5BetPcts.map((pct) => (
                       <Button
                         key={pct}
                         size="small"
