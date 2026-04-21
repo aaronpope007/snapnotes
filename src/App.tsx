@@ -773,6 +773,7 @@ export default function App() {
         >
           <NoteAddIcon />
         </IconButton>
+        <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
         {!showSessionInProgress && userName?.trim() && (
           <Button
             size="small"
@@ -850,7 +851,6 @@ export default function App() {
             </Button>
           </>
         )}
-        <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
         <IconButton
           size="medium"
           onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -1115,6 +1115,7 @@ export default function App() {
                 >
                   <NoteAddIcon />
                 </IconButton>
+                <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
                 {!showSessionInProgress && userName?.trim() && (
                   <Button
                     size="small"
@@ -1192,7 +1193,6 @@ export default function App() {
                     </Button>
                   </>
                 )}
-                <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
                 <IconButton
                   size="medium"
                   onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
