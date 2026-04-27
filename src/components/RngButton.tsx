@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Button from '@mui/material/Button';
 
 /** Gradient 1–100: aggressive (red) → passive (dark blue). */
@@ -41,9 +41,37 @@ function getRngButtonBgColor(value: number | null): string | undefined {
 
 export function RngButton() {
   const [rngValue, setRngValue] = useState<number | null>(null);
+  const [rolling, setRolling] = useState(false);
+  const intervalRef = useRef<number | null>(null);
+
+  const roll = useCallback(() => {
+    setRngValue(Math.floor(Math.random() * 100) + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!rolling) {
+      if (intervalRef.current != null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+
+    // Roll immediately on start, then every 3 seconds.
+    roll();
+    intervalRef.current = window.setInterval(roll, 3000);
+
+    return () => {
+      if (intervalRef.current != null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [rolling, roll]);
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setRngValue(Math.floor(Math.random() * 100) + 1);
+    setRolling((prev) => !prev);
   }, []);
 
   const bgColor = getRngButtonBgColor(rngValue);
@@ -52,7 +80,7 @@ export function RngButton() {
       variant="outlined"
       size="medium"
       onClick={handleClick}
-      aria-label="Random number 1-100"
+      aria-label={rolling ? 'Stop rolling random number 1-100' : 'Start rolling random number 1-100'}
       sx={{
         minWidth: 72,
         minHeight: 40,
