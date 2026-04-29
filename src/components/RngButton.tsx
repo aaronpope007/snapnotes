@@ -10,6 +10,10 @@ const RNG_COLORS: [number, number, number][] = [
   [0x15, 0x65, 0xc0], // 100: dark blue
 ];
 
+function getRandomRngValue(): number {
+  return Math.floor(Math.random() * 100) + 1;
+}
+
 function lerpRgb(a: [number, number, number], b: [number, number, number], t: number): string {
   const r = Math.round(a[0] + (b[0] - a[0]) * t);
   const g = Math.round(a[1] + (b[1] - a[1]) * t);
@@ -40,26 +44,15 @@ function getRngButtonBgColor(value: number | null): string | undefined {
 }
 
 export function RngButton() {
-  const [rngValue, setRngValue] = useState<number | null>(null);
-  const [rolling, setRolling] = useState(false);
+  const [rngValue, setRngValue] = useState<number>(() => getRandomRngValue());
   const intervalRef = useRef<number | null>(null);
 
   const roll = useCallback(() => {
-    setRngValue(Math.floor(Math.random() * 100) + 1);
+    setRngValue(getRandomRngValue());
   }, []);
 
   useEffect(() => {
-    if (!rolling) {
-      if (intervalRef.current != null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
-    // Roll immediately on start, then every 3 seconds.
-    roll();
-    intervalRef.current = window.setInterval(roll, 3000);
+    intervalRef.current = window.setInterval(roll, 7000);
 
     return () => {
       if (intervalRef.current != null) {
@@ -67,12 +60,12 @@ export function RngButton() {
         intervalRef.current = null;
       }
     };
-  }, [rolling, roll]);
+  }, [roll]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setRolling((prev) => !prev);
-  }, []);
+    roll();
+  }, [roll]);
 
   const bgColor = getRngButtonBgColor(rngValue);
   return (
@@ -80,7 +73,7 @@ export function RngButton() {
       variant="outlined"
       size="medium"
       onClick={handleClick}
-      aria-label={rolling ? 'Stop rolling random number 1-100' : 'Start rolling random number 1-100'}
+      aria-label="Re-roll random number 1-100"
       sx={{
         minWidth: 72,
         minHeight: 40,
