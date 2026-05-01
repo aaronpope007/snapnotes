@@ -175,7 +175,9 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     if (open) {
       setUsername(initialUsername ?? '');
       setGameTypes(defaultStakes.gameTypes);
-      setStakesSeenAt(defaultStakes.stakesSeenAt);
+      setStakesSeenAt(
+        defaultStakes.stakesSeenAt.length > 0 ? defaultStakes.stakesSeenAt : [200]
+      );
       setFormats(defaultStakes.formats);
       setOrigin(defaultStakes.origin);
     }

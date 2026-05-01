@@ -19,7 +19,7 @@ export interface DefaultStakes {
 }
 
 const EMPTY_DEFAULTS: DefaultStakes = {
-  stakesSeenAt: [],
+  stakesSeenAt: [200],
   gameTypes: [],
   formats: [],
   origin: 'WPT Gold',
@@ -31,9 +31,17 @@ function parseStored(raw: string | null): DefaultStakes {
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== 'object') return EMPTY_DEFAULTS;
     const o = parsed as Record<string, unknown>;
-    const stakesSeenAt = Array.isArray(o.stakesSeenAt)
-      ? (o.stakesSeenAt as number[]).filter((s) => STAKE_VALUES.includes(s as (typeof STAKE_VALUES)[number]))
+    let stakesSeenAt = Array.isArray(o.stakesSeenAt)
+      ? (o.stakesSeenAt as number[])
+          .filter((s) => STAKE_VALUES.includes(s as (typeof STAKE_VALUES)[number]))
+          .sort((a, b) => a - b)
       : [];
+    let migratedLegacyStakes = false;
+    // Legacy preset had both 200 and 400; new players should default to 200 only.
+    if (stakesSeenAt.length === 2 && stakesSeenAt[0] === 200 && stakesSeenAt[1] === 400) {
+      stakesSeenAt = [200];
+      migratedLegacyStakes = true;
+    }
     const gameTypes = Array.isArray(o.gameTypes)
       ? (o.gameTypes as string[]).filter((g) => GAME_TYPE_OPTIONS.includes(g as (typeof GAME_TYPE_OPTIONS)[number]))
       : [];
@@ -44,7 +52,15 @@ function parseStored(raw: string | null): DefaultStakes {
       typeof o.origin === 'string' && ORIGIN_OPTIONS.includes(o.origin as (typeof ORIGIN_OPTIONS)[number])
         ? o.origin
         : 'WPT Gold';
-    return { stakesSeenAt, gameTypes, formats, origin };
+    const result: DefaultStakes = { stakesSeenAt, gameTypes, formats, origin };
+    if (migratedLegacyStakes) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+      } catch {
+        /* ignore */
+      }
+    }
+    return result;
   } catch {
     return EMPTY_DEFAULTS;
   }
