@@ -52,7 +52,7 @@ export function RngButton() {
   }, []);
 
   useEffect(() => {
-    intervalRef.current = window.setInterval(roll, 7000);
+    intervalRef.current = window.setInterval(roll, 5000);
 
     return () => {
       if (intervalRef.current != null) {
