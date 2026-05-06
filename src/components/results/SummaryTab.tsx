@@ -224,6 +224,16 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
     const net = (s: SessionResult) => sessionNetById.get(s._id) ?? (s.dailyNet ?? 0);
     const mostRecent = getMostRecentSession(summaryFilteredSessions);
     const currentAccount = mostRecent?.endBankroll ?? null;
+    const maxAccount = (() => {
+      const base = allSessionsForNet ?? sessions;
+      let max: number | null = null;
+      for (const s of base) {
+        const end = s.endBankroll ?? null;
+        if (end == null || !Number.isFinite(end)) continue;
+        if (max == null || end > max) max = end;
+      }
+      return max;
+    })();
     const totalProfit = sorted.reduce((sum, s) => sum + net(s), 0);
     const totalHours = sorted.reduce(
       (sum, s) => sum + (s.totalTime ?? 0),
@@ -247,8 +257,9 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
       profitPerHour,
       profitPerHourAt240,
       currentAccount,
+      maxAccount,
     };
-  }, [summaryFilteredSessions, sessionNetById]);
+  }, [summaryFilteredSessions, sessionNetById, allSessionsForNet, sessions]);
 
   const streakAndDrawdown = useMemo(() => {
     const net = (s: SessionResult) => sessionNetById.get(s._id) ?? (s.dailyNet ?? 0);
@@ -828,6 +839,16 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {stats.currentAccount != null
               ? `$${Number(stats.currentAccount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : '—'}
+          </Typography>
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography variant="caption" color="text.secondary">
+            Max ever
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {stats.maxAccount != null
+              ? `$${Number(stats.maxAccount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : '—'}
           </Typography>
         </Box>
