@@ -276,7 +276,7 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
 
     let cumProfit = 0;
     let peak = 0;
-    let troughSincePeak = 0;
+    let trough = 0;
     let maxDrawdown = 0;
 
     for (const s of sorted) {
@@ -292,12 +292,8 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
       else longestLoss = Math.max(longestLoss, tempCount);
 
       cumProfit += n;
-      if (cumProfit > peak) {
-        peak = cumProfit;
-        troughSincePeak = cumProfit;
-      } else {
-        troughSincePeak = Math.min(troughSincePeak, cumProfit);
-      }
+      if (cumProfit > peak) peak = cumProfit;
+      if (cumProfit < trough) trough = cumProfit;
       const drawdown = peak - cumProfit;
       if (drawdown > maxDrawdown) maxDrawdown = drawdown;
     }
@@ -305,7 +301,7 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
     currentStreakCount = tempCount;
     currentStreakType = tempType;
     const currentDrawdown = peak - cumProfit;
-    const currentUpswing = cumProfit - troughSincePeak;
+    const currentUpswing = cumProfit - trough;
 
     return {
       currentStreakCount,
