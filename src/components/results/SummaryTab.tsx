@@ -276,6 +276,7 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
 
     let cumProfit = 0;
     let peak = 0;
+    let troughSincePeak = 0;
     let maxDrawdown = 0;
 
     for (const s of sorted) {
@@ -291,7 +292,12 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
       else longestLoss = Math.max(longestLoss, tempCount);
 
       cumProfit += n;
-      if (cumProfit > peak) peak = cumProfit;
+      if (cumProfit > peak) {
+        peak = cumProfit;
+        troughSincePeak = cumProfit;
+      } else {
+        troughSincePeak = Math.min(troughSincePeak, cumProfit);
+      }
       const drawdown = peak - cumProfit;
       if (drawdown > maxDrawdown) maxDrawdown = drawdown;
     }
@@ -299,8 +305,17 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
     currentStreakCount = tempCount;
     currentStreakType = tempType;
     const currentDrawdown = peak - cumProfit;
+    const currentUpswing = cumProfit - troughSincePeak;
 
-    return { currentStreakCount, currentStreakType, longestWin, longestLoss, maxDrawdown, currentDrawdown };
+    return {
+      currentStreakCount,
+      currentStreakType,
+      longestWin,
+      longestLoss,
+      maxDrawdown,
+      currentDrawdown,
+      currentUpswing,
+    };
   }, [summaryFilteredSessions, sessionNetById]);
 
   const netForSession = useCallback(
@@ -899,6 +914,14 @@ export function SummaryTab({ sessions, allSessionsForNet, withdrawals = [], load
           </Typography>
           <Typography variant="body2" sx={{ color: streakAndDrawdown.currentDrawdown > 0 ? 'error.main' : 'text.secondary' }}>
             {streakAndDrawdown.currentDrawdown > 0 ? `−$${streakAndDrawdown.currentDrawdown.toFixed(2)}` : '—'}
+          </Typography>
+        </Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Typography variant="caption" color="text.secondary">
+            Current upswing
+          </Typography>
+          <Typography variant="body2" sx={{ color: streakAndDrawdown.currentUpswing > 0 ? 'success.main' : 'text.secondary' }}>
+            {streakAndDrawdown.currentUpswing > 0 ? `+$${streakAndDrawdown.currentUpswing.toFixed(2)}` : '—'}
           </Typography>
         </Box>
       </Paper>
