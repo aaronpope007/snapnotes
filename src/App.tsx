@@ -18,6 +18,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import SchoolIcon from '@mui/icons-material/School';
+import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SaveIcon from '@mui/icons-material/Save';
@@ -38,6 +39,7 @@ import { PlayerCard } from './components/PlayerCard';
 import { HandHistoryPanel } from './components/HandHistoryPanel';
 import { HandsToReviewView } from './components/HandsToReviewView';
 import { LearningPage } from './pages/LearningPage';
+import { GtoStudyPage } from './pages/GtoStudyPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { fetchSessionResults } from './api/results';
 import { AddPlayerModal } from './components/AddPlayerModal';
@@ -60,6 +62,7 @@ import { useCompactMode, useSetCompactMode } from './context/CompactModeContext'
 import { useHorizontalMode, useSetHorizontalMode } from './context/HorizontalModeContext';
 import { useCalculatorVisibility, useSetCalculatorVisibility } from './context/CalculatorVisibilityContext';
 import { useLearningVisibility, useSetLearningVisibility } from './context/LearningVisibilityContext';
+import { useGtoStudyVisibility, useSetGtoStudyVisibility } from './context/GtoStudyVisibilityContext';
 import { useResultsVisibility, useSetResultsVisibility } from './context/ResultsVisibilityContext';
 import { useLeaksVisibility, useSetLeaksVisibility } from './context/LeaksVisibilityContext';
 import { useDarkMode, useSetDarkMode } from './context/DarkModeContext';
@@ -103,6 +106,8 @@ export default function App() {
   const setCalcVisibility = useSetCalculatorVisibility();
   const learningVisible = useLearningVisibility();
   const setLearningVisible = useSetLearningVisibility();
+  const gtoStudyVisible = useGtoStudyVisibility();
+  const setGtoStudyVisible = useSetGtoStudyVisibility();
   const resultsVisible = useResultsVisibility();
   const setResultsVisible = useSetResultsVisibility();
   const leaksVisible = useLeaksVisibility();
@@ -111,6 +116,9 @@ export default function App() {
   useEffect(() => {
     if (!learningVisible) setShowLearning(false);
   }, [learningVisible]);
+  useEffect(() => {
+    if (!gtoStudyVisible) setShowGtoStudy(false);
+  }, [gtoStudyVisible]);
   useEffect(() => {
     if (!resultsVisible) setShowResults(false);
   }, [resultsVisible]);
@@ -133,7 +141,9 @@ export default function App() {
     return params.get('hand') ?? null;
   });
   const [showLearning, setShowLearning] = useState(false);
+  const [showGtoStudy, setShowGtoStudy] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const showAuxPanel = showResults || showGtoStudy;
   const [requestOpenEndSessionModal, setRequestOpenEndSessionModal] = useState(false);
   const [requestOpenEditSessionModal, setRequestOpenEditSessionModal] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
@@ -222,6 +232,8 @@ export default function App() {
       };
       setActiveSession(session);
       setActiveSessionTick((t) => t + 1);
+      setShowLearning(false);
+      setShowGtoStudy(false);
       setShowResults(true);
       showSuccess('Session started. Click End session when done.');
     } catch (err) {
@@ -344,6 +356,7 @@ export default function App() {
     try {
       setShowHandsToReview(false);
       setShowLearning(false);
+      setShowGtoStudy(false);
       setShowResults(false);
       const full = await fetchPlayer(p._id);
       setSelected(full);
@@ -377,6 +390,7 @@ export default function App() {
       setTempNoteOpen(false);
       setShowHandsToReview(true);
       setShowLearning(false);
+      setShowGtoStudy(false);
       setShowResults(false);
       setSelected(null);
       showSuccess('Hand added for review');
@@ -428,6 +442,7 @@ export default function App() {
       setTempNoteOpen(false);
       setShowHandsToReview(false);
       setShowLearning(false);
+      setShowGtoStudy(false);
       setShowResults(false);
       setSelected(updated);
       showSuccess('Note appended to ' + full.username);
@@ -486,6 +501,7 @@ export default function App() {
       );
       setShowHandsToReview(false);
       setShowLearning(false);
+      setShowGtoStudy(false);
       setShowResults(false);
       setSelected(created);
       setRecentlyViewedIds((prev) => {
@@ -718,6 +734,13 @@ export default function App() {
         </MenuItem>
         <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoGraphIcon sx={{ fontSize: 18 }} />
+            GTO Study
+          </Box>
+          <Switch size="small" checked={gtoStudyVisible} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGtoStudyVisible(e.target.checked)} onClick={(e: React.MouseEvent) => e.stopPropagation()} />
+        </MenuItem>
+        <MenuItem onClick={(e) => e.stopPropagation()} sx={{ justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <BarChartIcon sx={{ fontSize: 18 }} />
             Results
           </Box>
@@ -740,14 +763,14 @@ export default function App() {
         display: 'flex',
         flexDirection: 'column',
         gap: compact ? 1 : 1.5,
-        flexShrink: showResults ? 0 : 1,
-        flex: horizontal && showResults ? 1 : undefined,
-        minWidth: horizontal ? (showResults ? 0 : (compact ? 260 : 320)) : undefined,
-        width: horizontal && !showResults ? '100%' : undefined,
+        flexShrink: showAuxPanel ? 0 : 1,
+        flex: horizontal && showAuxPanel ? 1 : undefined,
+        minWidth: horizontal ? (showAuxPanel ? 0 : (compact ? 260 : 320)) : undefined,
+        width: horizontal && !showAuxPanel ? '100%' : undefined,
         maxWidth: horizontal ? '100%' : undefined,
         alignSelf: 'flex-start',
-        position: horizontal && !showResults ? 'sticky' : undefined,
-        top: horizontal && !showResults ? (compact ? 1 : 2) : undefined,
+        position: horizontal && !showAuxPanel ? 'sticky' : undefined,
+        top: horizontal && !showAuxPanel ? (compact ? 1 : 2) : undefined,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap', minWidth: 0, maxWidth: '100%', width: '100%', overflowX: 'auto' }}>
@@ -813,6 +836,7 @@ export default function App() {
                 setSelected(null);
                 setShowHandsToReview(false);
                 setShowLearning(false);
+                setShowGtoStudy(false);
                 setShowResults(true);
                 setRequestOpenEndSessionModal(true);
               }}
@@ -827,6 +851,7 @@ export default function App() {
                 setSelected(null);
                 setShowHandsToReview(false);
                 setShowLearning(false);
+                setShowGtoStudy(false);
                 setShowResults(true);
                 setRequestOpenEditSessionModal(true);
               }}
@@ -882,6 +907,7 @@ export default function App() {
               onClick={() => {
                 setShowHandsToReview(!showHandsToReview);
                 setShowLearning(false);
+                setShowGtoStudy(false);
                 setShowResults(false);
               }}
               sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
@@ -896,11 +922,28 @@ export default function App() {
                 onClick={() => {
                   setShowLearning(!showLearning);
                   setShowHandsToReview(false);
+                  setShowGtoStudy(false);
                   setShowResults(false);
                 }}
                 sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 Learning
+              </Button>
+            )}
+            {gtoStudyVisible && (
+              <Button
+                variant={showGtoStudy ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<AutoGraphIcon />}
+                onClick={() => {
+                  setShowGtoStudy(!showGtoStudy);
+                  setShowHandsToReview(false);
+                  setShowLearning(false);
+                  setShowResults(false);
+                }}
+                sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                GTO Study
               </Button>
             )}
             {resultsVisible && (
@@ -912,6 +955,7 @@ export default function App() {
                   setShowResults(!showResults);
                   setShowHandsToReview(false);
                   setShowLearning(false);
+                  setShowGtoStudy(false);
                 }}
                 sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
               >
@@ -958,6 +1002,25 @@ export default function App() {
               </ErrorBoundary>
             </>
           )}
+          {gtoStudyVisible && showGtoStudy && (
+            <>
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => setShowGtoStudy(false)}
+                sx={{ alignSelf: 'flex-start', mb: 0.5 }}
+              >
+                Back to players
+              </Button>
+              <ErrorBoundary>
+                <GtoStudyPage
+                  onSuccess={showSuccess}
+                  onError={showError}
+                />
+              </ErrorBoundary>
+            </>
+          )}
           {resultsVisible && showResults && (
             <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
               <Button
@@ -985,7 +1048,7 @@ export default function App() {
               </ErrorBoundary>
             </Box>
           )}
-          {(!selected && (recentPlayers.length > 0 || myRecent)) && !showHandsToReview && !showLearning && !showResults && (
+          {(!selected && (recentPlayers.length > 0 || myRecent)) && !showHandsToReview && !showLearning && !showGtoStudy && !showResults && (
             <Paper variant="outlined" sx={{ p: compact ? 0.5 : 1, borderRadius: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: compact ? 0.5 : 1 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: compact ? '0.65rem' : undefined }}>
@@ -1069,6 +1132,7 @@ export default function App() {
         onReviewClick={() => {
           setShowHandsToReview(true);
           setShowLearning(false);
+          setShowGtoStudy(false);
           setShowResults(false);
           setSelected(null);
         }}
@@ -1089,7 +1153,7 @@ export default function App() {
         }}
       >
         {horizontal && !selected && leftSidebar}
-        <Box sx={{ flex: horizontal && !showResults ? 1 : (horizontal && showResults ? 0 : undefined), minWidth: horizontal ? 0 : undefined, display: horizontal && showResults ? 'none' : 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
+        <Box sx={{ flex: horizontal && !showAuxPanel ? 1 : (horizontal && showAuxPanel ? 0 : undefined), minWidth: horizontal ? 0 : undefined, display: horizontal && showAuxPanel ? 'none' : 'flex', flexDirection: 'column', gap: compact ? 1 : 1.5 }}>
           {!horizontal && (
             <Box sx={{ mb: compact ? 1 : 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, flexWrap: 'nowrap', minWidth: 0, maxWidth: '100%', width: '100%', overflowX: 'auto' }}>
@@ -1155,6 +1219,7 @@ export default function App() {
                         setSelected(null);
                         setShowHandsToReview(false);
                         setShowLearning(false);
+                        setShowGtoStudy(false);
                         setShowResults(true);
                         setRequestOpenEndSessionModal(true);
                       }}
@@ -1169,6 +1234,7 @@ export default function App() {
                         setSelected(null);
                         setShowHandsToReview(false);
                         setShowLearning(false);
+                        setShowGtoStudy(false);
                         setShowResults(true);
                         setRequestOpenEditSessionModal(true);
                       }}
@@ -1222,6 +1288,7 @@ export default function App() {
               onClick={() => {
                 setShowHandsToReview(!showHandsToReview);
                 setShowLearning(false);
+                setShowGtoStudy(false);
                 setShowResults(false);
               }}
               sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
@@ -1236,11 +1303,28 @@ export default function App() {
                 onClick={() => {
                   setShowLearning(!showLearning);
                   setShowHandsToReview(false);
+                  setShowGtoStudy(false);
                   setShowResults(false);
                 }}
                 sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 Learning
+              </Button>
+            )}
+            {gtoStudyVisible && (
+              <Button
+                variant={showGtoStudy ? 'contained' : 'outlined'}
+                size="small"
+                startIcon={<AutoGraphIcon />}
+                onClick={() => {
+                  setShowGtoStudy(!showGtoStudy);
+                  setShowHandsToReview(false);
+                  setShowLearning(false);
+                  setShowResults(false);
+                }}
+                sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                GTO Study
               </Button>
             )}
             {resultsVisible && (
@@ -1252,6 +1336,7 @@ export default function App() {
                   setShowResults(!showResults);
                   setShowHandsToReview(false);
                   setShowLearning(false);
+                  setShowGtoStudy(false);
                 }}
                 sx={{ height: NAV_BUTTON_HEIGHT, minHeight: NAV_BUTTON_HEIGHT, maxHeight: NAV_BUTTON_HEIGHT, whiteSpace: 'nowrap', flexShrink: 0 }}
               >
@@ -1280,7 +1365,27 @@ export default function App() {
               />
             </ErrorBoundary>
           </Box>
-        ) : learningVisible && showLearning && horizontal ? null : showHandsToReview && !horizontal ? (
+        ) : gtoStudyVisible && showGtoStudy && !horizontal ? (
+          <Box>
+            <Button
+              variant="text"
+              size="small"
+              startIcon={<ArrowBackIcon />}
+              onClick={() => setShowGtoStudy(false)}
+              sx={{ mb: 1 }}
+            >
+              {selected ? `Back to ${selected.username}` : 'Back to Players'}
+            </Button>
+            <ErrorBoundary>
+              <GtoStudyPage
+                onSuccess={showSuccess}
+                onError={showError}
+              />
+            </ErrorBoundary>
+          </Box>
+        ) : (learningVisible && showLearning && horizontal) || (gtoStudyVisible && showGtoStudy && horizontal)
+          ? null
+          : showHandsToReview && !horizontal ? (
           <Box>
             <Button
               variant="text"
@@ -1368,6 +1473,7 @@ export default function App() {
                         setSelected(null);
                         setShowHandsToReview(false);
                         setShowLearning(false);
+                        setShowGtoStudy(false);
                         setShowResults(true);
                         setRequestOpenEndSessionModal(true);
                       }}
@@ -1382,6 +1488,7 @@ export default function App() {
                         setSelected(null);
                         setShowHandsToReview(false);
                         setShowLearning(false);
+                        setShowGtoStudy(false);
                         setShowResults(true);
                         setRequestOpenEditSessionModal(true);
                       }}

@@ -11,6 +11,7 @@ import learningRouter from './routes/learning.js';
 import resultsRouter from './routes/results.js';
 import withdrawalsRouter from './routes/withdrawals.js';
 import betClipboardSyncRouter from './routes/betClipboardSync.js';
+import gtoStudyRouter from './routes/gtoStudy.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -27,6 +28,7 @@ app.use('/api/learning', learningRouter);
 app.use('/api/results', resultsRouter);
 app.use('/api/withdrawals', withdrawalsRouter);
 app.use('/api/bet-clipboard-sync', betClipboardSyncRouter);
+app.use('/api/gto-study', gtoStudyRouter);
 
 const start = async () => {
   const uri = process.env.MONGODB_URI;
