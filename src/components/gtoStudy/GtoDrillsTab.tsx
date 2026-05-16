@@ -10,12 +10,14 @@ import { GtoDrillFormModal } from './GtoDrillFormModal';
 import { GtoDrillResultModal } from './GtoDrillResultModal';
 import { LogResultModal } from './LogResultModal';
 import type { useGtoDrills } from '../../hooks/useGtoDrills';
+import type { GtoDrill } from '../../types/gtoStudy';
 
 interface GtoDrillsTabProps {
   hook: ReturnType<typeof useGtoDrills>;
+  listDrills: GtoDrill[];
 }
 
-export function GtoDrillsTab({ hook }: GtoDrillsTabProps) {
+export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
   const compact = useCompactMode();
 
   if (hook.selectedDrill) {
@@ -74,9 +76,13 @@ export function GtoDrillsTab({ hook }: GtoDrillsTabProps) {
         <Typography variant="body2" color="text.secondary">
           No drills yet. Create a drill definition, then log results from GTO Wizard.
         </Typography>
+      ) : listDrills.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No drills match your search.
+        </Typography>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: compact ? 0.5 : 0.75 }}>
-          {hook.drills.map((drill) => (
+          {listDrills.map((drill) => (
             <GtoDrillRow
               key={drill._id}
               drill={drill}
