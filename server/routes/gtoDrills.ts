@@ -67,6 +67,9 @@ router.get('/', async (req: Request, res: Response) => {
                 date: 1,
                 evLoss: 1,
                 handsPlayed: 1,
+                accuracy: 1,
+                evDiff: 1,
+                score: 1,
               },
             },
           ],
@@ -217,6 +220,28 @@ function parseHandsPlayed(value: unknown): number | undefined | 'invalid' {
   return n;
 }
 
+/** 0–100 inclusive when present. */
+function parseAccuracy(value: unknown): number | undefined | 'invalid' {
+  if (value == null || value === '') return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'invalid';
+  if (value < 0 || value > 100) return 'invalid';
+  return value;
+}
+
+function parseEvDiff(value: unknown): number | undefined | 'invalid' {
+  if (value == null || value === '') return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'invalid';
+  return value;
+}
+
+/** Strictly positive when present. */
+function parseScore(value: unknown): number | undefined | 'invalid' {
+  if (value == null || value === '') return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'invalid';
+  if (value <= 0) return 'invalid';
+  return value;
+}
+
 router.post('/:id/results', async (req: Request, res: Response) => {
   try {
     const body = req.body as {
@@ -224,6 +249,10 @@ router.post('/:id/results', async (req: Request, res: Response) => {
       date?: string;
       evLoss?: number;
       handsPlayed?: number;
+      accuracy?: number;
+      bestActionRate?: number;
+      evDiff?: number;
+      score?: number;
       notes?: string;
     };
     const userId = body.userId?.trim() || getUserId(req);
@@ -240,12 +269,33 @@ router.post('/:id/results', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'handsPlayed must be a positive integer' });
     }
 
+    const accuracy = parseAccuracy(body.accuracy);
+    if (accuracy === 'invalid') {
+      return res.status(400).json({ error: 'accuracy must be between 0 and 100' });
+    }
+    const bestActionRate = parseAccuracy(body.bestActionRate);
+    if (bestActionRate === 'invalid') {
+      return res.status(400).json({ error: 'bestActionRate must be between 0 and 100' });
+    }
+    const evDiff = parseEvDiff(body.evDiff);
+    if (evDiff === 'invalid') {
+      return res.status(400).json({ error: 'evDiff must be a finite number' });
+    }
+    const score = parseScore(body.score);
+    if (score === 'invalid') {
+      return res.status(400).json({ error: 'score must be a positive number' });
+    }
+
     const result = new GtoDrillResult({
       drillId: drill._id,
       userId,
       date,
       evLoss,
       handsPlayed,
+      accuracy,
+      bestActionRate,
+      evDiff,
+      score,
       notes: (body.notes ?? '').trim().slice(0, 500),
     });
     await result.save();
@@ -279,6 +329,10 @@ router.patch('/:id/results/:resultId', async (req: Request, res: Response) => {
       date?: string;
       evLoss?: number | null;
       handsPlayed?: number | null;
+      accuracy?: number | null;
+      bestActionRate?: number | null;
+      evDiff?: number | null;
+      score?: number | null;
       notes?: string;
     };
 
@@ -301,6 +355,50 @@ router.patch('/:id/results/:resultId', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'handsPlayed must be a positive integer' });
       }
       result.handsPlayed = handsPlayed;
+    }
+    if (body.accuracy !== undefined) {
+      if (body.accuracy == null) {
+        result.accuracy = undefined;
+      } else {
+        const accuracy = parseAccuracy(body.accuracy);
+        if (accuracy === 'invalid') {
+          return res.status(400).json({ error: 'accuracy must be between 0 and 100' });
+        }
+        result.accuracy = accuracy;
+      }
+    }
+    if (body.bestActionRate !== undefined) {
+      if (body.bestActionRate == null) {
+        result.bestActionRate = undefined;
+      } else {
+        const bestActionRate = parseAccuracy(body.bestActionRate);
+        if (bestActionRate === 'invalid') {
+          return res.status(400).json({ error: 'bestActionRate must be between 0 and 100' });
+        }
+        result.bestActionRate = bestActionRate;
+      }
+    }
+    if (body.evDiff !== undefined) {
+      if (body.evDiff == null) {
+        result.evDiff = undefined;
+      } else {
+        const evDiff = parseEvDiff(body.evDiff);
+        if (evDiff === 'invalid') {
+          return res.status(400).json({ error: 'evDiff must be a finite number' });
+        }
+        result.evDiff = evDiff;
+      }
+    }
+    if (body.score !== undefined) {
+      if (body.score == null) {
+        result.score = undefined;
+      } else {
+        const score = parseScore(body.score);
+        if (score === 'invalid') {
+          return res.status(400).json({ error: 'score must be a positive number' });
+        }
+        result.score = score;
+      }
     }
     if (body.notes !== undefined) {
       result.notes = body.notes.trim().slice(0, 500);

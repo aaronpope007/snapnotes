@@ -7,6 +7,10 @@ const gtoDrillResultSchema = new mongoose.Schema(
     date: { type: Date, required: true },
     evLoss: { type: Number },
     handsPlayed: { type: Number, min: 1 },
+    accuracy: { type: Number, min: 0, max: 100 },
+    bestActionRate: { type: Number, min: 0, max: 100 },
+    evDiff: { type: Number },
+    score: { type: Number },
     notes: { type: String, default: '', maxlength: 500 },
   },
   { timestamps: true }

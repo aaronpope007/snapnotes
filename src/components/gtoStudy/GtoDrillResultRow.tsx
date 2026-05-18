@@ -6,10 +6,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useCompactMode } from '../../context/CompactModeContext';
 import {
-  formatEvLoss,
-  formatEvLossPerHand,
+  formatAccuracyPercent,
+  formatBestActionRate,
+  formatEvDiff,
   formatHandsPlayed,
   formatResultTime,
+  formatScorePerHand,
+  formatSessionScore,
 } from '../../utils/gtoStudyUtils';
 import type { GtoDrillResult } from '../../types/gtoStudy';
 
@@ -21,7 +24,7 @@ interface GtoDrillResultRowProps {
 
 function MetricCell({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+    <Box sx={{ flex: '1 1 52px', minWidth: 0, textAlign: 'center' }}>
       <Typography
         variant="caption"
         color="text.secondary"
@@ -51,16 +54,33 @@ export function GtoDrillResultRow({ result, onEdit, onDelete }: GtoDrillResultRo
         }}
       >
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 0.5, display: 'block' }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, mb: 0.5, display: 'block' }}
+          >
             {timeStr}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.5, mb: result.notes ? 0.25 : 0 }}>
-            <MetricCell label="EV Loss" value={formatEvLoss(result.evLoss)} />
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              mb: result.notes ? 0.25 : 0,
+            }}
+          >
             <MetricCell label="Hands" value={formatHandsPlayed(result.handsPlayed)} />
+            <MetricCell label="Accuracy" value={formatAccuracyPercent(result.accuracy)} />
             <MetricCell
-              label="EV/Hand"
-              value={formatEvLossPerHand(result.evLoss, result.handsPlayed)}
+              label="Best Action %"
+              value={formatBestActionRate(result.bestActionRate)}
             />
+            <MetricCell label="Score" value={formatSessionScore(result.score)} />
+            <MetricCell
+              label="Score/Hand"
+              value={formatScorePerHand(result.score, result.handsPlayed)}
+            />
+            <MetricCell label="EV Diff" value={formatEvDiff(result.evDiff)} />
           </Box>
           {result.notes && (
             <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>

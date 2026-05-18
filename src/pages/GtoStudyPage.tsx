@@ -24,7 +24,7 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
   );
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 480 }}>
+    <Box sx={{ width: '100%' }}>
       {!hook.selectedDrillId && (
         <GtoStudyTabs
           filterQuery={filterQuery}

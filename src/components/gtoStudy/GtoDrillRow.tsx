@@ -8,7 +8,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { formatDrillSummary } from '../../constants/gtoStudy';
-import { drillListScoreText, drillListTrend } from '../../utils/drillListSummary';
+import {
+  drillListPerformanceLabel,
+  drillListPerformancePrimary,
+  drillListPerformanceSecondary,
+  drillListTrend,
+} from '../../utils/drillListSummary';
 import type { GtoDrill } from '../../types/gtoStudy';
 
 interface GtoDrillRowProps {
@@ -47,11 +52,13 @@ export function GtoDrillRow({
 }: GtoDrillRowProps) {
   const compact = useCompactMode();
   const summaryLine = formatDrillSummary(drill);
-  const score = drillListScoreText(drill.recentResultsSummary);
+  const perfPrimary = drillListPerformancePrimary(drill.recentResultsSummary);
+  const perfSecondary = drillListPerformanceSecondary(drill.recentResultsSummary);
+  const perfLabel = drillListPerformanceLabel(drill.recentResultsSummary);
   const trend = drillListTrend(drill.recentResultsSummary);
 
   return (
-    <Paper variant="outlined" sx={{ borderColor: 'divider', borderRadius: 1 }}>
+    <Paper variant="outlined" sx={{ borderColor: 'divider', borderRadius: 1, width: '100%' }}>
       <Box
         sx={{
           display: 'flex',
@@ -72,7 +79,9 @@ export function GtoDrillRow({
           >
             <Typography
               component="button"
+              type="button"
               variant={compact ? 'body2' : 'subtitle2'}
+              title={drill.name}
               onClick={() => onOpenDrill(drill)}
               sx={{
                 fontWeight: 600,
@@ -82,8 +91,8 @@ export function GtoDrillRow({
                 color: 'primary.main',
                 p: 0,
                 textAlign: 'left',
-                flexShrink: 0,
-                maxWidth: '52%',
+                flex: 1,
+                minWidth: 0,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -92,20 +101,32 @@ export function GtoDrillRow({
             >
               {drill.name}
             </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
+            <Box
               component="span"
               sx={{
+                flexShrink: 0,
                 whiteSpace: 'nowrap',
                 fontSize: '0.68rem',
                 lineHeight: 1.35,
+                color: 'text.secondary',
               }}
-              title={`${score}${trend !== null ? ` (${trend === 'flat' ? 'flat' : trend})` : ''}`}
+              title={`${perfLabel}${trend !== null ? ` (${trend === 'flat' ? 'flat' : trend})` : ''}`}
             >
-              · {score}
+              · {perfPrimary}
+              <Typography
+                component="span"
+                variant="caption"
+                sx={{
+                  ml: 0.375,
+                  fontSize: '0.6rem',
+                  color: 'text.disabled',
+                  fontWeight: 400,
+                }}
+              >
+                · {perfSecondary}
+              </Typography>
               <TrendGlyph trend={trend} />
-            </Typography>
+            </Box>
           </Box>
           <Typography
             variant="caption"

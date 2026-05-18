@@ -2,11 +2,18 @@ import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import { validateHandsPlayedInput } from '../../utils/gtoStudyUtils';
+import {
+  validateAccuracyPercentInput,
+  validateEvDiffInput,
+  validateHandsPlayedInput,
+  validateScorePositiveInput,
+} from '../../utils/gtoStudyUtils';
 import type { GtoDrillResult, GtoDrillResultCreate, GtoDrillResultUpdate } from '../../types/gtoStudy';
 
 function toLocalDatetimeValue(iso: string): string {
@@ -38,6 +45,9 @@ export function GtoDrillResultModal({
   const [date, setDate] = useState(() => toLocalDatetimeValue(new Date().toISOString()));
   const [evLoss, setEvLoss] = useState('');
   const [handsPlayed, setHandsPlayed] = useState('');
+  const [accuracy, setAccuracy] = useState('');
+  const [evDiff, setEvDiff] = useState('');
+  const [score, setScore] = useState('');
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -46,48 +56,83 @@ export function GtoDrillResultModal({
       setDate(toLocalDatetimeValue(result.date));
       setEvLoss(result.evLoss != null ? String(result.evLoss) : '');
       setHandsPlayed(result.handsPlayed != null ? String(result.handsPlayed) : '');
+      setAccuracy(result.accuracy != null ? String(result.accuracy) : '');
+      setEvDiff(result.evDiff != null ? String(result.evDiff) : '');
+      setScore(result.score != null ? String(result.score) : '');
       setNotes(result.notes ?? '');
     } else {
       setDate(toLocalDatetimeValue(new Date().toISOString()));
       setEvLoss('');
       setHandsPlayed('');
+      setAccuracy('');
+      setEvDiff('');
+      setScore('');
       setNotes('');
     }
   }, [open, result]);
 
   const handsPlayedError = validateHandsPlayedInput(handsPlayed);
+  const accuracyError = validateAccuracyPercentInput(accuracy);
+  const evDiffError = validateEvDiffInput(evDiff);
+  const scoreError = validateScorePositiveInput(score);
   const evLossInvalid =
     evLoss.trim() !== '' &&
     (() => {
       const n = Number.parseFloat(evLoss);
       return !Number.isFinite(n);
     })();
-  const canSubmit = !handsPlayedError && !evLossInvalid;
+  const canSubmit =
+    !handsPlayedError && !accuracyError && !evDiffError && !scoreError && !evLossInvalid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
 
-    const parsedEv = evLoss.trim() === '' ? undefined : Number.parseFloat(evLoss);
-    const parsedHands =
-      handsPlayed.trim() === '' ? undefined : Number.parseInt(handsPlayed.trim(), 10);
-
-    const payload = {
-      date: new Date(date).toISOString(),
-      evLoss: parsedEv,
-      handsPlayed: parsedHands,
-      notes: notes.trim().slice(0, 500) || undefined,
-    };
+    const isoDate = new Date(date).toISOString();
+    const notesCreate = notes.trim().slice(0, 500) || undefined;
+    const notesUpdate = notes.trim().slice(0, 500);
 
     if (result) {
-      await onSubmitUpdate(payload);
+      const parsedEv = evLoss.trim() === '' ? null : Number.parseFloat(evLoss);
+      const parsedHands =
+        handsPlayed.trim() === '' ? null : Number.parseInt(handsPlayed.trim(), 10);
+      const parsedAccuracy =
+        accuracy.trim() === '' ? null : Number.parseFloat(accuracy.trim());
+      const parsedEvDiffField =
+        evDiff.trim() === '' ? null : Number.parseFloat(evDiff.trim());
+      const parsedScore = score.trim() === '' ? null : Number.parseFloat(score.trim());
+      await onSubmitUpdate({
+        date: isoDate,
+        evLoss: parsedEv,
+        handsPlayed: parsedHands,
+        accuracy: parsedAccuracy,
+        evDiff: parsedEvDiffField,
+        score: parsedScore,
+        notes: notesUpdate,
+      });
     } else {
-      await onSubmitCreate(payload);
+      const parsedEv = evLoss.trim() === '' ? undefined : Number.parseFloat(evLoss);
+      const parsedHands =
+        handsPlayed.trim() === '' ? undefined : Number.parseInt(handsPlayed.trim(), 10);
+      const parsedAccuracy =
+        accuracy.trim() === '' ? undefined : Number.parseFloat(accuracy.trim());
+      const parsedEvDiffField =
+        evDiff.trim() === '' ? undefined : Number.parseFloat(evDiff.trim());
+      const parsedScore = score.trim() === '' ? undefined : Number.parseFloat(score.trim());
+      await onSubmitCreate({
+        date: isoDate,
+        evLoss: parsedEv,
+        handsPlayed: parsedHands,
+        accuracy: parsedAccuracy,
+        evDiff: parsedEvDiffField,
+        score: parsedScore,
+        notes: notesCreate,
+      });
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>{isEdit ? 'Edit result' : `Log result — ${drillName}`}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
@@ -101,25 +146,25 @@ export function GtoDrillResultModal({
             onChange={(e) => setDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
           />
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+            Session stats
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              gap: 1,
+            }}
+          >
             <TextField
-              label="EV loss (bb, optional)"
-              type="number"
-              fullWidth
-              size="small"
-              value={evLoss}
-              onChange={(e) => setEvLoss(e.target.value)}
-              inputProps={{ step: '0.01' }}
-            />
-            <TextField
-              label="Hands played (optional)"
+              label="Hands played"
               type="number"
               fullWidth
               size="small"
               value={handsPlayed}
               onChange={(e) => setHandsPlayed(e.target.value)}
               error={Boolean(handsPlayedError)}
-              helperText={handsPlayedError ?? 'Min 1 if entered'}
+              helperText={handsPlayedError ?? 'Optional · min 1 if entered'}
               inputProps={{ step: 1, min: 1 }}
               onKeyDown={(e) => {
                 if (e.key === '.' || e.key === 'e' || e.key === 'E' || e.key === '-') {
@@ -127,7 +172,75 @@ export function GtoDrillResultModal({
                 }
               }}
             />
+            <TextField
+              label="Accuracy %"
+              type="number"
+              fullWidth
+              size="small"
+              value={accuracy}
+              onChange={(e) => setAccuracy(e.target.value)}
+              error={Boolean(accuracyError)}
+              helperText={accuracyError ?? 'Optional · 0–100'}
+              inputProps={{ step: 0.1, min: 0, max: 100 }}
+            />
+            <Tooltip title="Available once Lucid Player Insights launches" placement="top">
+              <Box>
+                <TextField
+                  label="Best Action %"
+                  type="number"
+                  fullWidth
+                  size="small"
+                  value=""
+                  disabled
+                  helperText="(Lucid Player Insights — coming soon)"
+                  inputProps={{ step: 0.1, min: 0, max: 100 }}
+                  sx={{
+                    '& .MuiInputBase-root.Mui-disabled': {
+                      opacity: 0.55,
+                    },
+                  }}
+                />
+              </Box>
+            </Tooltip>
+            <TextField
+              label="EV diff"
+              type="number"
+              fullWidth
+              size="small"
+              value={evDiff}
+              onChange={(e) => setEvDiff(e.target.value)}
+              error={Boolean(evDiffError)}
+              helperText={evDiffError ?? 'Optional · can be negative'}
+              inputProps={{ step: 0.01 }}
+            />
+            <TextField
+              label="Score"
+              type="number"
+              fullWidth
+              size="small"
+              value={score}
+              onChange={(e) => setScore(e.target.value)}
+              error={Boolean(scoreError)}
+              helperText={scoreError ?? 'Optional · positive'}
+              inputProps={{ step: 0.01 }}
+              onKeyDown={(e) => {
+                if (e.key === 'e' || e.key === 'E') {
+                  e.preventDefault();
+                }
+              }}
+            />
           </Box>
+          <TextField
+            label="EV loss (bb, optional)"
+            type="number"
+            fullWidth
+            size="small"
+            value={evLoss}
+            onChange={(e) => setEvLoss(e.target.value)}
+            error={evLossInvalid}
+            helperText={evLossInvalid ? 'Invalid number' : undefined}
+            inputProps={{ step: '0.01' }}
+          />
           <TextField
             label="Notes (optional)"
             fullWidth

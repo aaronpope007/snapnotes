@@ -34,6 +34,10 @@ export interface GtoDrillResultSummarySnippet {
   date: string;
   evLoss?: number;
   handsPlayed?: number;
+  accuracy?: number;
+  bestActionRate?: number;
+  evDiff?: number;
+  score?: number;
 }
 
 export interface GtoDrill {
@@ -78,6 +82,10 @@ export interface GtoDrillResult {
   date: string;
   evLoss?: number;
   handsPlayed?: number;
+  accuracy?: number;
+  bestActionRate?: number;
+  evDiff?: number;
+  score?: number;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -87,6 +95,10 @@ export interface GtoDrillResultCreate {
   date: string;
   evLoss?: number;
   handsPlayed?: number;
+  accuracy?: number;
+  bestActionRate?: number;
+  evDiff?: number;
+  score?: number;
   notes?: string;
 }
 
@@ -94,6 +106,10 @@ export interface GtoDrillResultUpdate {
   date?: string;
   evLoss?: number | null;
   handsPlayed?: number | null;
+  accuracy?: number | null;
+  bestActionRate?: number | null;
+  evDiff?: number | null;
+  score?: number | null;
   notes?: string;
 }
 

@@ -1,4 +1,4 @@
-import { computeEvLossPerHand } from './gtoStudyUtils';
+import { formatAccuracyAcc, formatScorePerHand } from './gtoStudyUtils';
 
 /** Slim result shapes from GET drills?recentResults=1 (sorted newest-first). */
 export interface GtoDrillResultSummaryRow {
@@ -6,40 +6,54 @@ export interface GtoDrillResultSummaryRow {
   date: string;
   evLoss?: number;
   handsPlayed?: number;
+  accuracy?: number;
+  score?: number;
 }
 
-function comparisonMetric(r: GtoDrillResultSummaryRow): number | undefined {
-  return (
-    computeEvLossPerHand(r.evLoss, r.handsPlayed) ??
-    (r.evLoss != null && Number.isFinite(r.evLoss) ? r.evLoss : undefined)
-  );
-}
-
-/** Most recent EV/hand if chartable; else total EV loss. */
-export function drillListScoreText(recent: GtoDrillResultSummaryRow[] | undefined): string {
-  const rows = [...(recent ?? [])].sort(
+function sortedRows(recent: GtoDrillResultSummaryRow[] | undefined): GtoDrillResultSummaryRow[] {
+  return [...(recent ?? [])].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
-  const newest = rows[0];
-  if (!newest) return '—';
+}
 
-  const perHand = computeEvLossPerHand(newest.evLoss, newest.handsPlayed);
-  const roundedLoss = Math.round(Number(newest.evLoss ?? 0) * 100) / 100;
-
-  if (perHand != null) {
-    const r = Math.round(perHand * 10) / 10;
-    return `−${r} EV/hand`;
-  }
-  if (newest.evLoss != null && Number.isFinite(newest.evLoss)) {
-    return `−${roundedLoss} EV loss`;
+/** Most recent result with accuracy. */
+export function drillListPerformancePrimary(
+  recent: GtoDrillResultSummaryRow[] | undefined
+): string {
+  for (const row of sortedRows(recent)) {
+    if (row.accuracy != null && Number.isFinite(row.accuracy)) {
+      return formatAccuracyAcc(row.accuracy);
+    }
   }
   return '—';
+}
+
+/** Most recent result with score and handsPlayed. */
+export function drillListPerformanceSecondary(
+  recent: GtoDrillResultSummaryRow[] | undefined
+): string {
+  for (const row of sortedRows(recent)) {
+    const formatted = formatScorePerHand(row.score, row.handsPlayed);
+    if (formatted !== '—') return formatted;
+  }
+  return '—';
+}
+
+/** Combined label for tooltips: "91% acc · 0.47 pts/hand" */
+export function drillListPerformanceLabel(recent: GtoDrillResultSummaryRow[] | undefined): string {
+  const primary = drillListPerformancePrimary(recent);
+  const secondary = drillListPerformanceSecondary(recent);
+  return `${primary} · ${secondary}`;
+}
+
+/** @deprecated Use drillListPerformanceLabel */
+export function drillListScoreText(recent: GtoDrillResultSummaryRow[] | undefined): string {
+  return drillListPerformanceLabel(recent);
 }
 
 export type DrillListTrendArrow = null | 'improving' | 'declining' | 'flat';
 
 const MIN_FOR_ARROW = 2;
-/** Need two non-overlapping triplets without wrap. */
 const MIN_FOR_DIRECTIONAL_COMPARE = 6;
 const MIN_FOR_FLAT_BY_COUNT = 4;
 const RELATIVE_EPS = 0.05;
@@ -49,15 +63,27 @@ function avg(nums: number[]): number {
   return nums.reduce((s, x) => s + x, 0) / nums.length;
 }
 
+function accuracyValues(recent: GtoDrillResultSummaryRow[] | undefined): number[] {
+  const rows = sortedRows(recent);
+  const vals: number[] = [];
+  for (const r of rows) {
+    if (r.accuracy != null && Number.isFinite(r.accuracy)) {
+      vals.push(r.accuracy);
+      if (vals.length >= 6) break;
+    }
+  }
+  return vals;
+}
+
 /**
- * Comparison values newest-first → compare avg(first 3) vs avg(next 3).
- * Improving: recent loss metric moved toward zero (recentAvg < priorAvg for positive-loss convention).
+ * Trend from accuracy (higher = better).
+ * ▲ improving — recent 3 avg > prior 3 avg by more than 5%
+ * ▼ declining — recent 3 avg < prior 3 avg by more than 5%
+ * → flat — fewer than 4 chartable, or change within 5%, or fewer than 6 for 3-vs-3
+ * null — fewer than 2 chartable
  */
 export function drillListTrend(recent: GtoDrillResultSummaryRow[] | undefined): DrillListTrendArrow {
-  const rows = [...(recent ?? [])].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-  const vals = rows.map(comparisonMetric).filter((v): v is number => v != null && Number.isFinite(v));
+  const vals = accuracyValues(recent);
 
   if (vals.length < MIN_FOR_ARROW) return null;
   if (vals.length < MIN_FOR_FLAT_BY_COUNT || vals.length < MIN_FOR_DIRECTIONAL_COMPARE) return 'flat';
@@ -69,5 +95,5 @@ export function drillListTrend(recent: GtoDrillResultSummaryRow[] | undefined): 
   const denom = Math.abs(priorAvg) > 1e-9 ? Math.abs(priorAvg) : Math.max(Math.abs(recentAvg), 1e-9);
   if (absDiff / denom < RELATIVE_EPS) return 'flat';
 
-  return recentAvg < priorAvg ? 'improving' : 'declining';
+  return recentAvg > priorAvg ? 'improving' : 'declining';
 }
