@@ -10,6 +10,7 @@ export interface GtoDrillBodyFields {
   format?: string;
   stack?: string;
   handStart?: string;
+  street?: string;
   potType?: string;
   heroPosition?: string;
   villainPosition?: string;
@@ -40,6 +41,8 @@ export function validateDrillFields(body: GtoDrillBodyFields, requireName = true
   if (handStart !== 'Preflop' && handStart !== 'Postflop') {
     return 'handStart must be Preflop or Postflop';
   }
+  const streetErr = validateDrillStreet(handStart, body.street);
+  if (streetErr) return streetErr;
   if (!potType || !POT_TYPES.includes(potType)) return 'invalid potType';
   if (format === '8max' && handStart === 'Postflop' && potType === 'FoldedTo') {
     return 'FoldedTo is preflop-only for 8max';
@@ -68,6 +71,26 @@ export function validateDrillFields(body: GtoDrillBodyFields, requireName = true
   }
 
   return null;
+}
+
+function validateDrillStreet(handStart: string, street?: string): string | null {
+  if (street != null && street !== '' && !STREETS.includes(street)) {
+    return 'street must be Preflop, Flop, Turn, or River';
+  }
+  if (handStart === 'Preflop' && street && street !== 'Preflop') {
+    return 'street must be Preflop when hand starts at Preflop';
+  }
+  if (handStart === 'Postflop' && street === 'Preflop') {
+    return 'street cannot be Preflop when hand starts at Postflop';
+  }
+  return null;
+}
+
+/** Default or normalize street for persistence. */
+export function normalizeDrillStreet(handStart: string, street?: string): string {
+  if (handStart === 'Preflop') return 'Preflop';
+  const s = street && STREETS.includes(street) ? street : 'Flop';
+  return s === 'Preflop' ? 'Flop' : s;
 }
 
 export function normalizeCustomConfig(

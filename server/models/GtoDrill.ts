@@ -27,6 +27,10 @@ const gtoDrillSchema = new mongoose.Schema(
     format: { type: String, required: true, enum: ['HU', '8max'] },
     stack: { type: String, required: true, enum: ['100bb', '200bb'] },
     handStart: { type: String, required: true, enum: ['Preflop', 'Postflop'] },
+    street: {
+      type: String,
+      enum: ['Preflop', 'Flop', 'Turn', 'River'],
+    },
     potType: {
       type: String,
       required: true,

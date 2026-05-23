@@ -22,8 +22,12 @@ import {
   GTO_SOLVER_OPTIONS,
   getDefaultHeroPosition,
   getDefaultStack,
+  getDefaultStreet,
   getPositionsForFormat,
   getPotTypesForDrill,
+  getStreetOptionsForHandStart,
+  isHuPosition,
+  syncHuPostflopPositions,
 } from '../../constants/gtoStudy';
 import {
   drillToFormState,
@@ -40,6 +44,7 @@ import type {
   GtoPotType,
   GtoSolver,
   GtoStack,
+  GtoStreetName,
 } from '../../types/gtoStudy';
 
 interface GtoDrillFormModalProps {
@@ -80,7 +85,9 @@ export function GtoDrillFormModal({
     [form.format, form.handStart]
   );
   const showVillain = form.handStart === 'Postflop';
+  const huPostflop = form.format === 'HU' && showVillain;
   const showCustom = form.potType === 'Custom';
+  const streetOptions = getStreetOptionsForHandStart(form.handStart);
 
   useEffect(() => {
     if (!open) return;
@@ -115,6 +122,14 @@ export function GtoDrillFormModal({
   }, [potTypes, form.potType]);
 
   useEffect(() => {
+    if (!open) return;
+    const allowed = getStreetOptionsForHandStart(form.handStart);
+    if (!allowed.includes(form.street)) {
+      setForm((prev) => ({ ...prev, street: getDefaultStreet(form.handStart) }));
+    }
+  }, [form.handStart, form.street, open]);
+
+  useEffect(() => {
     if (!positions.includes(form.heroPosition)) {
       setForm((prev) => ({ ...prev, heroPosition: positions[0] as GtoPosition }));
     }
@@ -122,9 +137,21 @@ export function GtoDrillFormModal({
 
   useEffect(() => {
     if (form.handStart === 'Preflop') {
-      setForm((prev) => ({ ...prev, villainPosition: '' }));
+      setForm((prev) => (prev.villainPosition === '' ? prev : { ...prev, villainPosition: '' }));
+      return;
     }
-  }, [form.handStart]);
+    if (form.format !== 'HU') return;
+    setForm((prev) => {
+      const synced = syncHuPostflopPositions(prev.heroPosition, prev.villainPosition, 'hero');
+      if (
+        prev.heroPosition === synced.heroPosition &&
+        prev.villainPosition === synced.villainPosition
+      ) {
+        return prev;
+      }
+      return { ...prev, ...synced };
+    });
+  }, [form.handStart, form.format]);
 
   const requestClose = () => {
     const dirty = isDrillFormDirty(form, baselineRef.current, !isEdit && !isClone);
@@ -147,7 +174,23 @@ export function GtoDrillFormModal({
   };
 
   const patch = (updates: Partial<GtoDrillFormState>) => {
-    setForm((prev) => ({ ...prev, ...updates }));
+    setForm((prev) => {
+      const next = { ...prev, ...updates };
+      if (next.format !== 'HU' || next.handStart !== 'Postflop') return next;
+      if ('heroPosition' in updates && !('villainPosition' in updates)) {
+        return {
+          ...next,
+          ...syncHuPostflopPositions(next.heroPosition, next.villainPosition, 'hero'),
+        };
+      }
+      if ('villainPosition' in updates && !('heroPosition' in updates)) {
+        return {
+          ...next,
+          ...syncHuPostflopPositions(next.heroPosition, next.villainPosition, 'villain'),
+        };
+      }
+      return next;
+    });
   };
 
   return (
@@ -235,6 +278,20 @@ export function GtoDrillFormModal({
                 </Select>
               </FormControl>
             </Box>
+            <FormControl fullWidth size="small">
+              <InputLabel>Street</InputLabel>
+              <Select
+                label="Street"
+                value={form.street}
+                onChange={(e) => patch({ street: e.target.value as GtoStreetName })}
+              >
+                {streetOptions.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {s}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             {showCustom && (
               <GtoDrillCustomConfigSection
                 streetActions={form.streetActions}
@@ -265,13 +322,19 @@ export function GtoDrillFormModal({
                     label="Villain position"
                     value={form.villainPosition}
                     onChange={(e) =>
-                      patch({ villainPosition: e.target.value as GtoPosition | '' })
+                      patch({
+                        villainPosition: huPostflop
+                          ? (e.target.value as GtoPosition)
+                          : (e.target.value as GtoPosition | ''),
+                      })
                     }
                   >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {positions.map((p) => (
+                    {!huPostflop && (
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                    )}
+                    {(huPostflop ? positions.filter((p) => isHuPosition(p)) : positions).map((p) => (
                       <MenuItem key={p} value={p}>
                         {p}
                       </MenuItem>

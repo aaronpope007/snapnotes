@@ -4,6 +4,7 @@ import type {
   GtoFormat,
   GtoHandStart,
   GtoHuPosition,
+  GtoPosition,
   GtoPotType,
   GtoSolver,
   GtoStack,
@@ -76,19 +77,65 @@ export function getDefaultHeroPosition(format: GtoFormat): string {
   return format === 'HU' ? 'SB' : 'BTN';
 }
 
+export function getHuOppositePosition(pos: GtoHuPosition): GtoHuPosition {
+  return pos === 'SB' ? 'BB' : 'SB';
+}
+
+/** Default HU postflop pairing: hero SB, villain BB. */
+export function getDefaultHuPostflopPositions(): {
+  heroPosition: GtoHuPosition;
+  villainPosition: GtoHuPosition;
+} {
+  return { heroPosition: 'SB', villainPosition: 'BB' };
+}
+
+export function isHuPosition(pos: string): pos is GtoHuPosition {
+  return pos === 'SB' || pos === 'BB';
+}
+
+/** Keep hero/villain on opposite blinds when either changes (HU postflop only). */
+export function syncHuPostflopPositions(
+  hero: GtoPosition,
+  villain: GtoPosition | '',
+  changed: 'hero' | 'villain'
+): { heroPosition: GtoHuPosition; villainPosition: GtoHuPosition } {
+  if (changed === 'villain' && isHuPosition(villain)) {
+    return {
+      heroPosition: getHuOppositePosition(villain),
+      villainPosition: villain,
+    };
+  }
+  const heroHu: GtoHuPosition = isHuPosition(hero) ? hero : 'SB';
+  return {
+    heroPosition: heroHu,
+    villainPosition: getHuOppositePosition(heroHu),
+  };
+}
+
+export function getStreetOptionsForHandStart(handStart: GtoHandStart): GtoStreetName[] {
+  if (handStart === 'Preflop') return ['Preflop'];
+  return ['Flop', 'Turn', 'River'];
+}
+
+export function getDefaultStreet(handStart: GtoHandStart): GtoStreetName {
+  return handStart === 'Preflop' ? 'Preflop' : 'Flop';
+}
+
 export function formatDrillSummary(drill: {
   format: GtoFormat;
   stack: GtoStack;
   handStart: GtoHandStart;
+  street?: GtoStreetName;
   potType: GtoPotType;
   heroPosition: string;
   villainPosition?: string;
   solver: GtoSolver;
 }): string {
+  const streetLabel = drill.street ?? getDefaultStreet(drill.handStart);
   const parts = [
     GTO_FORMAT_LABELS[drill.format],
     drill.stack,
-    drill.handStart,
+    streetLabel,
     GTO_POT_TYPE_LABELS[drill.potType],
     `Hero ${drill.heroPosition}`,
   ];

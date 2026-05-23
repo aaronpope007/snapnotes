@@ -47,6 +47,7 @@ export interface GtoDrill {
   format: GtoFormat;
   stack: GtoStack;
   handStart: GtoHandStart;
+  street?: GtoStreetName;
   potType: GtoPotType;
   heroPosition: GtoPosition;
   villainPosition?: GtoPosition;
@@ -63,6 +64,7 @@ export interface GtoDrillCreate {
   format: GtoFormat;
   stack: GtoStack;
   handStart: GtoHandStart;
+  street?: GtoStreetName;
   potType: GtoPotType;
   heroPosition: GtoPosition;
   villainPosition?: GtoPosition;

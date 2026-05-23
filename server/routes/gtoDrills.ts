@@ -5,6 +5,7 @@ import { GtoDrillResult } from '../models/GtoDrillResult.js';
 import {
   validateDrillFields,
   normalizeCustomConfig,
+  normalizeDrillStreet,
   parseDate,
   type GtoDrillBodyFields,
 } from './gtoDrillValidation.js';
@@ -101,6 +102,7 @@ router.post('/', async (req: Request, res: Response) => {
       format: body.format,
       stack: body.stack,
       handStart: body.handStart,
+      street: normalizeDrillStreet(body.handStart as string, body.street),
       potType,
       heroPosition: body.heroPosition,
       villainPosition:
@@ -133,6 +135,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       format: body.format ?? drill.format,
       stack: body.stack ?? drill.stack,
       handStart: body.handStart ?? drill.handStart,
+      street: body.street ?? drill.street,
       potType: body.potType ?? drill.potType,
       heroPosition: body.heroPosition ?? drill.heroPosition,
       villainPosition:
@@ -161,6 +164,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
     drill.format = merged.format as 'HU' | '8max';
     drill.stack = merged.stack as '100bb' | '200bb';
     drill.handStart = merged.handStart as 'Preflop' | 'Postflop';
+    drill.street = normalizeDrillStreet(
+      merged.handStart as string,
+      merged.street ?? drill.street
+    ) as 'Preflop' | 'Flop' | 'Turn' | 'River';
     drill.potType = merged.potType as 'SRP' | '3BP' | '4BP' | 'FoldedTo' | 'Custom';
     drill.heroPosition = merged.heroPosition!;
     drill.endsAfter = merged.endsAfter as 'FirstAction' | 'StreetEnd' | 'HandEnd';

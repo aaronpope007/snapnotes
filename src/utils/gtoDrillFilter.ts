@@ -1,4 +1,9 @@
-import type { GtoDrill } from '../types/gtoStudy';
+import { getDefaultStreet } from '../constants/gtoStudy';
+import type { GtoDrill, GtoStreetName } from '../types/gtoStudy';
+
+function effectiveDrillStreet(drill: GtoDrill): GtoStreetName {
+  return drill.street ?? getDefaultStreet(drill.handStart);
+}
 
 /** One token (lowercase) matches if it hits name substring or any mapped field. */
 function tokenMatchesAtom(t: string, drill: GtoDrill): boolean {
@@ -30,9 +35,16 @@ function tokenMatchesAtom(t: string, drill: GtoDrill): boolean {
   if ((t === 'preflop' || t === 'pre') && drill.handStart === 'Preflop') return true;
   if ((t === 'postflop' || t === 'post') && drill.handStart === 'Postflop') return true;
 
+  // Drill street
+  const street = effectiveDrillStreet(drill).toLowerCase();
+  if ((t === 'preflop' || t === 'pre') && street === 'preflop') return true;
+  if (t === 'flop' && street === 'flop') return true;
+  if (t === 'turn' && street === 'turn') return true;
+  if (t === 'river' && street === 'river') return true;
+
   // Ends after
   if (t === 'first' && drill.endsAfter === 'FirstAction') return true;
-  if (t === 'street' && drill.endsAfter === 'StreetEnd') return true;
+  if ((t === 'street' || t === 'streetend') && drill.endsAfter === 'StreetEnd') return true;
   if (t === 'hand' && drill.endsAfter === 'HandEnd') return true;
 
   // Hero position (lowercase token → enum)

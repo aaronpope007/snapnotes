@@ -10,13 +10,20 @@ import type {
   GtoSolver,
   GtoStack,
   GtoStreetAction,
+  GtoStreetName,
 } from '../types/gtoStudy';
+import {
+  getDefaultStreet,
+  getHuOppositePosition,
+  isHuPosition,
+} from '../constants/gtoStudy';
 
 export interface GtoDrillFormState {
   name: string;
   format: GtoFormat;
   stack: GtoStack;
   handStart: GtoHandStart;
+  street: GtoStreetName;
   potType: GtoPotType;
   heroPosition: GtoPosition;
   villainPosition: GtoPosition | '';
@@ -32,6 +39,7 @@ export function emptyDrillFormState(): GtoDrillFormState {
     format: 'HU',
     stack: '100bb',
     handStart: 'Preflop',
+    street: 'Preflop',
     potType: 'SRP',
     heroPosition: 'SB',
     villainPosition: '',
@@ -56,9 +64,16 @@ export function drillToFormState(drill: GtoDrill): GtoDrillFormState {
     format: drill.format,
     stack: drill.stack,
     handStart: drill.handStart,
+    street: drill.street ?? getDefaultStreet(drill.handStart),
     potType: drill.potType,
     heroPosition: drill.heroPosition,
-    villainPosition: drill.villainPosition ?? '',
+    villainPosition:
+      drill.villainPosition ??
+      (drill.format === 'HU' &&
+      drill.handStart === 'Postflop' &&
+      isHuPosition(drill.heroPosition)
+        ? getHuOppositePosition(drill.heroPosition)
+        : ''),
     endsAfter: drill.endsAfter,
     solver: drill.solver,
     streetActions:
@@ -75,6 +90,7 @@ export function formStateToPayload(state: GtoDrillFormState): GtoDrillCreate {
     format: state.format,
     stack: state.stack,
     handStart: state.handStart,
+    street: state.street,
     potType: state.potType,
     heroPosition: state.heroPosition,
     villainPosition:
