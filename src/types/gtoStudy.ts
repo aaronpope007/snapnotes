@@ -44,6 +44,7 @@ export interface GtoDrill {
   _id: string;
   userId: string;
   name: string;
+  description?: string;
   format: GtoFormat;
   stack: GtoStack;
   handStart: GtoHandStart;
@@ -61,6 +62,7 @@ export interface GtoDrill {
 
 export interface GtoDrillCreate {
   name: string;
+  description?: string;
   format: GtoFormat;
   stack: GtoStack;
   handStart: GtoHandStart;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -8,19 +8,21 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 import {
   validateAccuracyPercentInput,
   validateEvDiffInput,
   validateHandsPlayedInput,
   validateScorePositiveInput,
 } from '../../utils/gtoStudyUtils';
+import {
+  emptyResultFormSnapshot,
+  isResultFormDirty,
+  resultFormSnapshotFromResult,
+  type GtoResultFormSnapshot,
+} from '../../utils/gtoResultForm';
 import type { GtoDrillResult, GtoDrillResultCreate, GtoDrillResultUpdate } from '../../types/gtoStudy';
-
-function toLocalDatetimeValue(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 interface GtoDrillResultModalProps {
   open: boolean;
@@ -42,43 +44,40 @@ export function GtoDrillResultModal({
   onSubmitUpdate,
 }: GtoDrillResultModalProps) {
   const isEdit = Boolean(result);
-  const [date, setDate] = useState(() => toLocalDatetimeValue(new Date().toISOString()));
-  const [evLoss, setEvLoss] = useState('');
-  const [handsPlayed, setHandsPlayed] = useState('');
-  const [accuracy, setAccuracy] = useState('');
-  const [evDiff, setEvDiff] = useState('');
-  const [score, setScore] = useState('');
-  const [notes, setNotes] = useState('');
+  const [form, setForm] = useState<GtoResultFormSnapshot>(emptyResultFormSnapshot);
+  const baselineRef = useRef<GtoResultFormSnapshot | null>(null);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   useEffect(() => {
     if (!open) return;
-    if (result) {
-      setDate(toLocalDatetimeValue(result.date));
-      setEvLoss(result.evLoss != null ? String(result.evLoss) : '');
-      setHandsPlayed(result.handsPlayed != null ? String(result.handsPlayed) : '');
-      setAccuracy(result.accuracy != null ? String(result.accuracy) : '');
-      setEvDiff(result.evDiff != null ? String(result.evDiff) : '');
-      setScore(result.score != null ? String(result.score) : '');
-      setNotes(result.notes ?? '');
-    } else {
-      setDate(toLocalDatetimeValue(new Date().toISOString()));
-      setEvLoss('');
-      setHandsPlayed('');
-      setAccuracy('');
-      setEvDiff('');
-      setScore('');
-      setNotes('');
-    }
+    const initial = result ? resultFormSnapshotFromResult(result) : emptyResultFormSnapshot();
+    setForm(initial);
+    baselineRef.current = initial;
   }, [open, result]);
 
-  const handsPlayedError = validateHandsPlayedInput(handsPlayed);
-  const accuracyError = validateAccuracyPercentInput(accuracy);
-  const evDiffError = validateEvDiffInput(evDiff);
-  const scoreError = validateScorePositiveInput(score);
+  const patch = (updates: Partial<GtoResultFormSnapshot>) => {
+    setForm((prev) => ({ ...prev, ...updates }));
+  };
+
+  const requestClose = useCallback(() => {
+    requestDirtyClose(isResultFormDirty(form, baselineRef.current), onClose);
+  }, [form, onClose, requestDirtyClose]);
+
+  const handsPlayedError = validateHandsPlayedInput(form.handsPlayed);
+  const accuracyError = validateAccuracyPercentInput(form.accuracy);
+  const evDiffError = validateEvDiffInput(form.evDiff);
+  const scoreError = validateScorePositiveInput(form.score);
   const evLossInvalid =
-    evLoss.trim() !== '' &&
+    form.evLoss.trim() !== '' &&
     (() => {
-      const n = Number.parseFloat(evLoss);
+      const n = Number.parseFloat(form.evLoss);
       return !Number.isFinite(n);
     })();
   const canSubmit =
@@ -88,19 +87,19 @@ export function GtoDrillResultModal({
     e.preventDefault();
     if (!canSubmit) return;
 
-    const isoDate = new Date(date).toISOString();
-    const notesCreate = notes.trim().slice(0, 500) || undefined;
-    const notesUpdate = notes.trim().slice(0, 500);
+    const isoDate = new Date(form.date).toISOString();
+    const notesCreate = form.notes.trim().slice(0, 500) || undefined;
+    const notesUpdate = form.notes.trim().slice(0, 500);
 
     if (result) {
-      const parsedEv = evLoss.trim() === '' ? null : Number.parseFloat(evLoss);
+      const parsedEv = form.evLoss.trim() === '' ? null : Number.parseFloat(form.evLoss);
       const parsedHands =
-        handsPlayed.trim() === '' ? null : Number.parseInt(handsPlayed.trim(), 10);
+        form.handsPlayed.trim() === '' ? null : Number.parseInt(form.handsPlayed.trim(), 10);
       const parsedAccuracy =
-        accuracy.trim() === '' ? null : Number.parseFloat(accuracy.trim());
+        form.accuracy.trim() === '' ? null : Number.parseFloat(form.accuracy.trim());
       const parsedEvDiffField =
-        evDiff.trim() === '' ? null : Number.parseFloat(evDiff.trim());
-      const parsedScore = score.trim() === '' ? null : Number.parseFloat(score.trim());
+        form.evDiff.trim() === '' ? null : Number.parseFloat(form.evDiff.trim());
+      const parsedScore = form.score.trim() === '' ? null : Number.parseFloat(form.score.trim());
       await onSubmitUpdate({
         date: isoDate,
         evLoss: parsedEv,
@@ -111,14 +110,14 @@ export function GtoDrillResultModal({
         notes: notesUpdate,
       });
     } else {
-      const parsedEv = evLoss.trim() === '' ? undefined : Number.parseFloat(evLoss);
+      const parsedEv = form.evLoss.trim() === '' ? undefined : Number.parseFloat(form.evLoss);
       const parsedHands =
-        handsPlayed.trim() === '' ? undefined : Number.parseInt(handsPlayed.trim(), 10);
+        form.handsPlayed.trim() === '' ? undefined : Number.parseInt(form.handsPlayed.trim(), 10);
       const parsedAccuracy =
-        accuracy.trim() === '' ? undefined : Number.parseFloat(accuracy.trim());
+        form.accuracy.trim() === '' ? undefined : Number.parseFloat(form.accuracy.trim());
       const parsedEvDiffField =
-        evDiff.trim() === '' ? undefined : Number.parseFloat(evDiff.trim());
-      const parsedScore = score.trim() === '' ? undefined : Number.parseFloat(score.trim());
+        form.evDiff.trim() === '' ? undefined : Number.parseFloat(form.evDiff.trim());
+      const parsedScore = form.score.trim() === '' ? undefined : Number.parseFloat(form.score.trim());
       await onSubmitCreate({
         date: isoDate,
         evLoss: parsedEv,
@@ -132,134 +131,142 @@ export function GtoDrillResultModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <form onSubmit={handleSubmit}>
-        <DialogTitle>{isEdit ? 'Edit result' : `Log result — ${drillName}`}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 2 }}>
-          <TextField
-            label="Date & time"
-            type="datetime-local"
-            fullWidth
-            required
-            size="small"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-          <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1.3 }}>
-            Session stats
-          </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: 1,
-            }}
-          >
+    <>
+      <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
+        <form onSubmit={handleSubmit}>
+          <DialogTitle>{isEdit ? 'Edit result' : `Log result — ${drillName}`}</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 2 }}>
             <TextField
-              label="Hands played"
-              type="number"
+              label="Date & time"
+              type="datetime-local"
               fullWidth
+              required
               size="small"
-              value={handsPlayed}
-              onChange={(e) => setHandsPlayed(e.target.value)}
-              error={Boolean(handsPlayedError)}
-              helperText={handsPlayedError ?? 'Optional · min 1 if entered'}
-              inputProps={{ step: 1, min: 1 }}
-              onKeyDown={(e) => {
-                if (e.key === '.' || e.key === 'e' || e.key === 'E' || e.key === '-') {
-                  e.preventDefault();
-                }
+              value={form.date}
+              onChange={(e) => patch({ date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+              Session stats
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 1,
               }}
-            />
+            >
+              <TextField
+                label="Hands played"
+                type="number"
+                fullWidth
+                size="small"
+                value={form.handsPlayed}
+                onChange={(e) => patch({ handsPlayed: e.target.value })}
+                error={Boolean(handsPlayedError)}
+                helperText={handsPlayedError ?? 'Optional · min 1 if entered'}
+                inputProps={{ step: 1, min: 1 }}
+                onKeyDown={(e) => {
+                  if (e.key === '.' || e.key === 'e' || e.key === 'E' || e.key === '-') {
+                    e.preventDefault();
+                  }
+                }}
+              />
+              <TextField
+                label="Accuracy %"
+                type="number"
+                fullWidth
+                size="small"
+                value={form.accuracy}
+                onChange={(e) => patch({ accuracy: e.target.value })}
+                error={Boolean(accuracyError)}
+                helperText={accuracyError ?? 'Optional · 0–100'}
+                inputProps={{ step: 0.1, min: 0, max: 100 }}
+              />
+              <Tooltip title="Available once Lucid Player Insights launches" placement="top">
+                <Box>
+                  <TextField
+                    label="Best Action %"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    value=""
+                    disabled
+                    helperText="(Lucid Player Insights — coming soon)"
+                    inputProps={{ step: 0.1, min: 0, max: 100 }}
+                    sx={{
+                      '& .MuiInputBase-root.Mui-disabled': {
+                        opacity: 0.55,
+                      },
+                    }}
+                  />
+                </Box>
+              </Tooltip>
+              <TextField
+                label="EV diff"
+                type="number"
+                fullWidth
+                size="small"
+                value={form.evDiff}
+                onChange={(e) => patch({ evDiff: e.target.value })}
+                error={Boolean(evDiffError)}
+                helperText={evDiffError ?? 'Optional · can be negative'}
+                inputProps={{ step: 0.01 }}
+              />
+              <TextField
+                label="Score"
+                type="number"
+                fullWidth
+                size="small"
+                value={form.score}
+                onChange={(e) => patch({ score: e.target.value })}
+                error={Boolean(scoreError)}
+                helperText={scoreError ?? 'Optional · positive'}
+                inputProps={{ step: 0.01 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'e' || e.key === 'E') {
+                    e.preventDefault();
+                  }
+                }}
+              />
+            </Box>
             <TextField
-              label="Accuracy %"
+              label="EV loss (bb, optional)"
               type="number"
               fullWidth
               size="small"
-              value={accuracy}
-              onChange={(e) => setAccuracy(e.target.value)}
-              error={Boolean(accuracyError)}
-              helperText={accuracyError ?? 'Optional · 0–100'}
-              inputProps={{ step: 0.1, min: 0, max: 100 }}
-            />
-            <Tooltip title="Available once Lucid Player Insights launches" placement="top">
-              <Box>
-                <TextField
-                  label="Best Action %"
-                  type="number"
-                  fullWidth
-                  size="small"
-                  value=""
-                  disabled
-                  helperText="(Lucid Player Insights — coming soon)"
-                  inputProps={{ step: 0.1, min: 0, max: 100 }}
-                  sx={{
-                    '& .MuiInputBase-root.Mui-disabled': {
-                      opacity: 0.55,
-                    },
-                  }}
-                />
-              </Box>
-            </Tooltip>
-            <TextField
-              label="EV diff"
-              type="number"
-              fullWidth
-              size="small"
-              value={evDiff}
-              onChange={(e) => setEvDiff(e.target.value)}
-              error={Boolean(evDiffError)}
-              helperText={evDiffError ?? 'Optional · can be negative'}
-              inputProps={{ step: 0.01 }}
+              value={form.evLoss}
+              onChange={(e) => patch({ evLoss: e.target.value })}
+              error={evLossInvalid}
+              helperText={evLossInvalid ? 'Invalid number' : undefined}
+              inputProps={{ step: '0.01' }}
             />
             <TextField
-              label="Score"
-              type="number"
+              label="Notes (optional)"
               fullWidth
               size="small"
-              value={score}
-              onChange={(e) => setScore(e.target.value)}
-              error={Boolean(scoreError)}
-              helperText={scoreError ?? 'Optional · positive'}
-              inputProps={{ step: 0.01 }}
-              onKeyDown={(e) => {
-                if (e.key === 'e' || e.key === 'E') {
-                  e.preventDefault();
-                }
-              }}
+              multiline
+              minRows={2}
+              maxRows={4}
+              value={form.notes}
+              onChange={(e) => patch({ notes: e.target.value.slice(0, 500) })}
+              helperText={`${form.notes.length}/500`}
             />
-          </Box>
-          <TextField
-            label="EV loss (bb, optional)"
-            type="number"
-            fullWidth
-            size="small"
-            value={evLoss}
-            onChange={(e) => setEvLoss(e.target.value)}
-            error={evLossInvalid}
-            helperText={evLossInvalid ? 'Invalid number' : undefined}
-            inputProps={{ step: '0.01' }}
-          />
-          <TextField
-            label="Notes (optional)"
-            fullWidth
-            size="small"
-            multiline
-            minRows={2}
-            maxRows={4}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value.slice(0, 500))}
-            helperText={`${notes.length}/500`}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained" disabled={saving || !canSubmit}>
-            {saving ? 'Saving...' : isEdit ? 'Save' : 'Log result'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={requestClose}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={saving || !canSubmit}>
+              {saving ? 'Saving...' : isEdit ? 'Save' : 'Log result'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={closeConfirm}
+        onConfirm={handleConfirm}
+        {...confirmOptions}
+      />
+    </>
   );
 }

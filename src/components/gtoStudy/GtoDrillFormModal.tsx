@@ -1,7 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Tooltip from '@mui/material/Tooltip';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -10,9 +14,10 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import { useConfirm } from '../../hooks/useConfirm';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { GtoDrillCustomConfigSection } from './GtoDrillCustomConfigSection';
+import { GtoDrillDescriptionSection } from './GtoDrillDescriptionSection';
 import {
   GTO_ENDS_AFTER_LABELS,
   GTO_ENDS_AFTER_OPTIONS,
@@ -55,6 +60,8 @@ interface GtoDrillFormModalProps {
   cloneForm?: GtoDrillFormState | null;
   onSubmitCreate: (payload: GtoDrillCreate) => Promise<unknown>;
   onSubmitUpdate: (id: string, payload: GtoDrillUpdate) => Promise<unknown>;
+  onCopySuccess?: () => void;
+  onCopyError?: (msg: string) => void;
 }
 
 export function GtoDrillFormModal({
@@ -65,6 +72,8 @@ export function GtoDrillFormModal({
   cloneForm,
   onSubmitCreate,
   onSubmitUpdate,
+  onCopySuccess,
+  onCopyError,
 }: GtoDrillFormModalProps) {
   const isEdit = Boolean(drill);
   const isClone = Boolean(cloneForm) && !isEdit;
@@ -73,11 +82,11 @@ export function GtoDrillFormModal({
 
   const {
     confirmOpen: discardConfirmOpen,
-    openConfirm: openDiscardConfirm,
     closeConfirm: closeDiscardConfirm,
     handleConfirm: handleDiscardConfirm,
     confirmOptions: discardConfirmOptions,
-  } = useConfirm();
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   const positions = getPositionsForFormat(form.format);
   const potTypes = useMemo(
@@ -88,6 +97,7 @@ export function GtoDrillFormModal({
   const huPostflop = form.format === 'HU' && showVillain;
   const showCustom = form.potType === 'Custom';
   const streetOptions = getStreetOptionsForHandStart(form.handStart);
+  const descriptionResetKey = `${open}-${drill?._id ?? ''}-${isClone}`;
 
   useEffect(() => {
     if (!open) return;
@@ -154,12 +164,10 @@ export function GtoDrillFormModal({
   }, [form.handStart, form.format]);
 
   const requestClose = () => {
-    const dirty = isDrillFormDirty(form, baselineRef.current, !isEdit && !isClone);
-    if (dirty) {
-      openDiscardConfirm(onClose);
-    } else {
-      onClose();
-    }
+    requestDirtyClose(
+      isDrillFormDirty(form, baselineRef.current, !isEdit && !isClone),
+      onClose
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,6 +180,20 @@ export function GtoDrillFormModal({
       await onSubmitCreate(payload);
     }
   };
+
+  const handleCopyName = useCallback(async () => {
+    const text = form.name.trim();
+    if (!text) {
+      onCopyError?.('Nothing to copy');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      onCopySuccess?.();
+    } catch {
+      onCopyError?.('Could not copy to clipboard');
+    }
+  }, [form.name, onCopySuccess, onCopyError]);
 
   const patch = (updates: Partial<GtoDrillFormState>) => {
     setForm((prev) => {
@@ -217,6 +239,25 @@ export function GtoDrillFormModal({
               value={form.name}
               onChange={(e) => patch({ name: e.target.value.slice(0, 120) })}
               placeholder="e.g. BTN vs BB SRP"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Copy name for Lucid">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => void handleCopyName()}
+                          disabled={!form.name.trim()}
+                          aria-label="Copy drill name"
+                          edge="end"
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </InputAdornment>
+                ),
+              }}
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
               <FormControl fullWidth size="small">
@@ -375,6 +416,11 @@ export function GtoDrillFormModal({
                 </Select>
               </FormControl>
             </Box>
+            <GtoDrillDescriptionSection
+              value={form.description}
+              onChange={(description) => patch({ description })}
+              resetKey={descriptionResetKey}
+            />
           </DialogContent>
           <DialogActions>
             <Button onClick={requestClose}>Cancel</Button>

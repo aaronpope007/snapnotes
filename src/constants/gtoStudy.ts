@@ -11,6 +11,8 @@ import type {
   GtoStreetName,
 } from '../types/gtoStudy';
 
+export const GTO_DRILL_DESCRIPTION_MAX = 500;
+
 export const GTO_FORMAT_LABELS: Record<GtoFormat, string> = {
   HU: 'Heads-Up',
   '8max': '8max Ring',

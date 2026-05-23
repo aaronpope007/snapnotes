@@ -7,6 +7,8 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import type { WithdrawalCreate } from '../../types/results';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 function sanitizeAmount(val: string): string {
   return val.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
@@ -29,6 +31,14 @@ export function AddWithdrawalModal({
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   useEffect(() => {
     if (open) {
@@ -59,8 +69,12 @@ export function AddWithdrawalModal({
     }
   }, [date, amount, notes, onAdd, onClose, onError]);
 
+  const isDirty = amount.trim() !== '' || notes.trim() !== '';
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <DialogTitle>Add withdrawal</DialogTitle>
       <DialogContent>
         <TextField
@@ -98,7 +112,7 @@ export function AddWithdrawalModal({
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={requestClose}>Cancel</Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
@@ -108,5 +122,12 @@ export function AddWithdrawalModal({
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

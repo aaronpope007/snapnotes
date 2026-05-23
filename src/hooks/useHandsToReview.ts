@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useConfirm } from './useConfirm';
+import { useDirtyFormClose } from './useDirtyFormClose';
 import { avgRating, commentKey } from '../utils/handReviewUtils';
 import {
   fetchHandsToReview,
@@ -81,11 +81,11 @@ export function useHandsToReview({
 
   const {
     confirmOpen: discardConfirmOpen,
-    openConfirm: openDiscardConfirm,
     closeConfirm: closeDiscardConfirm,
     handleConfirm: handleDiscardConfirm,
     confirmOptions: discardConfirmOptions,
-  } = useConfirm();
+    requestClose: requestDiscardClose,
+  } = useDirtyFormClose();
 
   const loadHands = useCallback(async () => {
     setLoading(true);
@@ -154,38 +154,24 @@ export function useHandsToReview({
     );
   };
 
+  const resetAddModal = () => {
+    setAddModalOpen(false);
+    setAddTitle('');
+    setAddHandText('');
+    setAddRationale('');
+    setAddSpoilerText('');
+    setAddInitialComment('');
+    setAddInitialCommentPrivate(true);
+    setAddIsPrivate(false);
+    setAddTaggedReviewers([]);
+  };
+
   const closeAddModal = () => {
-    if (isAddModalDirty()) {
-      openDiscardConfirm(() => {
-        setAddModalOpen(false);
-        setAddTitle('');
-        setAddHandText('');
-        setAddRationale('');
-        setAddSpoilerText('');
-        setAddInitialComment('');
-        setAddInitialCommentPrivate(true);
-        setAddIsPrivate(false);
-        setAddTaggedReviewers([]);
-      });
-    } else {
-      setAddModalOpen(false);
-      setAddTitle('');
-      setAddHandText('');
-      setAddRationale('');
-      setAddSpoilerText('');
-      setAddInitialComment('');
-      setAddInitialCommentPrivate(true);
-      setAddIsPrivate(false);
-      setAddTaggedReviewers([]);
-    }
+    requestDiscardClose(isAddModalDirty(), resetAddModal);
   };
 
   const closeEditModal = () => {
-    if (isEditModalDirty()) {
-      openDiscardConfirm(() => setEditHand(null));
-    } else {
-      setEditHand(null);
-    }
+    requestDiscardClose(isEditModalDirty(), () => setEditHand(null));
   };
 
   const handleAddHand = async () => {

@@ -17,6 +17,8 @@ import type { LeakCreate } from '../../types/learning';
 import { LEAK_CATEGORY_LABELS } from '../../constants/learningColors';
 import { LEAK_PRESETS } from '../../constants/leakPresets';
 import type { LeakPreset } from '../../constants/leakPresets';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 function groupByCategory(presets: LeakPreset[]): Map<string, LeakPreset[]> {
   const map = new Map<string, LeakPreset[]>();
@@ -48,6 +50,14 @@ export function AddLeakToPlayerModal({
   const [customText, setCustomText] = useState('');
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   useEffect(() => {
     if (open) {
@@ -92,9 +102,12 @@ export function AddLeakToPlayerModal({
   };
 
   const canAdd = player && userId?.trim();
+  const isDirty = player !== null || customText.trim() !== '';
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add leak to player</DialogTitle>
       <DialogContent>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
@@ -173,5 +186,12 @@ export function AddLeakToPlayerModal({
         </List>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

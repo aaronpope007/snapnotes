@@ -23,6 +23,8 @@ interface LogResultModalProps {
   initialDrillId?: string | null;
   onCreateDrill: (payload: GtoDrillCreate) => Promise<GtoDrill | undefined>;
   onLogResult: (drillId: string, payload: GtoDrillResultCreate) => Promise<void>;
+  onCopySuccess?: () => void;
+  onCopyError?: (msg: string) => void;
 }
 
 export function LogResultModal({
@@ -33,6 +35,8 @@ export function LogResultModal({
   initialDrillId,
   onCreateDrill,
   onLogResult,
+  onCopySuccess,
+  onCopyError,
 }: LogResultModalProps) {
   const [selectedId, setSelectedId] = useState<string>(initialDrillId ?? '');
   const [newDrillOpen, setNewDrillOpen] = useState(false);
@@ -129,6 +133,8 @@ export function LogResultModal({
         saving={saving}
         onSubmitCreate={handleDrillCreated}
         onSubmitUpdate={async () => {}}
+        onCopySuccess={onCopySuccess}
+        onCopyError={onCopyError}
       />
 
       {activeDrill && (

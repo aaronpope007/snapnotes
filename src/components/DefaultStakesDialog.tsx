@@ -16,6 +16,8 @@ import Checkbox from '@mui/material/Checkbox';
 import { useDefaultStakes, useSetDefaultStakes, type DefaultStakes } from '../context/DefaultStakesContext';
 import { STAKE_VALUES } from '../types';
 import { GAME_TYPE_OPTIONS, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../constants/stakes';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 
 interface DefaultStakesDialogProps {
   open: boolean;
@@ -31,6 +33,14 @@ export function DefaultStakesDialog({ open, onClose }: DefaultStakesDialogProps)
   const [formats, setFormats] = useState<string[]>(defaultStakes.formats);
   const [origin, setOrigin] = useState(defaultStakes.origin);
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   useEffect(() => {
     if (open) {
       setStakesSeenAt(defaultStakes.stakesSeenAt);
@@ -39,6 +49,14 @@ export function DefaultStakesDialog({ open, onClose }: DefaultStakesDialogProps)
       setOrigin(defaultStakes.origin);
     }
   }, [open, defaultStakes.stakesSeenAt, defaultStakes.gameTypes, defaultStakes.formats, defaultStakes.origin]);
+
+  const isDirty =
+    JSON.stringify(stakesSeenAt) !== JSON.stringify(defaultStakes.stakesSeenAt) ||
+    JSON.stringify(gameTypes) !== JSON.stringify(defaultStakes.gameTypes) ||
+    JSON.stringify(formats) !== JSON.stringify(defaultStakes.formats) ||
+    origin !== defaultStakes.origin;
+
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const handleSave = () => {
     const next: DefaultStakes = {
@@ -70,7 +88,8 @@ export function DefaultStakesDialog({ open, onClose }: DefaultStakesDialogProps)
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <DialogTitle>Default stakes for new players</DialogTitle>
       <DialogContent>
         <DialogContentText variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -134,11 +153,18 @@ export function DefaultStakesDialog({ open, onClose }: DefaultStakesDialogProps)
         </FormControl>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={requestClose}>Cancel</Button>
         <Button variant="contained" onClick={handleSave}>
           Save
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

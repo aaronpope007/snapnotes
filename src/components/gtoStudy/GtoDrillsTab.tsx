@@ -15,9 +15,12 @@ import type { GtoDrill } from '../../types/gtoStudy';
 interface GtoDrillsTabProps {
   hook: ReturnType<typeof useGtoDrills>;
   listDrills: GtoDrill[];
+  onCopySuccess?: () => void;
+  onCopyError?: (msg: string) => void;
 }
 
-export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
+export function GtoDrillsTab({ hook, listDrills, onCopySuccess, onCopyError }: GtoDrillsTabProps) {
+  const drillFormCopyProps = { onCopySuccess, onCopyError };
   const compact = useCompactMode();
 
   if (hook.selectedDrill) {
@@ -32,6 +35,7 @@ export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
           cloneForm={hook.cloneForm}
           onSubmitCreate={hook.handleCreateDrill}
           onSubmitUpdate={hook.handleUpdateDrill}
+          {...drillFormCopyProps}
         />
         <GtoDrillResultModal
           open={Boolean(hook.editResult)}
@@ -90,6 +94,7 @@ export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
               onEdit={hook.openEditDrill}
               onClone={hook.openCloneDrill}
               onDelete={hook.requestDeleteDrill}
+              {...drillFormCopyProps}
             />
           ))}
         </Box>
@@ -103,6 +108,7 @@ export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
         cloneForm={hook.cloneForm}
         onSubmitCreate={hook.handleCreateDrill}
         onSubmitUpdate={hook.handleUpdateDrill}
+        {...drillFormCopyProps}
       />
 
       <LogResultModal
@@ -114,6 +120,7 @@ export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
         drills={hook.drills}
         initialDrillId={hook.logResultDrillId}
         onCreateDrill={hook.handleCreateDrill}
+        {...drillFormCopyProps}
         onLogResult={async (drillId, payload) => {
           await hook.handleCreateResult(drillId, payload);
         }}

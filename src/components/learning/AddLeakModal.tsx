@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -18,6 +18,8 @@ import type { HandToReview } from '../../types';
 import type { Leak, LeakCreate, LeakCategory } from '../../types/learning';
 import { LEAK_CATEGORY_LABELS } from '../../constants/learningColors';
 import { LEAK_PRESETS } from '../../constants/leakPresets';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 const LEAK_CATEGORIES: LeakCategory[] = [
   'preflop',
@@ -65,14 +67,51 @@ export function AddLeakModal({
   const [linkedHands, setLinkedHands] = useState<HandToReview[]>([]);
   const [handOptions, setHandOptions] = useState<HandToReview[]>([]);
   const [loadingHands, setLoadingHands] = useState(false);
+  const baselineRef = useRef<{
+    title: string;
+    description: string;
+    category: LeakCategory;
+    linkedHandIds: string[];
+  } | null>(null);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   useEffect(() => {
     if (open) {
-      setTitle(editLeak?.title ?? initialTitle);
-      setDescription(editLeak?.description ?? initialDescription);
-      setCategory((editLeak?.category as LeakCategory) ?? initialCategory);
+      const baseline = {
+        title: editLeak?.title ?? initialTitle,
+        description: editLeak?.description ?? initialDescription,
+        category: (editLeak?.category as LeakCategory) ?? initialCategory,
+        linkedHandIds: [...(editLeak?.linkedHandIds ?? initialLinkedHandIds)].sort(),
+      };
+      baselineRef.current = baseline;
+      setTitle(baseline.title);
+      setDescription(baseline.description);
+      setCategory(baseline.category);
     }
-  }, [open, editLeak, initialTitle, initialDescription, initialCategory]);
+  }, [open, editLeak, initialTitle, initialDescription, initialCategory, initialLinkedHandIds]);
+
+  const isDirty = useCallback(() => {
+    const b = baselineRef.current;
+    if (!b) return false;
+    const linkedIds = linkedHands.map((h) => h._id).sort();
+    return (
+      title !== b.title ||
+      description !== b.description ||
+      category !== b.category ||
+      JSON.stringify(linkedIds) !== JSON.stringify(b.linkedHandIds)
+    );
+  }, [title, description, category, linkedHands]);
+
+  const requestClose = () => {
+    requestDirtyClose(isDirty(), onClose);
+  };
 
   useEffect(() => {
     if (open && userId?.trim()) {
@@ -108,7 +147,8 @@ export function AddLeakModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>
           {editLeak ? 'Edit leak' : 'Add leak'}
@@ -198,12 +238,19 @@ export function AddLeakModal({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button type="button" onClick={requestClose}>Cancel</Button>
           <Button type="submit" variant="contained" disabled={saving || !title.trim()}>
             {saving ? 'Saving...' : editLeak ? 'Save' : 'Add'}
           </Button>
         </DialogActions>
       </form>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

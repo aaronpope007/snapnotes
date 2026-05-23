@@ -5,8 +5,11 @@ const ENDS_AFTER = ['FirstAction', 'StreetEnd', 'HandEnd'];
 const SOLVERS = ['Lucid', 'GTO Wizard', 'Solver Pro'];
 const STREETS = ['Preflop', 'Flop', 'Turn', 'River'];
 
+const DESCRIPTION_MAX = 500;
+
 export interface GtoDrillBodyFields {
   name?: string;
+  description?: string;
   format?: string;
   stack?: string;
   handStart?: string;
@@ -25,6 +28,9 @@ export interface GtoDrillBodyFields {
 export function validateDrillFields(body: GtoDrillBodyFields, requireName = true): string | null {
   const name = body.name?.trim();
   if (requireName && !name) return 'name is required';
+  if (body.description != null && body.description.length > DESCRIPTION_MAX) {
+    return `description must be at most ${DESCRIPTION_MAX} characters`;
+  }
 
   const format = body.format;
   const stack = body.stack;
@@ -87,6 +93,11 @@ function validateDrillStreet(handStart: string, street?: string): string | null 
 }
 
 /** Default or normalize street for persistence. */
+export function normalizeDrillDescription(description?: string): string | undefined {
+  const t = (description ?? '').trim().slice(0, DESCRIPTION_MAX);
+  return t || undefined;
+}
+
 export function normalizeDrillStreet(handStart: string, street?: string): string {
   if (handStart === 'Preflop') return 'Preflop';
   const s = street && STREETS.includes(street) ? street : 'Flop';

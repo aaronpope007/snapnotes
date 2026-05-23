@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -9,6 +9,8 @@ import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import type { PlayerListItem } from '../types';
@@ -56,6 +58,34 @@ export function TempNoteModal({
   const [appending, setAppending] = useState(false);
   const [appendAndAddSaving, setAppendAndAddSaving] = useState(false);
   const [addHandSaving, setAddHandSaving] = useState(false);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
+  useEffect(() => {
+    if (!open) return;
+    setText('');
+    setHandTitle('');
+    setTaggedReviewers([]);
+    setSelectedPlayer(null);
+    setPlayerSearch('');
+  }, [open]);
+
+  const isDirty =
+    text.trim() !== '' ||
+    handTitle.trim() !== '' ||
+    taggedReviewers.length > 0 ||
+    selectedPlayer !== null ||
+    playerSearch.trim() !== '';
+
+  const requestClose = () => {
+    requestDirtyClose(isDirty, onClose);
+  };
 
   const filterPlayers = (opts: PlayerListItem[], inputValue: string) => {
     if (!inputValue.trim()) return [];
@@ -142,7 +172,8 @@ export function TempNoteModal({
   const appendBusy = appending || appendAndAddSaving;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>Temp note</DialogTitle>
       <DialogContent>
         <TextField
@@ -285,5 +316,12 @@ export function TempNoteModal({
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

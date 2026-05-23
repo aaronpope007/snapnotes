@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -8,6 +8,8 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import { useUserCredentials } from '../context/UserNameContext';
 import { getImprovementNotes, saveImprovementNotes } from '../api/me';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 
 interface ImprovementNotesDialogProps {
   open: boolean;
@@ -28,13 +30,24 @@ export function ImprovementNotesDialog({
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const loadedBaselineRef = useRef('');
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   const loadNotes = useCallback(async () => {
     if (!userName || !userPassword) return;
     setLoading(true);
     try {
       const data = await getImprovementNotes(userName, userPassword);
-      setContent(data ?? '');
+      const text = data ?? '';
+      loadedBaselineRef.current = text;
+      setContent(text);
     } catch {
       onError?.('Failed to load notes.');
     } finally {
@@ -45,6 +58,9 @@ export function ImprovementNotesDialog({
   useEffect(() => {
     if (open && isClaimedUser) void loadNotes();
   }, [open, isClaimedUser, loadNotes]);
+
+  const isDirty = isClaimedUser && content !== loadedBaselineRef.current;
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const handleSave = async () => {
     if (!userName || !userPassword) return;
@@ -61,7 +77,8 @@ export function ImprovementNotesDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>Improvement notes</DialogTitle>
       <DialogContent>
         {!isClaimedUser ? (
@@ -92,7 +109,7 @@ export function ImprovementNotesDialog({
             Change my name
           </Button>
         )}
-        <Button onClick={onClose}>{isClaimedUser ? 'Cancel' : 'Close'}</Button>
+        <Button onClick={requestClose}>{isClaimedUser ? 'Cancel' : 'Close'}</Button>
         {isClaimedUser && (
           <Button variant="contained" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
@@ -100,5 +117,12 @@ export function ImprovementNotesDialog({
         )}
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

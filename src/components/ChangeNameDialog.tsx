@@ -8,6 +8,8 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import { useUserName, useUserCredentials } from '../context/UserNameContext';
 import { isNameClaimed, claimName, login } from '../api/me';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 
 interface ChangeNameDialogProps {
   open: boolean;
@@ -23,6 +25,14 @@ export function ChangeNameDialog({ open, onClose, onSuccess }: ChangeNameDialogP
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   useEffect(() => {
     if (open) {
       setName(userName ?? '');
@@ -30,6 +40,10 @@ export function ChangeNameDialog({ open, onClose, onSuccess }: ChangeNameDialogP
       setError(null);
     }
   }, [open, userName]);
+
+  const isDirty =
+    name.trim() !== (userName ?? '').trim() || password.trim() !== '';
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +77,8 @@ export function ChangeNameDialog({ open, onClose, onSuccess }: ChangeNameDialogP
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>Change your name</DialogTitle>
         <DialogContent>
@@ -93,12 +108,19 @@ export function ChangeNameDialog({ open, onClose, onSuccess }: ChangeNameDialogP
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button type="button" onClick={requestClose}>Cancel</Button>
           <Button type="submit" variant="contained" disabled={!name.trim() || !password || submitting}>
             {submitting ? 'Saving…' : 'Save'}
           </Button>
         </DialogActions>
       </form>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

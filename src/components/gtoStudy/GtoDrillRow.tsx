@@ -1,14 +1,17 @@
+import { useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
+import Tooltip from '@mui/material/Tooltip';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { formatDrillSummary } from '../../constants/gtoStudy';
+import { GtoDrillDescriptionButton } from './GtoDrillDescriptionButton';
 import {
   drillListPerformanceLabel,
   drillListPerformancePrimary,
@@ -25,6 +28,8 @@ interface GtoDrillRowProps {
   onEdit: (drill: GtoDrill) => void;
   onClone: (drill: GtoDrill) => void;
   onDelete: (drillId: string) => void;
+  onCopySuccess?: () => void;
+  onCopyError?: (msg: string) => void;
 }
 
 function TrendGlyph({ trend }: { trend: ReturnType<typeof drillListTrend> }) {
@@ -52,8 +57,28 @@ export function GtoDrillRow({
   onEdit,
   onClone,
   onDelete,
+  onCopySuccess,
+  onCopyError,
 }: GtoDrillRowProps) {
   const compact = useCompactMode();
+
+  const handleCopyName = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const text = drill.name.trim();
+      if (!text) {
+        onCopyError?.('Nothing to copy');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        onCopySuccess?.();
+      } catch {
+        onCopyError?.('Could not copy to clipboard');
+      }
+    },
+    [drill.name, onCopySuccess, onCopyError]
+  );
   const summaryLine = formatDrillSummary(drill);
   const perfPrimary = drillListPerformancePrimary(drill.recentResultsSummary);
   const perfSecondary = drillListPerformanceSecondary(drill.recentResultsSummary);
@@ -104,6 +129,16 @@ export function GtoDrillRow({
             >
               {drill.name}
             </Typography>
+            <Tooltip title="Copy name for Lucid">
+              <IconButton
+                size="small"
+                aria-label="Copy drill name"
+                onClick={(e) => void handleCopyName(e)}
+                sx={{ p: 0.25, flexShrink: 0 }}
+              >
+                <ContentCopyIcon sx={{ fontSize: '0.95rem' }} />
+              </IconButton>
+            </Tooltip>
             <Box
               component="span"
               sx={{
@@ -131,18 +166,22 @@ export function GtoDrillRow({
               <TrendGlyph trend={trend} />
             </Box>
           </Box>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {summaryLine}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: 0.25 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {summaryLine}
+            </Typography>
+            <GtoDrillDescriptionButton description={drill.description} />
+          </Box>
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5, flexShrink: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>

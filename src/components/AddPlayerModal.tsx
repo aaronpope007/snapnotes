@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import FormControl from '@mui/material/FormControl';
@@ -160,7 +161,16 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
   const [origin, setOrigin] = useState('WPT Gold');
   const [rawNote, setRawNote] = useState('');
   const [loading, setLoading] = useState(false);
-  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose({
+    message:
+      'You have unsaved changes. Are you sure you want to close without adding this player?',
+  });
 
   const initialUsernameValue = initialUsername ?? '';
   const isDirty =
@@ -194,18 +204,13 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
     setLoading(false);
   };
 
-  const handleClose = () => {
-    if (isDirty && username.trim()) {
-      setConfirmCloseOpen(true);
-      return;
-    }
-    doClose();
-  };
-
   const doClose = () => {
-    setConfirmCloseOpen(false);
     reset();
     onClose();
+  };
+
+  const handleClose = () => {
+    requestDirtyClose(isDirty, doClose);
   };
 
   const handleStakeToggle = useCallback((stake: number) => {
@@ -306,20 +311,12 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
       </DialogActions>
     </Dialog>
 
-    <Dialog open={confirmCloseOpen} onClose={() => setConfirmCloseOpen(false)}>
-      <DialogTitle>Discard changes?</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          You have unsaved changes. Are you sure you want to close without adding this player?
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setConfirmCloseOpen(false)}>Keep Editing</Button>
-        <Button color="error" variant="contained" onClick={doClose}>
-          Discard
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
     </>
   );
 }

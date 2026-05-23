@@ -12,6 +12,8 @@ import MenuItem from '@mui/material/MenuItem';
 import InputAdornment from '@mui/material/InputAdornment';
 import type { SessionResultCreate, SessionRating } from '../../types/results';
 import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 interface LogNewSessionModalProps {
   open: boolean;
@@ -49,6 +51,14 @@ export function LogNewSessionModal({
   const [leakTitle, setLeakTitle] = useState('');
   const [trackingSaving, setTrackingSaving] = useState(false);
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   useEffect(() => {
     if (open) {
       setDate(new Date().toISOString().slice(0, 10));
@@ -67,6 +77,22 @@ export function LogNewSessionModal({
   useEffect(() => {
     if (trackLeakOpen) setLeakTitle(notes.trim());
   }, [trackLeakOpen, notes]);
+
+  const isDirty =
+    startTime.trim() !== '' ||
+    endTime.trim() !== '' ||
+    stake !== '' ||
+    isRing ||
+    isHU ||
+    gameType !== 'NLHE' ||
+    rating !== '' ||
+    handsEndedAt.trim() !== '' ||
+    dailyNet.trim() !== '' ||
+    notes.trim() !== '' ||
+    trackLeakOpen ||
+    leakTitle.trim() !== '';
+
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const totalTimeFromTimes =
     startTime && endTime
@@ -150,7 +176,8 @@ export function LogNewSessionModal({
   ]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <DialogTitle>Log new session</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0.5 }}>
@@ -308,7 +335,7 @@ export function LogNewSessionModal({
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={requestClose}>Cancel</Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
@@ -318,5 +345,12 @@ export function LogNewSessionModal({
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

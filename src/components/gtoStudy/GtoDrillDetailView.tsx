@@ -68,6 +68,16 @@ export function GtoDrillDetailView({ drill, hook }: GtoDrillDetailViewProps) {
         {GTO_ENDS_AFTER_LABELS[drill.endsAfter]} · {drill.solver}
       </Typography>
 
+      {drill.description?.trim() && (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ display: 'block', mb: 1, whiteSpace: 'pre-wrap' }}
+        >
+          {drill.description.trim()}
+        </Typography>
+      )}
+
       {drill.potType === 'Custom' && drill.customConfig && (
         <Box sx={{ mb: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
           {drill.customConfig.streetActions.map((row, i) => (

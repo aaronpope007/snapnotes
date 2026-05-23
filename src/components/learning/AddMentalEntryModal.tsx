@@ -11,6 +11,8 @@ import Checkbox from '@mui/material/Checkbox';
 import Slider from '@mui/material/Slider';
 import Typography from '@mui/material/Typography';
 import type { MentalGameEntryCreate } from '../../types/learning';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 const RATING_LABELS: Record<number, string> = {
   1: 'Poor',
@@ -42,6 +44,14 @@ export function AddMentalEntryModal({
   const [fatigueAffected, setFatigueAffected] = useState(false);
   const [confidenceAffected, setConfidenceAffected] = useState(false);
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   useEffect(() => {
     if (open) {
       setSessionDate(new Date().toISOString().slice(0, 10));
@@ -52,6 +62,15 @@ export function AddMentalEntryModal({
       setConfidenceAffected(false);
     }
   }, [open]);
+
+  const isDirty =
+    observation.trim() !== '' ||
+    stateRating !== 3 ||
+    tiltAffected ||
+    fatigueAffected ||
+    confidenceAffected;
+
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +85,8 @@ export function AddMentalEntryModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>Log session</DialogTitle>
         <DialogContent>
@@ -144,12 +164,19 @@ export function AddMentalEntryModal({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button type="button" onClick={requestClose}>Cancel</Button>
           <Button type="submit" variant="contained" disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </form>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

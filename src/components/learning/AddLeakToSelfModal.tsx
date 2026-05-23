@@ -13,6 +13,8 @@ import type { LeakCreate } from '../../types/learning';
 import { LEAK_CATEGORY_LABELS } from '../../constants/learningColors';
 import { LEAK_PRESETS } from '../../constants/leakPresets';
 import type { LeakPreset } from '../../constants/leakPresets';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 function groupByCategory(presets: LeakPreset[]): Map<string, LeakPreset[]> {
   const map = new Map<string, LeakPreset[]>();
@@ -46,6 +48,14 @@ export function AddLeakToSelfModal({
 }: AddLeakToSelfModalProps) {
   const [customText, setCustomText] = useState('');
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   useEffect(() => {
     if (open) setCustomText('');
   }, [open]);
@@ -72,9 +82,11 @@ export function AddLeakToSelfModal({
   };
 
   const canAdd = userId?.trim();
+  const requestClose = () => requestDirtyClose(customText.trim() !== '', onClose);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add leak to myself</DialogTitle>
       <DialogContent>
         {handTitle && (
@@ -141,5 +153,12 @@ export function AddLeakToSelfModal({
         </List>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

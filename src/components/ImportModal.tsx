@@ -3,6 +3,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
@@ -55,6 +57,14 @@ export function ImportModal({
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'input' | 'preview'>('input');
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   const reset = () => {
     setRawText('');
     setParsed(null);
@@ -62,9 +72,14 @@ export function ImportModal({
     setStep('input');
   };
 
-  const handleClose = () => {
+  const finishClose = () => {
     reset();
     onClose();
+  };
+
+  const handleClose = () => {
+    const dirty = rawText.trim() !== '' || step === 'preview';
+    requestDirtyClose(dirty, finishClose);
   };
 
   const readFileAsText = (file: File): Promise<string> => {
@@ -122,7 +137,7 @@ export function ImportModal({
     try {
       const toImport = parsed.map((p) => toImportPlayer(p, userName.trim()));
       await onImport(toImport);
-      handleClose();
+      finishClose();
     } finally {
       setLoading(false);
     }
@@ -139,6 +154,7 @@ export function ImportModal({
   const fuzzyDuplicates = parsed ? findFuzzyDuplicates(parsed, existingUsernames) : [];
 
   return (
+    <>
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Import Notes</DialogTitle>
       <DialogContent>
@@ -286,5 +302,12 @@ export function ImportModal({
         )}
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

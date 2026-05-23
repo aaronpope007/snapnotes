@@ -24,6 +24,7 @@ const gtoDrillSchema = new mongoose.Schema(
   {
     userId: { type: String, required: true },
     name: { type: String, required: true, trim: true, maxlength: 120 },
+    description: { type: String, default: '', maxlength: 500 },
     format: { type: String, required: true, enum: ['HU', '8max'] },
     stack: { type: String, required: true, enum: ['100bb', '200bb'] },
     handStart: { type: String, required: true, enum: ['Preflop', 'Postflop'] },

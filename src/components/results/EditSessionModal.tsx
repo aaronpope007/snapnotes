@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -14,6 +14,8 @@ import Typography from '@mui/material/Typography';
 import type { SessionResult, SessionResultCreate, SessionRating } from '../../types/results';
 import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
 import { pauseOverlapMsWithinWindow, sumPauseIntervalsDurationMs } from '../../utils/sessionPause';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 interface EditSessionModalProps {
   open: boolean;
@@ -39,6 +41,15 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
   const [isHU, setIsHU] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const baselineRef = useRef<string | null>(null);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   function toTimeString(isoOrDate: string | null | undefined): string {
     if (!isoOrDate) return '';
@@ -53,27 +64,88 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
     }
   }
 
+  const buildSnapshot = useCallback(
+    () =>
+      JSON.stringify({
+        date,
+        totalTime,
+        startTime,
+        endTime,
+        handsStartedAt,
+        handsEndedAt,
+        hands,
+        startBankroll,
+        endBankroll,
+        stake,
+        gameType,
+        rating,
+        isRing,
+        isHU,
+        notes,
+      }),
+    [
+      date,
+      totalTime,
+      startTime,
+      endTime,
+      handsStartedAt,
+      handsEndedAt,
+      hands,
+      startBankroll,
+      endBankroll,
+      stake,
+      gameType,
+      rating,
+      isRing,
+      isHU,
+      notes,
+    ]
+  );
+
   useEffect(() => {
     if (session) {
       const d = new Date(session.date);
       const localDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      setDate(localDateStr);
-      setTotalTime(session.totalTime != null ? String(session.totalTime) : '');
-      setStartTime(toTimeString(session.startTime));
-      setEndTime(toTimeString(session.endTime));
-      setHandsStartedAt(session.handsStartedAt != null ? String(session.handsStartedAt) : '');
-      setHandsEndedAt(session.handsEndedAt != null ? String(session.handsEndedAt) : '');
-      setHands(session.hands != null ? String(session.hands) : '');
-      setStartBankroll(session.startBankroll != null ? String(session.startBankroll) : '');
-      setEndBankroll(session.endBankroll != null ? String(session.endBankroll) : '');
-      setStake(session.stake ?? '');
-      setGameType(session.gameType ?? 'NLHE');
-      setRating(session.rating ?? '');
-      setIsRing(session.isRing ?? false);
-      setIsHU(session.isHU ?? false);
-      setNotes(session.notes ?? '');
+      const next = {
+        date: localDateStr,
+        totalTime: session.totalTime != null ? String(session.totalTime) : '',
+        startTime: toTimeString(session.startTime),
+        endTime: toTimeString(session.endTime),
+        handsStartedAt: session.handsStartedAt != null ? String(session.handsStartedAt) : '',
+        handsEndedAt: session.handsEndedAt != null ? String(session.handsEndedAt) : '',
+        hands: session.hands != null ? String(session.hands) : '',
+        startBankroll: session.startBankroll != null ? String(session.startBankroll) : '',
+        endBankroll: session.endBankroll != null ? String(session.endBankroll) : '',
+        stake: session.stake ?? '',
+        gameType: session.gameType ?? 'NLHE',
+        rating: session.rating ?? '',
+        isRing: session.isRing ?? false,
+        isHU: session.isHU ?? false,
+        notes: session.notes ?? '',
+      };
+      baselineRef.current = JSON.stringify(next);
+      setDate(next.date);
+      setTotalTime(next.totalTime);
+      setStartTime(next.startTime);
+      setEndTime(next.endTime);
+      setHandsStartedAt(next.handsStartedAt);
+      setHandsEndedAt(next.handsEndedAt);
+      setHands(next.hands);
+      setStartBankroll(next.startBankroll);
+      setEndBankroll(next.endBankroll);
+      setStake(next.stake as number | '');
+      setGameType(next.gameType);
+      setRating(next.rating as SessionRating | '');
+      setIsRing(next.isRing);
+      setIsHU(next.isHU);
+      setNotes(next.notes);
     }
   }, [session]);
+
+  const isDirty =
+    baselineRef.current != null && buildSnapshot() !== baselineRef.current;
+
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const derivedHands = useMemo(() => {
     const start = handsStartedAt.trim() ? parseInt(handsStartedAt.replace(/,/g, ''), 10) : NaN;
@@ -145,7 +217,8 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <DialogTitle>Edit session</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0.5 }}>
@@ -315,11 +388,18 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={requestClose}>Cancel</Button>
         <Button variant="contained" onClick={handleSubmit} disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

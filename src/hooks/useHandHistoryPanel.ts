@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useConfirm } from './useConfirm';
+import { useDirtyFormClose } from './useDirtyFormClose';
 import type { HandHistoryEntry, HandHistoryComment } from '../types';
 
 const DEFAULT_ENTRY_TITLE = 'Hand';
@@ -44,11 +44,11 @@ export function useHandHistoryPanel({
 
   const {
     confirmOpen: discardConfirmOpen,
-    openConfirm: openDiscardConfirm,
     closeConfirm: closeDiscardConfirm,
     handleConfirm: handleDiscardConfirm,
     confirmOptions: discardConfirmOptions,
-  } = useConfirm();
+    requestClose: requestDiscardClose,
+  } = useDirtyFormClose();
 
   useEffect(() => {
     setLocalValues(handHistories?.length ? handHistories : []);
@@ -94,8 +94,7 @@ export function useHandHistoryPanel({
   };
 
   const handleRequestClose = () => {
-    if (isModalDirty()) openDiscardConfirm(closeModal);
-    else closeModal();
+    requestDiscardClose(isModalDirty(), closeModal);
   };
 
   const handleModalSave = async () => {

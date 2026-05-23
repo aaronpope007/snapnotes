@@ -10,6 +10,8 @@ import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import type { PlayerListItem } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 
 interface MergePlayerDialogProps {
   open: boolean;
@@ -29,6 +31,13 @@ export function MergePlayerDialog({
   loading = false,
 }: MergePlayerDialogProps) {
   const [targetId, setTargetId] = useState('');
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
   const options = players.filter((p) => p._id !== sourcePlayer._id);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -36,12 +45,17 @@ export function MergePlayerDialog({
     if (targetId) void onConfirm(targetId).then(() => { setTargetId(''); onClose(); });
   };
 
-  const handleClose = () => {
+  const finishClose = () => {
     setTargetId('');
     onClose();
   };
 
+  const handleClose = () => {
+    requestDirtyClose(targetId !== '', finishClose);
+  };
+
   return (
+    <>
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <DialogTitle>Merge into another player</DialogTitle>
       <form onSubmit={handleSubmit}>
@@ -75,5 +89,12 @@ export function MergePlayerDialog({
         </DialogActions>
       </form>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

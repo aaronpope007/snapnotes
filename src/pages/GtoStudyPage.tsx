@@ -39,7 +39,12 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
         </Typography>
       ) : (
         <ErrorBoundary>
-          <GtoDrillsTab hook={hook} listDrills={visibleDrills} />
+          <GtoDrillsTab
+            hook={hook}
+            listDrills={visibleDrills}
+            onCopySuccess={() => onSuccess?.('Drill name copied')}
+            onCopyError={(msg) => onError?.(msg)}
+          />
         </ErrorBoundary>
       )}
     </Box>

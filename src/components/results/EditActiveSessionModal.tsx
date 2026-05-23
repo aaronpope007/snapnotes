@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -6,6 +6,8 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import type { ActiveSession } from '../../utils/activeSession';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 interface EditActiveSessionModalProps {
   open: boolean;
@@ -44,13 +46,33 @@ export function EditActiveSessionModal({
 }: EditActiveSessionModalProps) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const baselineRef = useRef<{ date: string; time: string } | null>(null);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   useEffect(() => {
     if (activeSession && open) {
-      setDate(toDateString(activeSession.startTime));
-      setTime(toTimeString(activeSession.startTime));
+      const baseline = {
+        date: toDateString(activeSession.startTime),
+        time: toTimeString(activeSession.startTime),
+      };
+      baselineRef.current = baseline;
+      setDate(baseline.date);
+      setTime(baseline.time);
     }
   }, [activeSession, open]);
+
+  const isDirty =
+    baselineRef.current != null &&
+    (date !== baselineRef.current.date || time !== baselineRef.current.time);
+
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const handleSubmit = () => {
     if (!activeSession) return;
@@ -77,7 +99,8 @@ export function EditActiveSessionModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <DialogTitle>Edit session start time</DialogTitle>
       <DialogContent>
         <TextField
@@ -101,11 +124,18 @@ export function EditActiveSessionModal({
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={requestClose}>Cancel</Button>
         <Button variant="contained" onClick={handleSubmit}>
           Save
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

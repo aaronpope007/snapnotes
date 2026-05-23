@@ -20,6 +20,7 @@ import {
 
 export interface GtoDrillFormState {
   name: string;
+  description: string;
   format: GtoFormat;
   stack: GtoStack;
   handStart: GtoHandStart;
@@ -36,6 +37,7 @@ export interface GtoDrillFormState {
 export function emptyDrillFormState(): GtoDrillFormState {
   return {
     name: '',
+    description: '',
     format: 'HU',
     stack: '100bb',
     handStart: 'Preflop',
@@ -61,6 +63,7 @@ export function drillToCloneFormState(drill: GtoDrill): GtoDrillFormState {
 export function drillToFormState(drill: GtoDrill): GtoDrillFormState {
   return {
     name: drill.name,
+    description: drill.description ?? '',
     format: drill.format,
     stack: drill.stack,
     handStart: drill.handStart,
@@ -87,6 +90,7 @@ export function drillToFormState(drill: GtoDrill): GtoDrillFormState {
 export function formStateToPayload(state: GtoDrillFormState): GtoDrillCreate {
   const payload: GtoDrillCreate = {
     name: state.name.trim(),
+    description: state.description.trim() || undefined,
     format: state.format,
     stack: state.stack,
     handStart: state.handStart,

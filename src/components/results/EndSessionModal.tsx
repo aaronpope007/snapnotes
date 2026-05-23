@@ -16,6 +16,8 @@ import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/resul
 import type { ActiveSession } from '../../utils/activeSession';
 import { finalizePauseIntervalsForEnd } from '../../utils/activeSession';
 import { getPlayingHoursFromWallAndPauses } from '../../utils/sessionPause';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 interface EndSessionModalProps {
   open: boolean;
@@ -68,6 +70,14 @@ export function EndSessionModal({
   const [leakTitle, setLeakTitle] = useState('');
   const [trackingSaving, setTrackingSaving] = useState(false);
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   const now = new Date();
   const startTimeIso = startTimeEditable.trim()
     ? (() => {
@@ -117,6 +127,23 @@ export function EndSessionModal({
   useEffect(() => {
     if (trackLeakOpen) setLeakTitle(notes.trim());
   }, [trackLeakOpen, notes]);
+
+  const isDirty =
+    endBankroll.trim() !== '' ||
+    endingHandNumber.trim() !== '' ||
+    stake !== '' ||
+    rating !== '' ||
+    isRing ||
+    isHU ||
+    gameType !== 'NLHE' ||
+    notes.trim() !== '' ||
+    trackLeakOpen ||
+    leakTitle.trim() !== '' ||
+    (lastEndBankroll != null &&
+      startBankroll.trim() !== '' &&
+      startBankroll !== String(lastEndBankroll));
+
+  const requestClose = () => requestDirtyClose(isDirty, onClose);
 
   const handleTrackLeak = useCallback(async () => {
     if (!leakTitle.trim() || !onAddLeak) return;
@@ -198,7 +225,8 @@ export function EndSessionModal({
   ]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <DialogTitle>End session</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0.5 }}>
@@ -367,7 +395,7 @@ export function EndSessionModal({
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={requestClose}>Cancel</Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
@@ -377,5 +405,12 @@ export function EndSessionModal({
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

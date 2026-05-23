@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -7,6 +7,8 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import type { Withdrawal, WithdrawalCreate } from '../../types/results';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 function sanitizeAmount(val: string): string {
   return val.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
@@ -33,14 +35,39 @@ export function EditWithdrawalModal({
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const baselineRef = useRef<{ date: string; amount: string; notes: string } | null>(null);
+
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
 
   useEffect(() => {
     if (withdrawal) {
-      setDate(new Date(withdrawal.date).toISOString().slice(0, 10));
-      setAmount(String(withdrawal.amount));
-      setNotes(withdrawal.notes ?? '');
+      const next = {
+        date: new Date(withdrawal.date).toISOString().slice(0, 10),
+        amount: String(withdrawal.amount),
+        notes: withdrawal.notes ?? '',
+      };
+      baselineRef.current = next;
+      setDate(next.date);
+      setAmount(next.amount);
+      setNotes(next.notes);
     }
   }, [withdrawal]);
+
+  const isDirty =
+    baselineRef.current != null &&
+    (date !== baselineRef.current.date ||
+      amount !== baselineRef.current.amount ||
+      notes !== baselineRef.current.notes);
+
+  const requestClose = () => {
+    requestDirtyClose(isDirty, onClose);
+  };
 
   const handleSubmit = useCallback(async () => {
     if (!withdrawal) return;
@@ -68,7 +95,8 @@ export function EditWithdrawalModal({
   if (!withdrawal) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="xs" fullWidth>
       <DialogTitle>Edit withdrawal</DialogTitle>
       <DialogContent>
         <TextField
@@ -106,7 +134,7 @@ export function EditWithdrawalModal({
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={requestClose}>Cancel</Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
@@ -116,5 +144,12 @@ export function EditWithdrawalModal({
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }

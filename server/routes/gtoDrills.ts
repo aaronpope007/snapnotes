@@ -5,6 +5,7 @@ import { GtoDrillResult } from '../models/GtoDrillResult.js';
 import {
   validateDrillFields,
   normalizeCustomConfig,
+  normalizeDrillDescription,
   normalizeDrillStreet,
   parseDate,
   type GtoDrillBodyFields,
@@ -99,6 +100,7 @@ router.post('/', async (req: Request, res: Response) => {
     const drill = new GtoDrill({
       userId,
       name: body.name!.trim().slice(0, 120),
+      description: normalizeDrillDescription(body.description),
       format: body.format,
       stack: body.stack,
       handStart: body.handStart,
@@ -132,6 +134,8 @@ router.patch('/:id', async (req: Request, res: Response) => {
 
     const merged: GtoDrillBodyFields = {
       name: body.name !== undefined ? body.name : drill.name,
+      description:
+        body.description !== undefined ? body.description : drill.description,
       format: body.format ?? drill.format,
       stack: body.stack ?? drill.stack,
       handStart: body.handStart ?? drill.handStart,
@@ -161,6 +165,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (validationError) return res.status(400).json({ error: validationError });
 
     drill.name = merged.name!.trim().slice(0, 120);
+    drill.description = normalizeDrillDescription(merged.description) ?? '';
     drill.format = merged.format as 'HU' | '8max';
     drill.stack = merged.stack as '100bb' | '200bb';
     drill.handStart = merged.handStart as 'Preflop' | 'Postflop';

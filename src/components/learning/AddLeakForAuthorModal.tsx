@@ -6,6 +6,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 interface AddLeakForAuthorModalProps {
   open: boolean;
@@ -26,9 +28,19 @@ export function AddLeakForAuthorModal({
 }: AddLeakForAuthorModalProps) {
   const [description, setDescription] = useState('');
 
+  const {
+    confirmOpen,
+    closeConfirm,
+    handleConfirm,
+    confirmOptions,
+    requestClose: requestDirtyClose,
+  } = useDirtyFormClose();
+
   useEffect(() => {
     if (open) setDescription('');
   }, [open]);
+
+  const requestClose = () => requestDirtyClose(description.trim() !== '', onClose);
 
   const handleSubmit = async () => {
     if (!description.trim()) return;
@@ -37,7 +49,8 @@ export function AddLeakForAuthorModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <>
+    <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add leak for {authorName}</DialogTitle>
       <DialogContent>
         {handTitle && (
@@ -66,7 +79,7 @@ export function AddLeakForAuthorModal({
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
+        <Button onClick={requestClose} disabled={saving}>
           Cancel
         </Button>
         <Button
@@ -78,5 +91,12 @@ export function AddLeakForAuthorModal({
         </Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onClose={closeConfirm}
+      onConfirm={handleConfirm}
+      {...confirmOptions}
+    />
+    </>
   );
 }
