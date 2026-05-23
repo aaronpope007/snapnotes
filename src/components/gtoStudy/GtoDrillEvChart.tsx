@@ -141,7 +141,7 @@ export function GtoDrillEvChart({ results }: GtoDrillEvChartProps) {
 
   useEffect(() => {
     setMetric(getDefaultChartMetric(results));
-  }, [resultsKey, results]);
+  }, [resultsKey]);
 
   const accuracyCount = useMemo(() => countAccuracyChartPoints(results), [results]);
   const scorePerHandCount = useMemo(() => countScorePerHandChartPoints(results), [results]);

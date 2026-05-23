@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -47,6 +47,7 @@ interface GtoDrillFormModalProps {
   onClose: () => void;
   saving: boolean;
   drill?: GtoDrill | null;
+  cloneForm?: GtoDrillFormState | null;
   onSubmitCreate: (payload: GtoDrillCreate) => Promise<unknown>;
   onSubmitUpdate: (id: string, payload: GtoDrillUpdate) => Promise<unknown>;
 }
@@ -56,10 +57,12 @@ export function GtoDrillFormModal({
   onClose,
   saving,
   drill,
+  cloneForm,
   onSubmitCreate,
   onSubmitUpdate,
 }: GtoDrillFormModalProps) {
   const isEdit = Boolean(drill);
+  const isClone = Boolean(cloneForm) && !isEdit;
   const [form, setForm] = useState<GtoDrillFormState>(emptyDrillFormState);
   const baselineRef = useRef<GtoDrillFormState | null>(null);
 
@@ -72,25 +75,38 @@ export function GtoDrillFormModal({
   } = useConfirm();
 
   const positions = getPositionsForFormat(form.format);
-  const potTypes = getPotTypesForDrill(form.format, form.handStart);
+  const potTypes = useMemo(
+    () => getPotTypesForDrill(form.format, form.handStart),
+    [form.format, form.handStart]
+  );
   const showVillain = form.handStart === 'Postflop';
   const showCustom = form.potType === 'Custom';
 
   useEffect(() => {
     if (!open) return;
-    const initial = drill ? drillToFormState(drill) : emptyDrillFormState();
-    setForm(initial);
-    baselineRef.current = drill ? drillToFormState(drill) : emptyDrillFormState();
-  }, [open, drill]);
+    if (drill) {
+      const initial = drillToFormState(drill);
+      setForm(initial);
+      baselineRef.current = initial;
+    } else if (cloneForm) {
+      setForm(cloneForm);
+      baselineRef.current = cloneForm;
+    } else {
+      const initial = emptyDrillFormState();
+      setForm(initial);
+      baselineRef.current = initial;
+    }
+  }, [open, drill, cloneForm]);
 
   useEffect(() => {
-    if (!open || isEdit) return;
-    setForm((prev) => ({
-      ...prev,
-      stack: getDefaultStack(prev.format),
-      heroPosition: getDefaultHeroPosition(prev.format) as GtoPosition,
-    }));
-  }, [form.format, open, isEdit]);
+    if (!open || isEdit || isClone) return;
+    const stack = getDefaultStack(form.format);
+    const heroPosition = getDefaultHeroPosition(form.format) as GtoPosition;
+    setForm((prev) => {
+      if (prev.stack === stack && prev.heroPosition === heroPosition) return prev;
+      return { ...prev, stack, heroPosition };
+    });
+  }, [form.format, open, isEdit, isClone]);
 
   useEffect(() => {
     if (!potTypes.includes(form.potType)) {
@@ -111,7 +127,7 @@ export function GtoDrillFormModal({
   }, [form.handStart]);
 
   const requestClose = () => {
-    const dirty = isDrillFormDirty(form, baselineRef.current, !isEdit);
+    const dirty = isDrillFormDirty(form, baselineRef.current, !isEdit && !isClone);
     if (dirty) {
       openDiscardConfirm(onClose);
     } else {
@@ -138,13 +154,23 @@ export function GtoDrillFormModal({
     <>
       <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit}>
-          <DialogTitle>{isEdit ? 'Edit drill' : 'New drill'}</DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+          <DialogTitle>
+            {isEdit ? 'Edit drill' : isClone ? 'Clone drill' : 'New drill'}
+          </DialogTitle>
+          <DialogContent
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+              overflow: 'visible',
+            }}
+          >
             <TextField
               label="Drill name"
               fullWidth
               required
               size="small"
+              margin="normal"
               value={form.name}
               onChange={(e) => patch({ name: e.target.value.slice(0, 120) })}
               placeholder="e.g. BTN vs BB SRP"

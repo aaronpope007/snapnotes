@@ -25,13 +25,11 @@ export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
       <>
         <GtoDrillDetailView drill={hook.selectedDrill} hook={hook} />
         <GtoDrillFormModal
-          open={hook.drillFormOpen && Boolean(hook.editDrill)}
-          onClose={() => {
-            hook.setDrillFormOpen(false);
-            hook.setEditDrill(null);
-          }}
+          open={hook.drillFormOpen}
+          onClose={hook.closeDrillForm}
           saving={hook.saving}
           drill={hook.editDrill}
+          cloneForm={hook.cloneForm}
           onSubmitCreate={hook.handleCreateDrill}
           onSubmitUpdate={hook.handleUpdateDrill}
         />
@@ -89,10 +87,8 @@ export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
               onOpenDrill={(d) => hook.openDrillDetail(d._id, 'results')}
               onOpenChart={(d) => hook.openDrillDetail(d._id, 'chart')}
               onLogResult={hook.openLogResult}
-              onEdit={(d) => {
-                hook.setEditDrill(d);
-                hook.setDrillFormOpen(true);
-              }}
+              onEdit={hook.openEditDrill}
+              onClone={hook.openCloneDrill}
               onDelete={hook.requestDeleteDrill}
             />
           ))}
@@ -101,12 +97,10 @@ export function GtoDrillsTab({ hook, listDrills }: GtoDrillsTabProps) {
 
       <GtoDrillFormModal
         open={hook.drillFormOpen}
-        onClose={() => {
-          hook.setDrillFormOpen(false);
-          hook.setEditDrill(null);
-        }}
+        onClose={hook.closeDrillForm}
         saving={hook.saving}
         drill={hook.editDrill}
+        cloneForm={hook.cloneForm}
         onSubmitCreate={hook.handleCreateDrill}
         onSubmitUpdate={hook.handleUpdateDrill}
       />

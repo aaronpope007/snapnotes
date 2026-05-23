@@ -135,7 +135,7 @@ export function GtoDrillResultModal({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>{isEdit ? 'Edit result' : `Log result — ${drillName}`}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 2 }}>
           <TextField
             label="Date & time"
             type="datetime-local"

@@ -42,6 +42,14 @@ export function emptyDrillFormState(): GtoDrillFormState {
   };
 }
 
+/** Prefill for “clone drill” — copies settings; HU drills flip 100bb ↔ 200bb. */
+export function drillToCloneFormState(drill: GtoDrill): GtoDrillFormState {
+  const base = drillToFormState(drill);
+  const stack: GtoStack =
+    drill.format === 'HU' ? (base.stack === '100bb' ? '200bb' : '100bb') : base.stack;
+  return { ...base, stack };
+}
+
 export function drillToFormState(drill: GtoDrill): GtoDrillFormState {
   return {
     name: drill.name,

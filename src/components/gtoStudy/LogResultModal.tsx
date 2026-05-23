@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Dialog from '@mui/material/Dialog';
@@ -38,9 +38,16 @@ export function LogResultModal({
   const [newDrillOpen, setNewDrillOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [pendingDrillId, setPendingDrillId] = useState<string | null>(null);
+  const wasOpenRef = useRef(false);
 
+  /** Reset wizard only when the modal opens — not when drills refresh after create. */
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (wasOpenRef.current) return;
+    wasOpenRef.current = true;
     setSelectedId(
       initialDrillId ?? (drills.length > 0 ? drills[0]._id : NEW_DRILL_VALUE)
     );

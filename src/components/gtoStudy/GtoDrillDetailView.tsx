@@ -6,6 +6,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import IconButton from '@mui/material/IconButton';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import { useCompactMode } from '../../context/CompactModeContext';
@@ -42,13 +43,18 @@ export function GtoDrillDetailView({ drill, hook }: GtoDrillDetailViewProps) {
         </Typography>
         <IconButton
           size="small"
-          onClick={() => {
-            hook.setEditDrill(drill);
-            hook.setDrillFormOpen(true);
-          }}
+          onClick={() => hook.openEditDrill(drill)}
           aria-label="Edit drill"
         >
           <EditIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => hook.openCloneDrill(drill)}
+          aria-label="Clone drill"
+          title="Clone drill"
+        >
+          <ContentCopyIcon fontSize="small" />
         </IconButton>
       </Box>
 

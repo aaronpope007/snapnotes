@@ -30,10 +30,7 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
           filterQuery={filterQuery}
           onFilterChange={setFilterQuery}
           onLog={() => hook.openLogResult()}
-          onNewDrill={() => {
-            hook.setEditDrill(null);
-            hook.setDrillFormOpen(true);
-          }}
+          onNewDrill={() => hook.openNewDrillForm()}
         />
       )}
       {!userName?.trim() ? (

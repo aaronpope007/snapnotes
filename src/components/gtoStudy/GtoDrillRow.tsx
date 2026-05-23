@@ -5,6 +5,7 @@ import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { formatDrillSummary } from '../../constants/gtoStudy';
@@ -22,6 +23,7 @@ interface GtoDrillRowProps {
   onOpenChart: (drill: GtoDrill) => void;
   onLogResult: (drillId: string) => void;
   onEdit: (drill: GtoDrill) => void;
+  onClone: (drill: GtoDrill) => void;
   onDelete: (drillId: string) => void;
 }
 
@@ -48,6 +50,7 @@ export function GtoDrillRow({
   onOpenChart,
   onLogResult,
   onEdit,
+  onClone,
   onDelete,
 }: GtoDrillRowProps) {
   const compact = useCompactMode();
@@ -158,6 +161,15 @@ export function GtoDrillRow({
           <Box>
             <IconButton size="small" onClick={() => onEdit(drill)} aria-label="Edit drill" sx={{ p: 0.25 }}>
               <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => onClone(drill)}
+              aria-label={`Clone drill — ${drill.name}`}
+              title="Clone drill"
+              sx={{ p: 0.25 }}
+            >
+              <ContentCopyIcon fontSize="small" />
             </IconButton>
             <IconButton
               size="small"

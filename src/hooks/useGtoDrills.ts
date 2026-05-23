@@ -11,6 +11,7 @@ import {
   deleteGtoDrillResult,
 } from '../api/gtoDrills';
 import { getApiErrorMessage } from '../utils/apiError';
+import { drillToCloneFormState, type GtoDrillFormState } from '../utils/gtoDrillForm';
 import type {
   GtoDrill,
   GtoDrillCreate,
@@ -38,6 +39,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
 
   const [drillFormOpen, setDrillFormOpen] = useState(false);
   const [editDrill, setEditDrill] = useState<GtoDrill | null>(null);
+  const [cloneForm, setCloneForm] = useState<GtoDrillFormState | null>(null);
 
   const [logResultOpen, setLogResultOpen] = useState(false);
   const [logResultDrillId, setLogResultDrillId] = useState<string | null>(null);
@@ -75,23 +77,26 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
     confirmDanger: true,
   });
 
-  const loadDrills = useCallback(async () => {
-    if (!userId?.trim()) {
-      setDrills([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await fetchGtoDrills(userId);
-      setDrills(data ?? []);
-    } catch (err) {
-      setDrills([]);
-      onError?.(getApiErrorMessage(err, 'Failed to load drills'));
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, onError]);
+  const loadDrills = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!userId?.trim()) {
+        setDrills([]);
+        setLoading(false);
+        return;
+      }
+      if (!options?.silent) setLoading(true);
+      try {
+        const data = await fetchGtoDrills(userId);
+        setDrills(data ?? []);
+      } catch (err) {
+        if (!options?.silent) setDrills([]);
+        onError?.(getApiErrorMessage(err, 'Failed to load drills'));
+      } finally {
+        if (!options?.silent) setLoading(false);
+      }
+    },
+    [userId, onError]
+  );
 
   const loadDetailResults = useCallback(
     async (drillId: string) => {
@@ -138,17 +143,43 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
     setDetailTab('results');
   }, []);
 
+  const closeDrillForm = useCallback(() => {
+    setDrillFormOpen(false);
+    setEditDrill(null);
+    setCloneForm(null);
+  }, []);
+
+  const openNewDrillForm = useCallback(() => {
+    setEditDrill(null);
+    setCloneForm(null);
+    setDrillFormOpen(true);
+  }, []);
+
+  const openCloneDrill = useCallback((source: GtoDrill) => {
+    setEditDrill(null);
+    setCloneForm(drillToCloneFormState(source));
+    setDrillFormOpen(true);
+  }, []);
+
+  const openEditDrill = useCallback((source: GtoDrill) => {
+    setCloneForm(null);
+    setEditDrill(source);
+    setDrillFormOpen(true);
+  }, []);
+
   const handleCreateDrill = useCallback(
     async (payload: GtoDrillCreate) => {
       if (!userId?.trim()) return;
       setSaving(true);
       try {
         const created = await createGtoDrill({ ...payload, userId });
-        setDrillFormOpen(false);
-        setEditDrill(null);
-        await loadDrills();
+        const id = String(created._id);
+        const normalized = { ...created, _id: id };
+        closeDrillForm();
+        setDrills((prev) => [normalized, ...prev.filter((d) => String(d._id) !== id)]);
+        void loadDrills({ silent: true });
         onSuccess?.('Drill saved');
-        return created;
+        return normalized;
       } catch (err) {
         onError?.(getApiErrorMessage(err, 'Failed to save drill'));
         throw err;
@@ -156,7 +187,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         setSaving(false);
       }
     },
-    [userId, onSuccess, onError, loadDrills]
+    [userId, onSuccess, onError, loadDrills, closeDrillForm]
   );
 
   const handleUpdateDrill = useCallback(
@@ -164,9 +195,8 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
       setSaving(true);
       try {
         const updated = await updateGtoDrill(id, updates);
-        setDrillFormOpen(false);
-        setEditDrill(null);
-        await loadDrills();
+        closeDrillForm();
+        await loadDrills({ silent: true });
         onSuccess?.('Drill updated');
         return updated;
       } catch (err) {
@@ -176,7 +206,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         setSaving(false);
       }
     },
-    [onSuccess, onError, loadDrills]
+    [onSuccess, onError, loadDrills, closeDrillForm]
   );
 
   const requestDeleteDrill = useCallback(
@@ -185,7 +215,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         try {
           await deleteGtoDrill(id);
           if (selectedDrillId === id) closeDrillDetail();
-          await loadDrills();
+          await loadDrills({ silent: true });
           onSuccess?.('Drill deleted');
         } catch (err) {
           onError?.(getApiErrorMessage(err, 'Failed to delete drill'));
@@ -215,7 +245,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         }
         setLogResultOpen(false);
         setLogResultDrillId(null);
-        await loadDrills();
+        await loadDrills({ silent: true });
         onSuccess?.('Result logged');
         return created;
       } catch (err) {
@@ -241,7 +271,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           );
         }
-        await loadDrills();
+        await loadDrills({ silent: true });
         setEditResult(null);
         onSuccess?.('Result updated');
       } catch (err) {
@@ -263,7 +293,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
           if (selectedDrillId === drillId) {
             setDetailResults((prev) => prev.filter((r) => r._id !== resultId));
           }
-          await loadDrills();
+          await loadDrills({ silent: true });
           onSuccess?.('Result deleted');
         } catch (err) {
           onError?.(getApiErrorMessage(err, 'Failed to delete result'));
@@ -289,6 +319,11 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
     setDetailTab,
     drillFormOpen,
     setDrillFormOpen,
+    closeDrillForm,
+    openNewDrillForm,
+    openEditDrill,
+    openCloneDrill,
+    cloneForm,
     editDrill,
     setEditDrill,
     handleCreateDrill,
