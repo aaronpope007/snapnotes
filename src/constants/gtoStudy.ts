@@ -131,6 +131,7 @@ export function formatDrillSummary(drill: {
   potType: GtoPotType;
   heroPosition: string;
   villainPosition?: string;
+  endsAfter: GtoEndsAfter;
   solver: GtoSolver;
 }): string {
   const streetLabel = drill.street ?? getDefaultStreet(drill.handStart);
@@ -142,6 +143,7 @@ export function formatDrillSummary(drill: {
     `Hero ${drill.heroPosition}`,
   ];
   if (drill.villainPosition) parts.push(`vs ${drill.villainPosition}`);
+  parts.push(GTO_ENDS_AFTER_LABELS[drill.endsAfter]);
   parts.push(drill.solver);
   return parts.join(' · ');
 }

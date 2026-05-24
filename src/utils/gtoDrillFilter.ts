@@ -1,5 +1,55 @@
 import { getDefaultStreet } from '../constants/gtoStudy';
-import type { GtoDrill, GtoStreetName } from '../types/gtoStudy';
+import type {
+  GtoDrill,
+  GtoEndsAfter,
+  GtoFormat,
+  GtoHandStart,
+  GtoPosition,
+  GtoPotType,
+  GtoSolver,
+  GtoStack,
+  GtoStreetName,
+} from '../types/gtoStudy';
+
+export interface GtoDrillFacetFilters {
+  format: GtoFormat[];
+  stack: GtoStack[];
+  handStart: GtoHandStart[];
+  street: GtoStreetName[];
+  potType: GtoPotType[];
+  heroPosition: GtoPosition[];
+  villainPosition: GtoPosition[];
+  endsAfter: GtoEndsAfter[];
+  solver: GtoSolver[];
+}
+
+export function emptyGtoDrillFacetFilters(): GtoDrillFacetFilters {
+  return {
+    format: [],
+    stack: [],
+    handStart: [],
+    street: [],
+    potType: [],
+    heroPosition: [],
+    villainPosition: [],
+    endsAfter: [],
+    solver: [],
+  };
+}
+
+export function isGtoDrillFacetFiltersActive(facets: GtoDrillFacetFilters): boolean {
+  return (
+    facets.format.length > 0 ||
+    facets.stack.length > 0 ||
+    facets.handStart.length > 0 ||
+    facets.street.length > 0 ||
+    facets.potType.length > 0 ||
+    facets.heroPosition.length > 0 ||
+    facets.villainPosition.length > 0 ||
+    facets.endsAfter.length > 0 ||
+    facets.solver.length > 0
+  );
+}
 
 function effectiveDrillStreet(drill: GtoDrill): GtoStreetName {
   return drill.street ?? getDefaultStreet(drill.handStart);
@@ -89,4 +139,42 @@ export function filterGtoDrillsByQuery(drills: GtoDrill[], rawQuery: string): Gt
     if (tokens.length === 0) return true;
     return tokens.every((tok) => tokenMatchesAtom(tok, drill));
   });
+}
+
+function matchesFacetList<T>(selected: T[], value: T): boolean {
+  return selected.length === 0 || selected.includes(value);
+}
+
+/** Checkbox facet filters — OR within each group, AND across groups. */
+export function applyGtoDrillFacetFilters(
+  drills: GtoDrill[],
+  facets: GtoDrillFacetFilters
+): GtoDrill[] {
+  if (!isGtoDrillFacetFiltersActive(facets)) return drills;
+
+  return drills.filter((drill) => {
+    if (!matchesFacetList(facets.format, drill.format)) return false;
+    if (!matchesFacetList(facets.stack, drill.stack)) return false;
+    if (!matchesFacetList(facets.handStart, drill.handStart)) return false;
+    if (!matchesFacetList(facets.street, effectiveDrillStreet(drill))) return false;
+    if (!matchesFacetList(facets.potType, drill.potType)) return false;
+    if (!matchesFacetList(facets.heroPosition, drill.heroPosition)) return false;
+    if (
+      facets.villainPosition.length > 0 &&
+      (!drill.villainPosition || !facets.villainPosition.includes(drill.villainPosition))
+    ) {
+      return false;
+    }
+    if (!matchesFacetList(facets.endsAfter, drill.endsAfter)) return false;
+    if (!matchesFacetList(facets.solver, drill.solver)) return false;
+    return true;
+  });
+}
+
+export function filterGtoDrills(
+  drills: GtoDrill[],
+  rawQuery: string,
+  facets: GtoDrillFacetFilters
+): GtoDrill[] {
+  return applyGtoDrillFacetFilters(filterGtoDrillsByQuery(drills, rawQuery), facets);
 }

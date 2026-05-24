@@ -20,6 +20,28 @@ function getUserId(req: Request): string | undefined {
   return typeof body.userId === 'string' ? body.userId.trim() : undefined;
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Case-insensitive name match within a user's drills. */
+async function findDrillWithName(
+  userId: string,
+  name: string,
+  excludeId?: string
+) {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const filter: Record<string, unknown> = {
+    userId,
+    name: { $regex: `^${escapeRegex(trimmed)}$`, $options: 'i' },
+  };
+  if (excludeId && mongoose.Types.ObjectId.isValid(excludeId)) {
+    filter._id = { $ne: new mongoose.Types.ObjectId(excludeId) };
+  }
+  return GtoDrill.findOne(filter).select('_id name').lean();
+}
+
 async function getDrillForUser(drillId: string, userId: string) {
   if (!mongoose.Types.ObjectId.isValid(drillId)) return null;
   return GtoDrill.findOne({ _id: drillId, userId });
@@ -96,10 +118,16 @@ router.post('/', async (req: Request, res: Response) => {
     const validationError = validateDrillFields(body, true);
     if (validationError) return res.status(400).json({ error: validationError });
 
+    const drillName = body.name!.trim().slice(0, 120);
+    const duplicate = await findDrillWithName(userId, drillName);
+    if (duplicate) {
+      return res.status(409).json({ error: 'A drill with this name already exists' });
+    }
+
     const potType = body.potType as string;
     const drill = new GtoDrill({
       userId,
-      name: body.name!.trim().slice(0, 120),
+      name: drillName,
       description: normalizeDrillDescription(body.description),
       format: body.format,
       stack: body.stack,
@@ -164,7 +192,13 @@ router.patch('/:id', async (req: Request, res: Response) => {
     const validationError = validateDrillFields(merged, true);
     if (validationError) return res.status(400).json({ error: validationError });
 
-    drill.name = merged.name!.trim().slice(0, 120);
+    const drillName = merged.name!.trim().slice(0, 120);
+    const duplicate = await findDrillWithName(drill.userId, drillName, String(drill._id));
+    if (duplicate) {
+      return res.status(409).json({ error: 'A drill with this name already exists' });
+    }
+
+    drill.name = drillName;
     drill.description = normalizeDrillDescription(merged.description) ?? '';
     drill.format = merged.format as 'HU' | '8max';
     drill.stack = merged.stack as '100bb' | '200bb';

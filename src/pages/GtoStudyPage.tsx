@@ -6,7 +6,7 @@ import { useGtoDrills } from '../hooks/useGtoDrills';
 import { GtoStudyTabs } from '../components/gtoStudy/GtoStudyTabs';
 import { GtoDrillsTab } from '../components/gtoStudy/GtoDrillsTab';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { filterGtoDrillsByQuery } from '../utils/gtoDrillFilter';
+import { filterGtoDrills, emptyGtoDrillFacetFilters } from '../utils/gtoDrillFilter';
 
 interface GtoStudyPageProps {
   onSuccess?: (msg: string) => void;
@@ -17,10 +17,18 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
   const userName = useUserName();
   const hook = useGtoDrills({ userId: userName, onSuccess, onError });
   const [filterQuery, setFilterQuery] = useState('');
+  const [facetFilters, setFacetFilters] = useState(emptyGtoDrillFacetFilters);
+  const [facetFilterResetKey, setFacetFilterResetKey] = useState(0);
+
+  const handleClearAllFilters = () => {
+    setFilterQuery('');
+    setFacetFilters(() => emptyGtoDrillFacetFilters());
+    setFacetFilterResetKey((k) => k + 1);
+  };
 
   const visibleDrills = useMemo(
-    () => filterGtoDrillsByQuery(hook.drills, filterQuery),
-    [hook.drills, filterQuery]
+    () => filterGtoDrills(hook.drills, filterQuery, facetFilters),
+    [hook.drills, filterQuery, facetFilters]
   );
 
   return (
@@ -29,8 +37,14 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
         <GtoStudyTabs
           filterQuery={filterQuery}
           onFilterChange={setFilterQuery}
+          facetFilters={facetFilters}
+          onFacetFiltersChange={setFacetFilters}
+          facetFilterResetKey={facetFilterResetKey}
+          onClearAllFilters={handleClearAllFilters}
           onLog={() => hook.openLogResult()}
           onNewDrill={() => hook.openNewDrillForm()}
+          drillCount={userName?.trim() ? visibleDrills.length : undefined}
+          loading={hook.loading}
         />
       )}
       {!userName?.trim() ? (
