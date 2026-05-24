@@ -128,6 +128,8 @@ export function GtoDrillResultModal({
         notes: notesCreate,
       });
     }
+    baselineRef.current = form;
+    onClose();
   };
 
   return (

@@ -44,10 +44,13 @@ export function LogResultModal({
   const [pendingDrillId, setPendingDrillId] = useState<string | null>(null);
   const wasOpenRef = useRef(false);
 
-  /** Reset wizard only when the modal opens — not when drills refresh after create. */
+  /** Reset wizard when closed; initialize when opened (not when drills refresh after create). */
   useEffect(() => {
     if (!open) {
       wasOpenRef.current = false;
+      setResultOpen(false);
+      setNewDrillOpen(false);
+      setPendingDrillId(null);
       return;
     }
     if (wasOpenRef.current) return;
