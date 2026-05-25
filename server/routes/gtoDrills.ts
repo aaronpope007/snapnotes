@@ -52,58 +52,96 @@ async function getDrillForUser(drillId: string, userId: string) {
 
 const RECENT_RESULTS_SUMMARY_LIMIT = 6;
 
+/** Active drills: archived false, null, or missing. */
+function activeDrillsMatch(userId: string) {
+  return { userId, archived: { $ne: true } };
+}
+
+function archivedDrillsMatch(userId: string) {
+  return { userId, archived: true };
+}
+
+function wantsRecentResultsSummary(req: Request): boolean {
+  return (
+    typeof req.query.recentResults === 'string' &&
+    ['1', 'true', 'yes'].includes(req.query.recentResults.trim().toLowerCase())
+  );
+}
+
+async function listDrillsForUser(
+  userId: string,
+  match: Record<string, unknown>,
+  withRecent: boolean
+) {
+  if (!withRecent) {
+    return GtoDrill.find(match).sort({ updatedAt: -1 }).lean();
+  }
+
+  const resultCollName = GtoDrillResult.collection.collectionName;
+
+  const pipeline = [
+    { $match: match },
+    { $sort: { updatedAt: -1 } },
+    {
+      $lookup: {
+        from: resultCollName,
+        let: { dId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [{ $eq: ['$drillId', '$$dId'] }, { $eq: ['$userId', userId] }],
+              },
+            },
+          },
+          { $sort: { date: -1 } },
+          { $limit: RECENT_RESULTS_SUMMARY_LIMIT },
+          {
+            $project: {
+              _id: { $toString: '$_id' },
+              date: 1,
+              evLoss: 1,
+              handsPlayed: 1,
+              accuracy: 1,
+              evDiff: 1,
+              score: 1,
+            },
+          },
+        ],
+        as: 'recentResultsSummary',
+      },
+    },
+  ];
+
+  return GtoDrill.aggregate(pipeline);
+}
+
+router.get('/archived', async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(400).json({ error: 'userId query param required' });
+
+    const drills = await listDrillsForUser(
+      userId,
+      archivedDrillsMatch(userId),
+      wantsRecentResultsSummary(req)
+    );
+    res.json(drills);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch archived GTO drills' });
+  }
+});
+
 router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
 
-    const withRecent =
-      typeof req.query.recentResults === 'string' &&
-      ['1', 'true', 'yes'].includes(req.query.recentResults.trim().toLowerCase());
-
-    if (!withRecent) {
-      const drills = await GtoDrill.find({ userId }).sort({ updatedAt: -1 }).lean();
-      res.json(drills);
-      return;
-    }
-
-    const resultCollName = GtoDrillResult.collection.collectionName;
-
-    const pipeline = [
-      { $match: { userId } },
-      { $sort: { updatedAt: -1 } },
-      {
-        $lookup: {
-          from: resultCollName,
-          let: { dId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [{ $eq: ['$drillId', '$$dId'] }, { $eq: ['$userId', userId] }],
-                },
-              },
-            },
-            { $sort: { date: -1 } },
-            { $limit: RECENT_RESULTS_SUMMARY_LIMIT },
-            {
-              $project: {
-                _id: { $toString: '$_id' },
-                date: 1,
-                evLoss: 1,
-                handsPlayed: 1,
-                accuracy: 1,
-                evDiff: 1,
-                score: 1,
-              },
-            },
-          ],
-          as: 'recentResultsSummary',
-        },
-      },
-    ];
-
-    const drills = await GtoDrill.aggregate(pipeline);
+    const drills = await listDrillsForUser(
+      userId,
+      activeDrillsMatch(userId),
+      wantsRecentResultsSummary(req)
+    );
     res.json(drills);
   } catch {
     res.status(500).json({ error: 'Failed to fetch GTO drills' });
@@ -229,6 +267,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
     drill.customConfig = normalizeCustomConfig(drill.potType, merged.customConfig) as
       | typeof drill.customConfig
       | undefined;
+
+    if (body.archived !== undefined) {
+      drill.archived = Boolean(body.archived);
+    }
 
     await drill.save();
     res.json(drill);

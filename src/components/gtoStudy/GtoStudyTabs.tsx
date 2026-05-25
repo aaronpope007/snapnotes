@@ -2,6 +2,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
@@ -13,7 +15,11 @@ import {
   type GtoDrillFacetFilters as GtoDrillFacetFiltersState,
 } from '../../utils/gtoDrillFilter';
 
+export type GtoDrillListView = 'active' | 'archived';
+
 interface GtoStudyTabsProps {
+  listView: GtoDrillListView;
+  onListViewChange: (view: GtoDrillListView) => void;
   filterQuery: string;
   onFilterChange: (value: string) => void;
   facetFilters: GtoDrillFacetFiltersState;
@@ -27,6 +33,8 @@ interface GtoStudyTabsProps {
 }
 
 export function GtoStudyTabs({
+  listView,
+  onListViewChange,
   filterQuery,
   onFilterChange,
   facetFilters,
@@ -58,6 +66,23 @@ export function GtoStudyTabs({
       >
         GTO Study
       </Typography>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={listView}
+        onChange={(_, value: GtoDrillListView | null) => {
+          if (value) onListViewChange(value);
+        }}
+        aria-label="Drill list view"
+        sx={{ flexShrink: 0 }}
+      >
+        <ToggleButton value="active" aria-label="Active drills">
+          Active
+        </ToggleButton>
+        <ToggleButton value="archived" aria-label="Archived drills">
+          Archived
+        </ToggleButton>
+      </ToggleButtonGroup>
       <TextField
         size="small"
         placeholder="Filter drills..."

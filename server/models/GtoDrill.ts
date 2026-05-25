@@ -51,6 +51,7 @@ const gtoDrillSchema = new mongoose.Schema(
       default: 'Lucid',
     },
     tier: { type: Number, min: 1, max: 3 },
+    archived: { type: Boolean, default: false },
     customConfig: { type: customConfigSchema },
   },
   { timestamps: true }

@@ -21,6 +21,14 @@ export async function fetchGtoDrills(userId: string | null): Promise<GtoDrill[]>
   return data;
 }
 
+export async function fetchArchivedGtoDrills(userId: string | null): Promise<GtoDrill[]> {
+  if (!userId?.trim()) return [];
+  const { data } = await api.get<GtoDrill[]>('/gto-drills/archived', {
+    params: { userId: userId.trim(), recentResults: true },
+  });
+  return data;
+}
+
 
 export async function createGtoDrill(
   payload: GtoDrillCreate & { userId: string | null }

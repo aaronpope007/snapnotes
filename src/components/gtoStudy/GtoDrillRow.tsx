@@ -1,14 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
+import Popover from '@mui/material/Popover';
+import Chip from '@mui/material/Chip';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { formatDrillSummary } from '../../constants/gtoStudy';
 import { GtoDrillDescriptionButton } from './GtoDrillDescriptionButton';
@@ -22,12 +26,15 @@ import type { GtoDrill } from '../../types/gtoStudy';
 
 interface GtoDrillRowProps {
   drill: GtoDrill;
+  isArchived?: boolean;
   onOpenDrill: (drill: GtoDrill) => void;
   onOpenChart: (drill: GtoDrill) => void;
   onLogResult: (drillId: string) => void;
   onEdit: (drill: GtoDrill) => void;
   onClone: (drill: GtoDrill) => void;
   onDelete: (drillId: string) => void;
+  onArchive?: (drillId: string) => void;
+  onUnarchive?: (drillId: string) => void;
   onCopySuccess?: () => void;
   onCopyError?: (msg: string) => void;
 }
@@ -51,16 +58,20 @@ function TrendGlyph({ trend }: { trend: ReturnType<typeof drillListTrend> }) {
 
 export function GtoDrillRow({
   drill,
+  isArchived = false,
   onOpenDrill,
   onOpenChart,
   onLogResult,
   onEdit,
   onClone,
   onDelete,
+  onArchive,
+  onUnarchive,
   onCopySuccess,
   onCopyError,
 }: GtoDrillRowProps) {
   const compact = useCompactMode();
+  const [archiveAnchor, setArchiveAnchor] = useState<HTMLElement | null>(null);
 
   const handleCopyName = useCallback(
     async (e: React.MouseEvent) => {
@@ -79,6 +90,17 @@ export function GtoDrillRow({
     },
     [drill.name, onCopySuccess, onCopyError]
   );
+
+  const handleArchiveClick = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    setArchiveAnchor(e.currentTarget);
+  };
+
+  const handleArchiveConfirm = () => {
+    setArchiveAnchor(null);
+    onArchive?.(drill._id);
+  };
+
   const summaryLine = formatDrillSummary(drill);
   const perfPrimary = drillListPerformancePrimary(drill.recentResultsSummary);
   const perfSecondary = drillListPerformanceSecondary(drill.recentResultsSummary);
@@ -86,7 +108,15 @@ export function GtoDrillRow({
   const trend = drillListTrend(drill.recentResultsSummary);
 
   return (
-    <Paper variant="outlined" sx={{ borderColor: 'divider', borderRadius: 1, width: '100%' }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        borderColor: 'divider',
+        borderRadius: 1,
+        width: '100%',
+        opacity: isArchived ? 0.72 : 1,
+      }}
+    >
       <Box
         sx={{
           display: 'flex',
@@ -129,6 +159,20 @@ export function GtoDrillRow({
             >
               {drill.name}
             </Typography>
+            {isArchived && (
+              <Chip
+                label="Archived"
+                size="small"
+                sx={{
+                  height: 18,
+                  fontSize: '0.62rem',
+                  flexShrink: 0,
+                  color: 'text.secondary',
+                  borderColor: 'divider',
+                }}
+                variant="outlined"
+              />
+            )}
             <Tooltip title="Copy name for Lucid">
               <IconButton
                 size="small"
@@ -210,6 +254,29 @@ export function GtoDrillRow({
             >
               <ContentCopyIcon fontSize="small" />
             </IconButton>
+            {isArchived ? (
+              <Tooltip title="Restore to active drills">
+                <IconButton
+                  size="small"
+                  onClick={() => onUnarchive?.(drill._id)}
+                  aria-label="Unarchive drill"
+                  sx={{ p: 0.25 }}
+                >
+                  <UnarchiveIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Archive drill">
+                <IconButton
+                  size="small"
+                  onClick={handleArchiveClick}
+                  aria-label="Archive drill"
+                  sx={{ p: 0.25 }}
+                >
+                  <ArchiveIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             <IconButton
               size="small"
               onClick={() => onDelete(drill._id)}
@@ -221,6 +288,28 @@ export function GtoDrillRow({
           </Box>
         </Box>
       </Box>
+
+      <Popover
+        open={Boolean(archiveAnchor)}
+        anchorEl={archiveAnchor}
+        onClose={() => setArchiveAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Box sx={{ p: 1.5, maxWidth: 260 }}>
+          <Typography variant="body2" sx={{ mb: 1.25 }}>
+            Archive this drill? It won&apos;t appear in your active list or tier progress.
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.75 }}>
+            <Button size="small" onClick={() => setArchiveAnchor(null)}>
+              Cancel
+            </Button>
+            <Button size="small" variant="contained" onClick={handleArchiveConfirm}>
+              Confirm
+            </Button>
+          </Box>
+        </Box>
+      </Popover>
     </Paper>
   );
 }

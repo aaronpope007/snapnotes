@@ -3,10 +3,15 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
 import { useGtoDrills } from '../hooks/useGtoDrills';
-import { GtoStudyTabs } from '../components/gtoStudy/GtoStudyTabs';
+import { GtoStudyTabs, type GtoDrillListView } from '../components/gtoStudy/GtoStudyTabs';
 import { GtoDrillsTab } from '../components/gtoStudy/GtoDrillsTab';
 import { TierProgressPanel } from '../components/gtoStudy/TierProgressPanel';
 import { DrillTodayCard } from '../components/gtoStudy/DrillTodayCard';
+import {
+  DrillHistoryModal,
+  getHistoryDrillId,
+  type DrillHistoryDrill,
+} from '../components/gtoStudy/DrillHistoryModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { filterGtoDrills, emptyGtoDrillFacetFilters } from '../utils/gtoDrillFilter';
 import { fetchGtoTierProgress } from '../api/gtoTierProgress';
@@ -20,12 +25,14 @@ interface GtoStudyPageProps {
 export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
   const userName = useUserName();
   const hook = useGtoDrills({ userId: userName, onSuccess, onError });
+  const [listView, setListView] = useState<GtoDrillListView>('active');
   const [filterQuery, setFilterQuery] = useState('');
   const [facetFilters, setFacetFilters] = useState(emptyGtoDrillFacetFilters);
   const [facetFilterResetKey, setFacetFilterResetKey] = useState(0);
   const [tierRows, setTierRows] = useState<GtoTierProgressRow[]>([]);
   const [tierLoading, setTierLoading] = useState(false);
   const [tierError, setTierError] = useState<string | null>(null);
+  const [historyDrill, setHistoryDrill] = useState<DrillHistoryDrill | null>(null);
 
   const handleClearAllFilters = () => {
     setFilterQuery('');
@@ -33,9 +40,23 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
     setFacetFilterResetKey((k) => k + 1);
   };
 
+  const isArchivedView = listView === 'archived';
+
+  useEffect(() => {
+    if (isArchivedView) void hook.loadArchivedDrills();
+  }, [isArchivedView, hook.loadArchivedDrills]);
+
+  const sourceDrills = isArchivedView ? hook.archivedDrills : hook.drills;
+  const listLoading = isArchivedView ? hook.archivedLoading : hook.loading;
+
   const visibleDrills = useMemo(
-    () => filterGtoDrills(hook.drills, filterQuery, facetFilters),
-    [hook.drills, filterQuery, facetFilters]
+    () => filterGtoDrills(sourceDrills, filterQuery, facetFilters),
+    [sourceDrills, filterQuery, facetFilters]
+  );
+
+  const drillSolvers = useMemo(
+    () => Object.fromEntries(hook.drills.map((d) => [d._id, d.solver])),
+    [hook.drills]
   );
 
   const tierProgressRefreshKey = useMemo(
@@ -75,10 +96,30 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
     [hook.openLogResult]
   );
 
+  const handleOpenHistory = useCallback(
+    (drill: DrillHistoryDrill) => {
+      if (!userName?.trim()) {
+        onError?.('Enter your name to view drill history');
+        return;
+      }
+      setHistoryDrill(drill);
+    },
+    [userName, onError]
+  );
+
+  const handleHistoryLogResult = useCallback(
+    (drill: DrillHistoryDrill) => {
+      handleLogResultById(getHistoryDrillId(drill));
+    },
+    [handleLogResultById]
+  );
+
   return (
     <Box sx={{ width: '100%' }}>
       {!hook.selectedDrillId && (
         <GtoStudyTabs
+          listView={listView}
+          onListViewChange={setListView}
           filterQuery={filterQuery}
           onFilterChange={setFilterQuery}
           facetFilters={facetFilters}
@@ -88,7 +129,7 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
           onLog={() => hook.openLogResult()}
           onNewDrill={() => hook.openNewDrillForm()}
           drillCount={userName?.trim() ? visibleDrills.length : undefined}
-          loading={hook.loading}
+          loading={listLoading}
         />
       )}
       {!userName?.trim() ? (
@@ -97,24 +138,35 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
         </Typography>
       ) : (
         <ErrorBoundary>
-          {!hook.selectedDrillId && (
+          {!hook.selectedDrillId && !isArchivedView && (
             <>
               <DrillTodayCard
                 rows={tierRows}
                 loading={tierLoading}
-                onLogResult={handleLogResultById}
+                onOpenHistory={handleOpenHistory}
               />
               <TierProgressPanel
                 rows={tierRows}
                 loading={tierLoading}
                 error={tierError}
-                onLogResult={handleLogResultById}
+                onOpenHistory={handleOpenHistory}
               />
             </>
           )}
+          <DrillHistoryModal
+            open={historyDrill != null}
+            onClose={() => setHistoryDrill(null)}
+            drill={historyDrill}
+            userId={userName}
+            drillSolvers={drillSolvers}
+            onLogResult={handleHistoryLogResult}
+            onLoadError={(msg) => onError?.(msg)}
+          />
           <GtoDrillsTab
             hook={hook}
             listDrills={visibleDrills}
+            isArchivedView={isArchivedView}
+            listLoading={listLoading}
             onCopySuccess={() => onSuccess?.('Drill name copied')}
             onCopyError={(msg) => onError?.(msg)}
           />

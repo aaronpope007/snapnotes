@@ -58,6 +58,7 @@ export interface GtoDrill {
   endsAfter: GtoEndsAfter;
   solver: GtoSolver;
   tier?: GtoStudyTier | null;
+  archived?: boolean;
   customConfig?: GtoCustomConfig;
   createdAt: string;
   updatedAt: string;
@@ -81,6 +82,7 @@ export interface GtoDrillCreate {
 }
 
 export type GtoDrillUpdate = Partial<GtoDrillCreate> & {
+  archived?: boolean;
   customConfig?: GtoCustomConfig | null;
 };
 

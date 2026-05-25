@@ -35,7 +35,7 @@ router.get('/tier-progress', async (req: Request, res: Response) => {
     const resultCollName = GtoDrillResult.collection.collectionName;
 
     const rows = await GtoDrill.aggregate([
-      { $match: { userId } },
+      { $match: { userId, archived: { $ne: true } } },
       { $sort: { name: 1 } },
       {
         $lookup: {

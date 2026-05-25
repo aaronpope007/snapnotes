@@ -26,7 +26,7 @@ const drillNameLinkSx = {
 interface DrillTodayCardProps {
   rows: GtoTierProgressRow[];
   loading?: boolean;
-  onLogResult: (drillId: string) => void;
+  onOpenHistory: (row: GtoTierProgressRow) => void;
 }
 
 function tierChip(tier: GtoStudyTier | null) {
@@ -41,7 +41,7 @@ function tierChip(tier: GtoStudyTier | null) {
   );
 }
 
-export function DrillTodayCard({ rows, loading, onLogResult }: DrillTodayCardProps) {
+export function DrillTodayCard({ rows, loading, onOpenHistory }: DrillTodayCardProps) {
   const recommended = useMemo(() => pickDrillToday(rows, 3), [rows]);
 
   if (loading && rows.length === 0) {
@@ -86,7 +86,7 @@ export function DrillTodayCard({ rows, loading, onLogResult }: DrillTodayCardPro
                   component="button"
                   type="button"
                   variant="body2"
-                  onClick={() => onLogResult(row.drillId)}
+                  onClick={() => onOpenHistory(row)}
                   title={row.name}
                   sx={{ ...drillNameLinkSx, flex: 1, minWidth: 120 }}
                 >

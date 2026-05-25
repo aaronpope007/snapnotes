@@ -21,6 +21,7 @@ export interface GtoDrillBodyFields {
   endsAfter?: string;
   solver?: string;
   tier?: number | null;
+  archived?: boolean;
   customConfig?: {
     streetActions?: { street?: string; sizing?: string }[];
     notes?: string;

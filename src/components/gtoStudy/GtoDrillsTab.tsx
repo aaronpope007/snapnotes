@@ -15,13 +15,29 @@ import type { GtoDrill } from '../../types/gtoStudy';
 interface GtoDrillsTabProps {
   hook: ReturnType<typeof useGtoDrills>;
   listDrills: GtoDrill[];
+  isArchivedView?: boolean;
+  listLoading?: boolean;
   onCopySuccess?: () => void;
   onCopyError?: (msg: string) => void;
 }
 
-export function GtoDrillsTab({ hook, listDrills, onCopySuccess, onCopyError }: GtoDrillsTabProps) {
+export function GtoDrillsTab({
+  hook,
+  listDrills,
+  isArchivedView = false,
+  listLoading,
+  onCopySuccess,
+  onCopyError,
+}: GtoDrillsTabProps) {
   const drillFormCopyProps = { onCopySuccess, onCopyError };
   const compact = useCompactMode();
+  const loading = listLoading ?? hook.loading;
+  const totalCount = isArchivedView ? hook.archivedDrills.length : hook.drills.length;
+
+  const refreshList = () => {
+    if (isArchivedView) void hook.loadArchivedDrills();
+    else void hook.loadDrills();
+  };
 
   if (hook.selectedDrill) {
     return (
@@ -69,18 +85,20 @@ export function GtoDrillsTab({ hook, listDrills, onCopySuccess, onCopyError }: G
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: compact ? 1 : 1.5 }}>
-        <IconButton size="small" onClick={() => void hook.loadDrills()} aria-label="Refresh">
+        <IconButton size="small" onClick={refreshList} aria-label="Refresh">
           <RefreshIcon fontSize="small" />
         </IconButton>
       </Box>
 
-      {hook.loading ? (
+      {loading ? (
         <Typography variant="body2" color="text.secondary">
           Loading...
         </Typography>
-      ) : hook.drills.length === 0 ? (
+      ) : totalCount === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No drills yet. Create a drill definition, then log results from GTO Wizard.
+          {isArchivedView
+            ? 'No archived drills.'
+            : 'No drills yet. Create a drill definition, then log results from GTO Wizard.'}
         </Typography>
       ) : listDrills.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
@@ -92,12 +110,15 @@ export function GtoDrillsTab({ hook, listDrills, onCopySuccess, onCopyError }: G
             <GtoDrillRow
               key={drill._id}
               drill={drill}
+              isArchived={isArchivedView}
               onOpenDrill={(d) => hook.openDrillDetail(d._id, 'results')}
               onOpenChart={(d) => hook.openDrillDetail(d._id, 'chart')}
               onLogResult={hook.openLogResult}
               onEdit={hook.openEditDrill}
               onClone={hook.openCloneDrill}
               onDelete={hook.requestDeleteDrill}
+              onArchive={hook.archiveDrill}
+              onUnarchive={hook.unarchiveDrill}
               {...drillFormCopyProps}
             />
           ))}

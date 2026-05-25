@@ -10,12 +10,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import { useCompactMode } from '../../context/CompactModeContext';
-import {
-  GTO_ENDS_AFTER_LABELS,
-  GTO_FORMAT_LABELS,
-  GTO_POT_TYPE_LABELS,
-  formatDrillSummary,
-} from '../../constants/gtoStudy';
+import { formatDrillSummary } from '../../constants/gtoStudy';
 import { GtoDrillEvChart } from './GtoDrillEvChart';
 import { GtoDrillResultRow } from './GtoDrillResultRow';
 import { groupResultsByDate } from '../../utils/gtoStudyUtils';
@@ -58,14 +53,8 @@ export function GtoDrillDetailView({ drill, hook }: GtoDrillDetailViewProps) {
         </IconButton>
       </Box>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-        {formatDrillSummary(drill)}
-      </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        {GTO_FORMAT_LABELS[drill.format]} · {drill.stack} · {drill.handStart} ·{' '}
-        {GTO_POT_TYPE_LABELS[drill.potType]} · Hero {drill.heroPosition}
-        {drill.villainPosition ? ` vs ${drill.villainPosition}` : ''} ·{' '}
-        {GTO_ENDS_AFTER_LABELS[drill.endsAfter]} · {drill.solver}
+        {formatDrillSummary(drill)}
       </Typography>
 
       {drill.description?.trim() && (

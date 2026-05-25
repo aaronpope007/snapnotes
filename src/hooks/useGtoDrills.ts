@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from './useConfirm';
 import {
   fetchGtoDrills,
+  fetchArchivedGtoDrills,
   createGtoDrill,
   updateGtoDrill,
   deleteGtoDrill,
@@ -31,7 +32,9 @@ export type GtoDetailTab = 'chart' | 'results';
 
 export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions) {
   const [drills, setDrills] = useState<GtoDrill[]>([]);
+  const [archivedDrills, setArchivedDrills] = useState<GtoDrill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [archivedLoading, setArchivedLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedDrillId, setSelectedDrillId] = useState<string | null>(null);
   const [detailResults, setDetailResults] = useState<GtoDrillResult[]>([]);
@@ -98,6 +101,27 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
     [userId, onError]
   );
 
+  const loadArchivedDrills = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!userId?.trim()) {
+        setArchivedDrills([]);
+        setArchivedLoading(false);
+        return;
+      }
+      if (!options?.silent) setArchivedLoading(true);
+      try {
+        const data = await fetchArchivedGtoDrills(userId);
+        setArchivedDrills(data ?? []);
+      } catch (err) {
+        if (!options?.silent) setArchivedDrills([]);
+        onError?.(getApiErrorMessage(err, 'Failed to load archived drills'));
+      } finally {
+        if (!options?.silent) setArchivedLoading(false);
+      }
+    },
+    [userId, onError]
+  );
+
   const loadDetailResults = useCallback(
     async (drillId: string) => {
       if (!userId?.trim()) {
@@ -130,7 +154,10 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
     }
   }, [selectedDrillId, loadDetailResults]);
 
-  const selectedDrill = drills.find((d) => d._id === selectedDrillId) ?? null;
+  const selectedDrill =
+    drills.find((d) => d._id === selectedDrillId) ??
+    archivedDrills.find((d) => d._id === selectedDrillId) ??
+    null;
 
   const openDrillDetail = useCallback((drillId: string, initialTab: GtoDetailTab = 'results') => {
     setSelectedDrillId(drillId);
@@ -142,6 +169,42 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
     setDetailResults([]);
     setDetailTab('results');
   }, []);
+
+  const archiveDrill = useCallback(
+    async (id: string) => {
+      setSaving(true);
+      try {
+        await updateGtoDrill(id, { archived: true });
+        if (selectedDrillId === id) closeDrillDetail();
+        await loadDrills({ silent: true });
+        await loadArchivedDrills({ silent: true });
+        onSuccess?.('Drill archived');
+      } catch (err) {
+        onError?.(getApiErrorMessage(err, 'Failed to archive drill'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [selectedDrillId, closeDrillDetail, loadDrills, loadArchivedDrills, onSuccess, onError]
+  );
+
+  const unarchiveDrill = useCallback(
+    async (id: string) => {
+      setSaving(true);
+      try {
+        await updateGtoDrill(id, { archived: false });
+        if (selectedDrillId === id) closeDrillDetail();
+        await loadDrills({ silent: true });
+        await loadArchivedDrills({ silent: true });
+        onSuccess?.('Drill restored');
+      } catch (err) {
+        onError?.(getApiErrorMessage(err, 'Failed to restore drill'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [selectedDrillId, closeDrillDetail, loadDrills, loadArchivedDrills, onSuccess, onError]
+  );
 
   const closeDrillForm = useCallback(() => {
     setDrillFormOpen(false);
@@ -197,6 +260,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         const updated = await updateGtoDrill(id, updates);
         closeDrillForm();
         await loadDrills({ silent: true });
+        await loadArchivedDrills({ silent: true });
         onSuccess?.('Drill updated');
         return updated;
       } catch (err) {
@@ -206,7 +270,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         setSaving(false);
       }
     },
-    [onSuccess, onError, loadDrills, closeDrillForm]
+    [onSuccess, onError, loadDrills, loadArchivedDrills, closeDrillForm]
   );
 
   const requestDeleteDrill = useCallback(
@@ -216,13 +280,22 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
           await deleteGtoDrill(id);
           if (selectedDrillId === id) closeDrillDetail();
           await loadDrills({ silent: true });
+          await loadArchivedDrills({ silent: true });
           onSuccess?.('Drill deleted');
         } catch (err) {
           onError?.(getApiErrorMessage(err, 'Failed to delete drill'));
         }
       });
     },
-    [openDeleteDrillConfirm, selectedDrillId, closeDrillDetail, onSuccess, onError, loadDrills]
+    [
+      openDeleteDrillConfirm,
+      selectedDrillId,
+      closeDrillDetail,
+      onSuccess,
+      onError,
+      loadDrills,
+      loadArchivedDrills,
+    ]
   );
 
   const openLogResult = useCallback((drillId?: string) => {
@@ -305,7 +378,12 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
 
   return {
     drills,
+    archivedDrills,
     loading,
+    archivedLoading,
+    loadArchivedDrills,
+    archiveDrill,
+    unarchiveDrill,
     saving,
     selectedDrill,
     selectedDrillId,

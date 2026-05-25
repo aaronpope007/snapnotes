@@ -15,9 +15,11 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import HistoryIcon from '@mui/icons-material/History';
 import { GtoStudyTierHelp } from './GtoStudyTierHelp';
 import type { GtoTierProgressRow } from '../../types/gtoTierProgress';
 import {
@@ -51,7 +53,7 @@ interface TierProgressPanelProps {
   rows: GtoTierProgressRow[];
   loading?: boolean;
   error?: string | null;
-  onLogResult: (drillId: string) => void;
+  onOpenHistory: (row: GtoTierProgressRow) => void;
 }
 
 function formatLatestDate(iso: string | null): string {
@@ -126,10 +128,10 @@ const STACK_GROUPS = ['100bb', '200bb'] as const;
 
 function TierDrillTableRows({
   drills,
-  onLogResult,
+  onOpenHistory,
 }: {
   drills: GtoTierProgressRow[];
-  onLogResult: (drillId: string) => void;
+  onOpenHistory: (row: GtoTierProgressRow) => void;
 }) {
   return (
     <>
@@ -140,7 +142,7 @@ function TierDrillTableRows({
               component="button"
               type="button"
               variant="body2"
-              onClick={() => onLogResult(row.drillId)}
+              onClick={() => onOpenHistory(row)}
               title={row.name}
               sx={drillNameLinkSx}
             >
@@ -160,6 +162,17 @@ function TierDrillTableRows({
             <NextReviewCell row={row} />
           </TableCell>
           <TableCell align="center">{statusChip(drillStatus(row))}</TableCell>
+          <TableCell align="center" sx={{ width: 40, px: 0.5 }}>
+            <Tooltip title={row.timesLogged === 0 ? 'View drill (no logs yet)' : 'View result history'}>
+              <IconButton
+                size="small"
+                aria-label={`History — ${row.name}`}
+                onClick={() => onOpenHistory(row)}
+              >
+                <HistoryIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          </TableCell>
         </TableRow>
       ))}
     </>
@@ -168,10 +181,10 @@ function TierDrillTableRows({
 
 function TierDrillTable({
   drills,
-  onLogResult,
+  onOpenHistory,
 }: {
   drills: GtoTierProgressRow[];
-  onLogResult: (drillId: string) => void;
+  onOpenHistory: (row: GtoTierProgressRow) => void;
 }) {
   if (drills.length === 0) {
     return (
@@ -209,10 +222,11 @@ function TierDrillTable({
                 <TableCell align="right">Latest date</TableCell>
                 <TableCell align="right">Next review</TableCell>
                 <TableCell align="center">Status</TableCell>
+                <TableCell align="center" sx={{ width: 40 }} />
               </TableRow>
             </TableHead>
             <TableBody>
-              <TierDrillTableRows drills={section.drills} onLogResult={onLogResult} />
+              <TierDrillTableRows drills={section.drills} onOpenHistory={onOpenHistory} />
             </TableBody>
           </Table>
         </Box>
@@ -225,13 +239,13 @@ function TierSection({
   label,
   description,
   drills,
-  onLogResult,
+  onOpenHistory,
   defaultExpanded,
 }: {
   label: string;
   description: string;
   drills: GtoTierProgressRow[];
-  onLogResult: (drillId: string) => void;
+  onOpenHistory: (row: GtoTierProgressRow) => void;
   defaultExpanded?: boolean;
 }) {
   const theme = useTheme();
@@ -308,7 +322,7 @@ function TierSection({
             <Typography variant="caption">Drill breakdown</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
-            <TierDrillTable drills={drills} onLogResult={onLogResult} />
+            <TierDrillTable drills={drills} onOpenHistory={onOpenHistory} />
           </AccordionDetails>
         </Accordion>
       </AccordionDetails>
@@ -316,7 +330,7 @@ function TierSection({
   );
 }
 
-export function TierProgressPanel({ rows, loading, error, onLogResult }: TierProgressPanelProps) {
+export function TierProgressPanel({ rows, loading, error, onOpenHistory }: TierProgressPanelProps) {
   const [panelOpen, setPanelOpen] = useState(true);
   const grouped = useMemo(() => groupRowsByTier(rows), [rows]);
 
@@ -365,7 +379,7 @@ export function TierProgressPanel({ rows, loading, error, onLogResult }: TierPro
                 label={def.label}
                 description={def.description}
                 drills={drills}
-                onLogResult={onLogResult}
+                onOpenHistory={onOpenHistory}
                 defaultExpanded={def.tier === 1}
               />
             ))}
@@ -374,7 +388,7 @@ export function TierProgressPanel({ rows, loading, error, onLogResult }: TierPro
                 label="Uncategorized"
                 description="No study tier set on the drill (edit a drill to assign Tier 1–3)"
                 drills={grouped.uncategorized}
-                onLogResult={onLogResult}
+                onOpenHistory={onOpenHistory}
               />
             )}
           </Box>

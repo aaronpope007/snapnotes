@@ -258,7 +258,7 @@ export function GtoDrillEvChart({ results }: GtoDrillEvChartProps) {
           <YAxis
             tick={{ fontSize: 10 }}
             stroke="text.secondary"
-            domain={metric === 'accuracy' ? [0, 100] : undefined}
+            domain={['auto', 'auto']}
             tickFormatter={metric === 'accuracy' ? (v) => `${v}%` : undefined}
           />
           <Tooltip
