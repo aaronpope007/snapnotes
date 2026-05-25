@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
 import LinearProgress from '@mui/material/LinearProgress';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
@@ -18,12 +19,14 @@ import { useTheme } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { GtoStudyTierHelp } from './GtoStudyTierHelp';
-import { fetchGtoTierProgress } from '../../api/gtoTierProgress';
 import type { GtoTierProgressRow } from '../../types/gtoTierProgress';
 import {
+  computeNextReviewDate,
   drillStatus,
+  formatNextReviewDisplay,
   groupRowsByTier,
   progressBarColor,
+  scoreTrendDirection,
   tierAverageAccuracy,
   tierAverageScorePerHand,
   tierLoggedCount,
@@ -31,10 +34,24 @@ import {
 } from '../../utils/gtoTierProgress';
 import { formatAccuracyAcc, formatScorePerHand } from '../../utils/gtoStudyUtils';
 
+const drillNameLinkSx = {
+  cursor: 'pointer',
+  textDecoration: 'none',
+  color: 'text.primary',
+  '&:hover': { textDecoration: 'underline' },
+  display: 'block',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  maxWidth: 160,
+  textAlign: 'left' as const,
+};
+
 interface TierProgressPanelProps {
-  userId: string | null;
-  /** Re-fetch when drill list reloads (e.g. after logging a result). */
-  refreshKey?: string;
+  rows: GtoTierProgressRow[];
+  loading?: boolean;
+  error?: string | null;
+  onLogResult: (drillId: string) => void;
 }
 
 function formatLatestDate(iso: string | null): string {
@@ -61,24 +78,87 @@ function statusChip(status: DrillStatusKind) {
   }
 }
 
+function TrendCell({ row }: { row: GtoTierProgressRow }) {
+  const theme = useTheme();
+  const trend = scoreTrendDirection(row);
+  if (trend == null) {
+    return (
+      <Typography variant="caption" color="text.secondary">
+        —
+      </Typography>
+    );
+  }
+  const color =
+    trend === 'up'
+      ? theme.palette.success.main
+      : trend === 'down'
+        ? theme.palette.error.main
+        : theme.palette.text.secondary;
+  const symbol = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
+  return (
+    <Typography variant="caption" sx={{ color, fontWeight: 700 }}>
+      {symbol}
+    </Typography>
+  );
+}
+
+function NextReviewCell({ row }: { row: GtoTierProgressRow }) {
+  const theme = useTheme();
+  const { text, overdue } = formatNextReviewDisplay(computeNextReviewDate(row));
+  if (text === '—') {
+    return (
+      <Typography variant="caption" color="text.secondary">
+        —
+      </Typography>
+    );
+  }
+  return (
+    <Typography
+      variant="caption"
+      sx={{ color: overdue ? theme.palette.warning.main : 'text.secondary' }}
+    >
+      {text}
+    </Typography>
+  );
+}
+
 const STACK_GROUPS = ['100bb', '200bb'] as const;
 
-function TierDrillTableRows({ drills }: { drills: GtoTierProgressRow[] }) {
+function TierDrillTableRows({
+  drills,
+  onLogResult,
+}: {
+  drills: GtoTierProgressRow[];
+  onLogResult: (drillId: string) => void;
+}) {
   return (
     <>
       {drills.map((row) => (
         <TableRow key={row.drillId}>
           <TableCell sx={{ maxWidth: 160 }}>
-            <Typography variant="caption" noWrap title={row.name}>
+            <Link
+              component="button"
+              type="button"
+              variant="body2"
+              onClick={() => onLogResult(row.drillId)}
+              title={row.name}
+              sx={drillNameLinkSx}
+            >
               {row.name}
-            </Typography>
+            </Link>
           </TableCell>
           <TableCell align="right">{row.timesLogged}</TableCell>
           <TableCell align="right">{formatAccuracyAcc(row.latestAccuracy ?? undefined)}</TableCell>
           <TableCell align="right">
             {formatScorePerHand(row.latestScore ?? undefined, row.latestHandsPlayed ?? undefined)}
           </TableCell>
+          <TableCell align="center">
+            <TrendCell row={row} />
+          </TableCell>
           <TableCell align="right">{formatLatestDate(row.latestDate)}</TableCell>
+          <TableCell align="right">
+            <NextReviewCell row={row} />
+          </TableCell>
           <TableCell align="center">{statusChip(drillStatus(row))}</TableCell>
         </TableRow>
       ))}
@@ -86,7 +166,13 @@ function TierDrillTableRows({ drills }: { drills: GtoTierProgressRow[] }) {
   );
 }
 
-function TierDrillTable({ drills }: { drills: GtoTierProgressRow[] }) {
+function TierDrillTable({
+  drills,
+  onLogResult,
+}: {
+  drills: GtoTierProgressRow[];
+  onLogResult: (drillId: string) => void;
+}) {
   if (drills.length === 0) {
     return (
       <Typography variant="caption" color="text.secondary">
@@ -119,12 +205,14 @@ function TierDrillTable({ drills }: { drills: GtoTierProgressRow[] }) {
                 <TableCell align="right">Logs</TableCell>
                 <TableCell align="right">Latest acc</TableCell>
                 <TableCell align="right">Score/hand</TableCell>
+                <TableCell align="center">Trend</TableCell>
                 <TableCell align="right">Latest date</TableCell>
+                <TableCell align="right">Next review</TableCell>
                 <TableCell align="center">Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              <TierDrillTableRows drills={section.drills} />
+              <TierDrillTableRows drills={section.drills} onLogResult={onLogResult} />
             </TableBody>
           </Table>
         </Box>
@@ -137,11 +225,13 @@ function TierSection({
   label,
   description,
   drills,
+  onLogResult,
   defaultExpanded,
 }: {
   label: string;
   description: string;
   drills: GtoTierProgressRow[];
+  onLogResult: (drillId: string) => void;
   defaultExpanded?: boolean;
 }) {
   const theme = useTheme();
@@ -218,7 +308,7 @@ function TierSection({
             <Typography variant="caption">Drill breakdown</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
-            <TierDrillTable drills={drills} />
+            <TierDrillTable drills={drills} onLogResult={onLogResult} />
           </AccordionDetails>
         </Accordion>
       </AccordionDetails>
@@ -226,37 +316,11 @@ function TierSection({
   );
 }
 
-export function TierProgressPanel({ userId, refreshKey }: TierProgressPanelProps) {
+export function TierProgressPanel({ rows, loading, error, onLogResult }: TierProgressPanelProps) {
   const [panelOpen, setPanelOpen] = useState(true);
-  const [rows, setRows] = useState<GtoTierProgressRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!userId?.trim()) {
-      setRows([]);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchGtoTierProgress(userId);
-      setRows(data);
-    } catch {
-      setError('Failed to load tier progress');
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    void load();
-  }, [load, refreshKey]);
-
   const grouped = useMemo(() => groupRowsByTier(rows), [rows]);
 
-  if (!userId?.trim()) return null;
+  if (rows.length === 0 && !loading && !error) return null;
 
   return (
     <Box sx={{ mb: 1.5 }}>
@@ -301,6 +365,7 @@ export function TierProgressPanel({ userId, refreshKey }: TierProgressPanelProps
                 label={def.label}
                 description={def.description}
                 drills={drills}
+                onLogResult={onLogResult}
                 defaultExpanded={def.tier === 1}
               />
             ))}
@@ -309,6 +374,7 @@ export function TierProgressPanel({ userId, refreshKey }: TierProgressPanelProps
                 label="Uncategorized"
                 description="No study tier set on the drill (edit a drill to assign Tier 1–3)"
                 drills={grouped.uncategorized}
+                onLogResult={onLogResult}
               />
             )}
           </Box>

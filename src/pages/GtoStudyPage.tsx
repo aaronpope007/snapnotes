@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
@@ -6,8 +6,11 @@ import { useGtoDrills } from '../hooks/useGtoDrills';
 import { GtoStudyTabs } from '../components/gtoStudy/GtoStudyTabs';
 import { GtoDrillsTab } from '../components/gtoStudy/GtoDrillsTab';
 import { TierProgressPanel } from '../components/gtoStudy/TierProgressPanel';
+import { DrillTodayCard } from '../components/gtoStudy/DrillTodayCard';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { filterGtoDrills, emptyGtoDrillFacetFilters } from '../utils/gtoDrillFilter';
+import { fetchGtoTierProgress } from '../api/gtoTierProgress';
+import type { GtoTierProgressRow } from '../types/gtoTierProgress';
 
 interface GtoStudyPageProps {
   onSuccess?: (msg: string) => void;
@@ -20,6 +23,9 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
   const [filterQuery, setFilterQuery] = useState('');
   const [facetFilters, setFacetFilters] = useState(emptyGtoDrillFacetFilters);
   const [facetFilterResetKey, setFacetFilterResetKey] = useState(0);
+  const [tierRows, setTierRows] = useState<GtoTierProgressRow[]>([]);
+  const [tierLoading, setTierLoading] = useState(false);
+  const [tierError, setTierError] = useState<string | null>(null);
 
   const handleClearAllFilters = () => {
     setFilterQuery('');
@@ -38,6 +44,35 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
         .map((d) => `${d._id}:${d.updatedAt}:${d.recentResultsSummary?.[0]?.date ?? ''}`)
         .join('|'),
     [hook.drills]
+  );
+
+  const loadTierProgress = useCallback(async () => {
+    if (!userName?.trim()) {
+      setTierRows([]);
+      return;
+    }
+    setTierLoading(true);
+    setTierError(null);
+    try {
+      const data = await fetchGtoTierProgress(userName);
+      setTierRows(data);
+    } catch {
+      setTierError('Failed to load tier progress');
+      setTierRows([]);
+    } finally {
+      setTierLoading(false);
+    }
+  }, [userName]);
+
+  useEffect(() => {
+    void loadTierProgress();
+  }, [loadTierProgress, tierProgressRefreshKey]);
+
+  const handleLogResultById = useCallback(
+    (drillId: string) => {
+      hook.openLogResult(drillId);
+    },
+    [hook.openLogResult]
   );
 
   return (
@@ -63,7 +98,19 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
       ) : (
         <ErrorBoundary>
           {!hook.selectedDrillId && (
-            <TierProgressPanel userId={userName} refreshKey={tierProgressRefreshKey} />
+            <>
+              <DrillTodayCard
+                rows={tierRows}
+                loading={tierLoading}
+                onLogResult={handleLogResultById}
+              />
+              <TierProgressPanel
+                rows={tierRows}
+                loading={tierLoading}
+                error={tierError}
+                onLogResult={handleLogResultById}
+              />
+            </>
           )}
           <GtoDrillsTab
             hook={hook}

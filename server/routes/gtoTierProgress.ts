@@ -24,6 +24,7 @@ export interface GtoTierProgressRow {
   latestAccuracy: number | null;
   latestDate: string | null;
   timesLogged: number;
+  recentScores: number[];
 }
 
 router.get('/tier-progress', async (req: Request, res: Response) => {
@@ -70,6 +71,7 @@ router.get('/tier-progress', async (req: Request, res: Response) => {
           tier: 1,
           timesLogged: { $size: '$results' },
           latestResult: { $arrayElemAt: ['$results', 0] },
+          recentScoreDocs: { $slice: ['$results', 5] },
         },
       },
       {
@@ -87,6 +89,7 @@ router.get('/tier-progress', async (req: Request, res: Response) => {
           latestHandsPlayed: '$latestResult.handsPlayed',
           latestAccuracy: '$latestResult.accuracy',
           latestDate: '$latestResult.date',
+          recentScoreDocs: 1,
         },
       },
     ]);
@@ -122,6 +125,12 @@ router.get('/tier-progress', async (req: Request, res: Response) => {
           : row.latestDate
             ? String(row.latestDate)
             : null,
+      recentScores: (
+        (row.recentScoreDocs as Array<{ score?: number }> | undefined) ?? []
+      )
+        .map((r) => r.score)
+        .filter((s): s is number => s != null && Number.isFinite(Number(s)))
+        .map((s) => Number(s)),
     }));
 
     res.json(payload);

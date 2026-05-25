@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import axios from 'axios';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -22,7 +27,13 @@ import {
   resultFormSnapshotFromResult,
   type GtoResultFormSnapshot,
 } from '../../utils/gtoResultForm';
-import type { GtoDrillResult, GtoDrillResultCreate, GtoDrillResultUpdate } from '../../types/gtoStudy';
+import { useUserName } from '../../context/UserNameContext';
+import type {
+  GtoDrillResult,
+  GtoDrillResultCreate,
+  GtoDrillResultUpdate,
+  GtoStudySession,
+} from '../../types/gtoStudy';
 
 interface GtoDrillResultModalProps {
   open: boolean;
@@ -44,7 +55,10 @@ export function GtoDrillResultModal({
   onSubmitUpdate,
 }: GtoDrillResultModalProps) {
   const isEdit = Boolean(result);
+  const userName = useUserName();
   const [form, setForm] = useState<GtoResultFormSnapshot>(emptyResultFormSnapshot);
+  const [studySessionId, setStudySessionId] = useState('');
+  const [studySessions, setStudySessions] = useState<GtoStudySession[]>([]);
   const baselineRef = useRef<GtoResultFormSnapshot | null>(null);
 
   const {
@@ -60,7 +74,27 @@ export function GtoDrillResultModal({
     const initial = result ? resultFormSnapshotFromResult(result) : emptyResultFormSnapshot();
     setForm(initial);
     baselineRef.current = initial;
+    setStudySessionId('');
   }, [open, result]);
+
+  useEffect(() => {
+    if (!open || isEdit || !userName?.trim()) {
+      setStudySessions([]);
+      return;
+    }
+    void axios
+      .get<GtoStudySession[]>('/api/gto-study', { params: { userId: userName.trim() } })
+      .then(({ data }) => setStudySessions(data.slice(0, 10)))
+      .catch(() => setStudySessions([]));
+  }, [open, isEdit, userName]);
+
+  const formatStudySessionLabel = (session: GtoStudySession): string => {
+    const d = new Date(session.sessionDate);
+    const dateLabel = Number.isNaN(d.getTime())
+      ? session.sessionDate
+      : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${dateLabel} · ${session.format} ${session.stack}`;
+  };
 
   const patch = (updates: Partial<GtoResultFormSnapshot>) => {
     setForm((prev) => ({ ...prev, ...updates }));
@@ -126,6 +160,7 @@ export function GtoDrillResultModal({
         evDiff: parsedEvDiffField,
         score: parsedScore,
         notes: notesCreate,
+        studySessionId: studySessionId.trim() || undefined,
       });
     }
     baselineRef.current = form;
@@ -254,6 +289,25 @@ export function GtoDrillResultModal({
               onChange={(e) => patch({ notes: e.target.value.slice(0, 500) })}
               helperText={`${form.notes.length}/500`}
             />
+            {!isEdit && (
+              <FormControl fullWidth size="small">
+                <InputLabel>Link to study session</InputLabel>
+                <Select
+                  label="Link to study session"
+                  value={studySessionId}
+                  onChange={(e) => setStudySessionId(e.target.value)}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  {studySessions.map((s) => (
+                    <MenuItem key={s._id} value={s._id}>
+                      {formatStudySessionLabel(s)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={requestClose}>Cancel</Button>

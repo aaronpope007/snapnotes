@@ -308,6 +308,7 @@ router.post('/:id/results', async (req: Request, res: Response) => {
       evDiff?: number;
       score?: number;
       notes?: string;
+      studySessionId?: string;
     };
     const userId = body.userId?.trim() || getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId required' });
@@ -351,6 +352,10 @@ router.post('/:id/results', async (req: Request, res: Response) => {
       evDiff,
       score,
       notes: (body.notes ?? '').trim().slice(0, 500),
+      studySessionId:
+        typeof body.studySessionId === 'string' && body.studySessionId.trim()
+          ? body.studySessionId.trim()
+          : undefined,
     });
     await result.save();
     res.status(201).json(result);

@@ -12,6 +12,7 @@ const gtoDrillResultSchema = new mongoose.Schema(
     evDiff: { type: Number },
     score: { type: Number },
     notes: { type: String, default: '', maxlength: 500 },
+    studySessionId: { type: String },
   },
   { timestamps: true }
 );

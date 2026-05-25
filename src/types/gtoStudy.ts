@@ -96,6 +96,7 @@ export interface GtoDrillResult {
   evDiff?: number;
   score?: number;
   notes?: string;
+  studySessionId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -109,6 +110,7 @@ export interface GtoDrillResultCreate {
   evDiff?: number;
   score?: number;
   notes?: string;
+  studySessionId?: string;
 }
 
 export interface GtoDrillResultUpdate {

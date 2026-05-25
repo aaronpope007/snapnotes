@@ -1,10 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
@@ -63,6 +67,22 @@ export function LogResultModal({
   }, [open, initialDrillId, drills]);
 
   const selectedDrill = drills.find((d) => d._id === selectedId) ?? null;
+  const canCopyName =
+    selectedId !== NEW_DRILL_VALUE && Boolean(selectedDrill?.name.trim());
+
+  const handleCopySelectedName = useCallback(async () => {
+    const text = selectedDrill?.name.trim() ?? '';
+    if (!text) {
+      onCopyError?.('Nothing to copy');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      onCopySuccess?.();
+    } catch {
+      onCopyError?.('Could not copy to clipboard');
+    }
+  }, [selectedDrill?.name, onCopySuccess, onCopyError]);
 
   const handleContinue = () => {
     if (selectedId === NEW_DRILL_VALUE) {
@@ -95,28 +115,43 @@ export function LogResultModal({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             Select a drill definition, or create a new one.
           </Typography>
-          <FormControl fullWidth size="small">
-            <InputLabel>Drill</InputLabel>
-            <Select
-              label="Drill"
-              value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
-            >
-              <MenuItem value={NEW_DRILL_VALUE}>
-                <em>+ Create new drill…</em>
-              </MenuItem>
-              {drills.length > 0 && (
-                <MenuItem disabled sx={{ opacity: 1, fontSize: '0.65rem', minHeight: 28 }}>
-                  Saved drills
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Drill</InputLabel>
+              <Select
+                label="Drill"
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+              >
+                <MenuItem value={NEW_DRILL_VALUE}>
+                  <em>+ Create new drill…</em>
                 </MenuItem>
-              )}
-              {drills.map((d) => (
-                <MenuItem key={d._id} value={d._id}>
-                  {d.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+                {drills.length > 0 && (
+                  <MenuItem disabled sx={{ opacity: 1, fontSize: '0.65rem', minHeight: 28 }}>
+                    Saved drills
+                  </MenuItem>
+                )}
+                {drills.map((d) => (
+                  <MenuItem key={d._id} value={d._id}>
+                    {d.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Tooltip title="Copy name for Lucid">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => void handleCopySelectedName()}
+                  disabled={!canCopyName}
+                  aria-label="Copy drill name"
+                  sx={{ mt: 0.5 }}
+                >
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>

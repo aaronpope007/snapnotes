@@ -14,4 +14,6 @@ export interface GtoTierProgressRow {
   latestAccuracy: number | null;
   latestDate: string | null;
   timesLogged: number;
+  /** Last 5 session scores, newest first. */
+  recentScores: number[];
 }
