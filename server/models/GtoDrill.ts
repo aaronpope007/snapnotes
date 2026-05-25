@@ -35,7 +35,7 @@ const gtoDrillSchema = new mongoose.Schema(
     potType: {
       type: String,
       required: true,
-      enum: ['SRP', '3BP', '4BP', 'FoldedTo', 'Custom'],
+      enum: ['Preflop', 'SRP', '3BP', '4BP', 'FoldedTo', 'Custom'],
     },
     heroPosition: { type: String, required: true },
     villainPosition: { type: String },

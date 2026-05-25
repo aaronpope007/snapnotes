@@ -6,10 +6,10 @@ import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import Chip from '@mui/material/Chip';
 import TodayIcon from '@mui/icons-material/Today';
+import type { GtoFormat, GtoStudyTier } from '../../types/gtoStudy';
 import type { GtoTierProgressRow } from '../../types/gtoTierProgress';
 import { pickDrillToday, resolveDrillTier } from '../../utils/gtoTierProgress';
 import { formatAccuracyAcc } from '../../utils/gtoStudyUtils';
-import type { GtoStudyTier } from '../../types/gtoStudy';
 
 const drillNameLinkSx = {
   cursor: 'pointer',
@@ -25,6 +25,7 @@ const drillNameLinkSx = {
 
 interface DrillTodayCardProps {
   rows: GtoTierProgressRow[];
+  format: GtoFormat;
   loading?: boolean;
   onOpenHistory: (row: GtoTierProgressRow) => void;
 }
@@ -41,8 +42,8 @@ function tierChip(tier: GtoStudyTier | null) {
   );
 }
 
-export function DrillTodayCard({ rows, loading, onOpenHistory }: DrillTodayCardProps) {
-  const recommended = useMemo(() => pickDrillToday(rows, 3), [rows]);
+export function DrillTodayCard({ rows, format, loading, onOpenHistory }: DrillTodayCardProps) {
+  const recommended = useMemo(() => pickDrillToday(rows, 3, format), [rows, format]);
 
   if (loading && rows.length === 0) {
     return (
@@ -67,7 +68,7 @@ export function DrillTodayCard({ rows, loading, onOpenHistory }: DrillTodayCardP
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
           {recommended.map((row) => {
-            const tier = resolveDrillTier(row.tier, row.name);
+            const tier = resolveDrillTier(row.tier, row.name, format);
             const accLabel =
               row.timesLogged === 0
                 ? 'Not started'

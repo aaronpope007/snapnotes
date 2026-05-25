@@ -2,11 +2,11 @@ import {
   GTO_STUDY_TIERS as BASE_GTO_STUDY_TIERS,
   type GtoTierDefinition,
 } from '../constants/gtoStudyTiers';
-import type { GtoStudyTier } from '../types/gtoStudy';
+import type { GtoFormat, GtoStudyTier } from '../types/gtoStudy';
 import type { GtoTierProgressRow } from '../types/gtoTierProgress';
 import { computeScorePerHand } from './gtoStudyUtils';
 
-export const GTO_STUDY_TIERS: GtoTierDefinition[] = BASE_GTO_STUDY_TIERS.map((def) =>
+export const HU_TIERS: GtoTierDefinition[] = BASE_GTO_STUDY_TIERS.map((def) =>
   def.tier === 1
     ? {
         ...def,
@@ -15,15 +15,51 @@ export const GTO_STUDY_TIERS: GtoTierDefinition[] = BASE_GTO_STUDY_TIERS.map((de
     : def
 );
 
+export const RING_TIERS: GtoTierDefinition[] = [
+  {
+    tier: 1,
+    label: 'Tier 1 — Preflop All Positions',
+    description: '8max preflop opens and facing opens — all seats',
+    drillMatchers: [
+      '8max preflop utg',
+      '8max preflop lj',
+      '8max preflop hj',
+      '8max preflop co',
+      '8max preflop bu',
+      '8max preflop btn',
+      '8max preflop sb',
+      '8max preflop bb',
+      '8max preflop ss',
+      'preflop utg',
+      'preflop lj',
+      'preflop hj',
+      'preflop co',
+      'preflop bu',
+      'preflop btn',
+      'preflop sb',
+      'preflop bb',
+      'preflop ss',
+    ],
+  },
+];
+
+/** @deprecated Use HU_TIERS */
+export const GTO_STUDY_TIERS = HU_TIERS;
+
 export type { GtoTierDefinition };
+
+export function getTiersForFormat(format: GtoFormat): GtoTierDefinition[] {
+  return format === '8max' ? RING_TIERS : HU_TIERS;
+}
 
 export function resolveDrillTier(
   explicit: GtoStudyTier | null | undefined,
-  drillName: string
+  drillName: string,
+  format: GtoFormat = 'HU'
 ): GtoStudyTier | null {
   if (explicit != null && explicit >= 1 && explicit <= 3) return explicit;
   const lower = drillName.toLowerCase();
-  for (const def of GTO_STUDY_TIERS) {
+  for (const def of getTiersForFormat(format)) {
     if (def.drillMatchers.some((m) => lower.includes(m))) {
       return def.tier;
     }
@@ -31,18 +67,22 @@ export function resolveDrillTier(
   return null;
 }
 
-export function groupRowsByTier(rows: GtoTierProgressRow[]): {
+export function groupRowsByTier(
+  rows: GtoTierProgressRow[],
+  format: GtoFormat = 'HU'
+): {
   tiers: Array<{ def: GtoTierDefinition; drills: GtoTierProgressRow[] }>;
   uncategorized: GtoTierProgressRow[];
 } {
+  const tierDefs = getTiersForFormat(format);
   const buckets = new Map<number, GtoTierProgressRow[]>();
-  for (const def of GTO_STUDY_TIERS) {
+  for (const def of tierDefs) {
     buckets.set(def.tier, []);
   }
   const uncategorized: GtoTierProgressRow[] = [];
 
   for (const row of rows) {
-    const tier = resolveDrillTier(row.tier, row.name);
+    const tier = resolveDrillTier(row.tier, row.name, format);
     if (tier == null) {
       uncategorized.push(row);
     } else {
@@ -50,7 +90,7 @@ export function groupRowsByTier(rows: GtoTierProgressRow[]): {
     }
   }
 
-  const tiers = GTO_STUDY_TIERS.map((def) => ({
+  const tiers = tierDefs.map((def) => ({
     def,
     drills: buckets.get(def.tier) ?? [],
   }));
@@ -133,15 +173,14 @@ export function scoreTrendDirection(row: GtoTierProgressRow): ScoreTrendDirectio
   const scores = row.recentScores.filter((s) => Number.isFinite(s));
   if (scores.length < 2) return null;
 
-  const recent = scores[0];
-  const prev = scores[1];
-  const denom = Math.abs(prev) > 1e-9 ? Math.abs(prev) : Math.max(Math.abs(recent), 1e-9);
-  if (Math.abs(recent - prev) / denom < TREND_FLAT_EPS) return 'flat';
-  return recent > prev ? 'up' : 'down';
+  const diff = scores[0] - scores[1];
+  const pct = Math.abs(diff) / (Math.abs(scores[1]) || 1);
+  if (pct <= TREND_FLAT_EPS) return 'flat';
+  return diff > 0 ? 'up' : 'down';
 }
 
-function resolvedTierForRow(row: GtoTierProgressRow): number {
-  const t = resolveDrillTier(row.tier, row.name);
+function resolvedTierForRow(row: GtoTierProgressRow, format: GtoFormat): number {
+  const t = resolveDrillTier(row.tier, row.name, format);
   return t ?? 99;
 }
 
@@ -150,7 +189,11 @@ function stackSortKey(stack: string): number {
 }
 
 /** Up to 3 drills to run today by review priority. */
-export function pickDrillToday(rows: GtoTierProgressRow[], max = 3): GtoTierProgressRow[] {
+export function pickDrillToday(
+  rows: GtoTierProgressRow[],
+  max = 3,
+  format: GtoFormat = 'HU'
+): GtoTierProgressRow[] {
   const today = startOfLocalDay(new Date());
   const picked = new Set<string>();
   const out: GtoTierProgressRow[] = [];
@@ -178,7 +221,7 @@ export function pickDrillToday(rows: GtoTierProgressRow[], max = 3): GtoTierProg
     .filter((r) => r.timesLogged === 0)
     .sort(
       (a, b) =>
-        resolvedTierForRow(a) - resolvedTierForRow(b) ||
+        resolvedTierForRow(a, format) - resolvedTierForRow(b, format) ||
         stackSortKey(a.stack) - stackSortKey(b.stack) ||
         a.name.localeCompare(b.name)
     );

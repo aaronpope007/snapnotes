@@ -20,17 +20,19 @@ import type {
   GtoDrillResultCreate,
   GtoDrillResultUpdate,
   GtoDrillUpdate,
+  GtoFormat,
 } from '../types/gtoStudy';
 
 export interface UseGtoDrillsOptions {
   userId: string | null;
+  format?: GtoFormat;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
 }
 
 export type GtoDetailTab = 'chart' | 'results';
 
-export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions) {
+export function useGtoDrills({ userId, format, onSuccess, onError }: UseGtoDrillsOptions) {
   const [drills, setDrills] = useState<GtoDrill[]>([]);
   const [archivedDrills, setArchivedDrills] = useState<GtoDrill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +91,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
       }
       if (!options?.silent) setLoading(true);
       try {
-        const data = await fetchGtoDrills(userId);
+        const data = await fetchGtoDrills(userId, format);
         setDrills(data ?? []);
       } catch (err) {
         if (!options?.silent) setDrills([]);
@@ -98,7 +100,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         if (!options?.silent) setLoading(false);
       }
     },
-    [userId, onError]
+    [userId, format, onError]
   );
 
   const loadArchivedDrills = useCallback(
@@ -110,7 +112,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
       }
       if (!options?.silent) setArchivedLoading(true);
       try {
-        const data = await fetchArchivedGtoDrills(userId);
+        const data = await fetchArchivedGtoDrills(userId, format);
         setArchivedDrills(data ?? []);
       } catch (err) {
         if (!options?.silent) setArchivedDrills([]);
@@ -119,7 +121,7 @@ export function useGtoDrills({ userId, onSuccess, onError }: UseGtoDrillsOptions
         if (!options?.silent) setArchivedLoading(false);
       }
     },
-    [userId, onError]
+    [userId, format, onError]
   );
 
   const loadDetailResults = useCallback(

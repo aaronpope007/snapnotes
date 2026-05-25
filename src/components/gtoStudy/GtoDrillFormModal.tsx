@@ -25,6 +25,7 @@ import {
   GTO_HAND_START_OPTIONS,
   GTO_POT_TYPE_LABELS,
   GTO_SOLVER_OPTIONS,
+  formatGtoPositionLabel,
   getDefaultHeroPosition,
   getDefaultStack,
   getDefaultStreet,
@@ -354,7 +355,7 @@ export function GtoDrillFormModal({
                 >
                   {positions.map((p) => (
                     <MenuItem key={p} value={p}>
-                      {p}
+                      {formatGtoPositionLabel(p, form.format)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -380,7 +381,7 @@ export function GtoDrillFormModal({
                     )}
                     {(huPostflop ? positions.filter((p) => isHuPosition(p)) : positions).map((p) => (
                       <MenuItem key={p} value={p}>
-                        {p}
+                        {formatGtoPositionLabel(p, form.format)}
                       </MenuItem>
                     ))}
                   </Select>

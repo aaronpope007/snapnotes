@@ -6,6 +6,7 @@ import type {
   GtoDrillResultCreate,
   GtoDrillResultUpdate,
   GtoDrillUpdate,
+  GtoFormat,
 } from '../types/gtoStudy';
 
 const api = axios.create({
@@ -13,18 +14,32 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-export async function fetchGtoDrills(userId: string | null): Promise<GtoDrill[]> {
+export async function fetchGtoDrills(
+  userId: string | null,
+  format?: GtoFormat
+): Promise<GtoDrill[]> {
   if (!userId?.trim()) return [];
   const { data } = await api.get<GtoDrill[]>('/gto-drills', {
-    params: { userId: userId.trim(), recentResults: true },
+    params: {
+      userId: userId.trim(),
+      recentResults: true,
+      ...(format ? { format } : {}),
+    },
   });
   return data;
 }
 
-export async function fetchArchivedGtoDrills(userId: string | null): Promise<GtoDrill[]> {
+export async function fetchArchivedGtoDrills(
+  userId: string | null,
+  format?: GtoFormat
+): Promise<GtoDrill[]> {
   if (!userId?.trim()) return [];
   const { data } = await api.get<GtoDrill[]>('/gto-drills/archived', {
-    params: { userId: userId.trim(), recentResults: true },
+    params: {
+      userId: userId.trim(),
+      recentResults: true,
+      ...(format ? { format } : {}),
+    },
   });
   return data;
 }

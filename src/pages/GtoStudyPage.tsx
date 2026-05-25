@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useUserName } from '../context/UserNameContext';
 import { useGtoDrills } from '../hooks/useGtoDrills';
 import { GtoStudyTabs, type GtoDrillListView } from '../components/gtoStudy/GtoStudyTabs';
@@ -15,6 +17,7 @@ import {
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { filterGtoDrills, emptyGtoDrillFacetFilters } from '../utils/gtoDrillFilter';
 import { fetchGtoTierProgress } from '../api/gtoTierProgress';
+import type { GtoFormat } from '../types/gtoStudy';
 import type { GtoTierProgressRow } from '../types/gtoTierProgress';
 
 interface GtoStudyPageProps {
@@ -24,7 +27,8 @@ interface GtoStudyPageProps {
 
 export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
   const userName = useUserName();
-  const hook = useGtoDrills({ userId: userName, onSuccess, onError });
+  const [studyFormat, setStudyFormat] = useState<GtoFormat>('HU');
+  const hook = useGtoDrills({ userId: userName, format: studyFormat, onSuccess, onError });
   const [listView, setListView] = useState<GtoDrillListView>('active');
   const [filterQuery, setFilterQuery] = useState('');
   const [facetFilters, setFacetFilters] = useState(emptyGtoDrillFacetFilters);
@@ -44,7 +48,8 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
 
   useEffect(() => {
     if (isArchivedView) void hook.loadArchivedDrills();
-  }, [isArchivedView, hook.loadArchivedDrills]);
+    else void hook.loadDrills();
+  }, [isArchivedView, studyFormat, hook.loadArchivedDrills, hook.loadDrills]);
 
   const sourceDrills = isArchivedView ? hook.archivedDrills : hook.drills;
   const listLoading = isArchivedView ? hook.archivedLoading : hook.loading;
@@ -75,7 +80,7 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
     setTierLoading(true);
     setTierError(null);
     try {
-      const data = await fetchGtoTierProgress(userName);
+      const data = await fetchGtoTierProgress(userName, studyFormat);
       setTierRows(data);
     } catch {
       setTierError('Failed to load tier progress');
@@ -83,7 +88,7 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
     } finally {
       setTierLoading(false);
     }
-  }, [userName]);
+  }, [userName, studyFormat]);
 
   useEffect(() => {
     void loadTierProgress();
@@ -140,15 +145,31 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
         <ErrorBoundary>
           {!hook.selectedDrillId && !isArchivedView && (
             <>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={studyFormat}
+                  onChange={(_, value: GtoFormat | null) => {
+                    if (value) setStudyFormat(value);
+                  }}
+                  aria-label="Study game format"
+                >
+                  <ToggleButton value="HU">Heads-Up</ToggleButton>
+                  <ToggleButton value="8max">8max Ring</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
               <DrillTodayCard
                 rows={tierRows}
                 loading={tierLoading}
+                format={studyFormat}
                 onOpenHistory={handleOpenHistory}
               />
               <TierProgressPanel
                 rows={tierRows}
                 loading={tierLoading}
                 error={tierError}
+                format={studyFormat}
                 onOpenHistory={handleOpenHistory}
               />
             </>

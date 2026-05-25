@@ -61,6 +61,20 @@ function archivedDrillsMatch(userId: string) {
   return { userId, archived: true };
 }
 
+function parseFormatQuery(req: Request): 'HU' | '8max' | undefined {
+  const q = typeof req.query.format === 'string' ? req.query.format.trim() : '';
+  if (q === 'HU' || q === '8max') return q;
+  return undefined;
+}
+
+function withFormatFilter(
+  match: Record<string, unknown>,
+  format: 'HU' | '8max' | undefined
+): Record<string, unknown> {
+  if (!format) return match;
+  return { ...match, format };
+}
+
 function wantsRecentResultsSummary(req: Request): boolean {
   return (
     typeof req.query.recentResults === 'string' &&
@@ -121,9 +135,10 @@ router.get('/archived', async (req: Request, res: Response) => {
     const userId = getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
 
+    const format = parseFormatQuery(req);
     const drills = await listDrillsForUser(
       userId,
-      archivedDrillsMatch(userId),
+      withFormatFilter(archivedDrillsMatch(userId), format),
       wantsRecentResultsSummary(req)
     );
     res.json(drills);
@@ -137,9 +152,10 @@ router.get('/', async (req: Request, res: Response) => {
     const userId = getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
 
+    const format = parseFormatQuery(req);
     const drills = await listDrillsForUser(
       userId,
-      activeDrillsMatch(userId),
+      withFormatFilter(activeDrillsMatch(userId), format),
       wantsRecentResultsSummary(req)
     );
     res.json(drills);
@@ -248,7 +264,13 @@ router.patch('/:id', async (req: Request, res: Response) => {
       merged.handStart as string,
       merged.street ?? drill.street
     ) as 'Preflop' | 'Flop' | 'Turn' | 'River';
-    drill.potType = merged.potType as 'SRP' | '3BP' | '4BP' | 'FoldedTo' | 'Custom';
+    drill.potType = merged.potType as
+      | 'Preflop'
+      | 'SRP'
+      | '3BP'
+      | '4BP'
+      | 'FoldedTo'
+      | 'Custom';
     drill.heroPosition = merged.heroPosition!;
     drill.endsAfter = merged.endsAfter as 'FirstAction' | 'StreetEnd' | 'HandEnd';
     drill.solver = (merged.solver ?? 'Lucid') as 'Lucid' | 'GTO Wizard' | 'Solver Pro';

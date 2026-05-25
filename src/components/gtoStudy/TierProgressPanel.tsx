@@ -4,7 +4,6 @@ import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import LinearProgress from '@mui/material/LinearProgress';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -21,6 +20,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import HistoryIcon from '@mui/icons-material/History';
 import { GtoStudyTierHelp } from './GtoStudyTierHelp';
+import type { GtoFormat } from '../../types/gtoStudy';
 import type { GtoTierProgressRow } from '../../types/gtoTierProgress';
 import {
   computeNextReviewDate,
@@ -51,6 +51,7 @@ const drillNameLinkSx = {
 
 interface TierProgressPanelProps {
   rows: GtoTierProgressRow[];
+  format: GtoFormat;
   loading?: boolean;
   error?: string | null;
   onOpenHistory: (row: GtoTierProgressRow) => void;
@@ -202,34 +203,46 @@ function TierDrillTable({
   return (
     <Box>
       {stackSections.map((section, idx) => (
-        <Box key={section.stack}>
-          {idx > 0 && <Divider sx={{ my: 1 }} />}
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}
-          >
-            {section.stack}
-          </Typography>
-          <Table size="small" sx={{ '& td, & th': { py: 0.5, px: 1 } }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>Drill</TableCell>
-                <TableCell align="right">Logs</TableCell>
-                <TableCell align="right">Latest acc</TableCell>
-                <TableCell align="right">Score/hand</TableCell>
-                <TableCell align="center">Trend</TableCell>
-                <TableCell align="right">Latest date</TableCell>
-                <TableCell align="right">Next review</TableCell>
-                <TableCell align="center">Status</TableCell>
-                <TableCell align="center" sx={{ width: 40 }} />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              <TierDrillTableRows drills={section.drills} onOpenHistory={onOpenHistory} />
-            </TableBody>
-          </Table>
-        </Box>
+        <Accordion
+          key={section.stack}
+          disableGutters
+          elevation={0}
+          defaultExpanded={idx === 0}
+          sx={{
+            bgcolor: 'transparent',
+            '&:before': { display: 'none' },
+            '& + &': { mt: 0.5 },
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />} sx={{ minHeight: 32, py: 0 }}>
+            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+              {section.stack}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+              ({section.drills.length} {section.drills.length === 1 ? 'drill' : 'drills'})
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0, pb: 0.5 }}>
+            <Table size="small" sx={{ '& td, & th': { py: 0.5, px: 1 } }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Drill</TableCell>
+                  <TableCell align="right">Logs</TableCell>
+                  <TableCell align="right">Latest acc</TableCell>
+                  <TableCell align="right">Score/hand</TableCell>
+                  <TableCell align="center">Trend</TableCell>
+                  <TableCell align="right">Latest date</TableCell>
+                  <TableCell align="right">Next review</TableCell>
+                  <TableCell align="center">Status</TableCell>
+                  <TableCell align="center" sx={{ width: 40 }} />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TierDrillTableRows drills={section.drills} onOpenHistory={onOpenHistory} />
+              </TableBody>
+            </Table>
+          </AccordionDetails>
+        </Accordion>
       ))}
     </Box>
   );
@@ -330,11 +343,20 @@ function TierSection({
   );
 }
 
-export function TierProgressPanel({ rows, loading, error, onOpenHistory }: TierProgressPanelProps) {
+export function TierProgressPanel({
+  rows,
+  format,
+  loading,
+  error,
+  onOpenHistory,
+}: TierProgressPanelProps) {
   const [panelOpen, setPanelOpen] = useState(true);
-  const grouped = useMemo(() => groupRowsByTier(rows), [rows]);
+  const grouped = useMemo(() => groupRowsByTier(rows, format), [rows, format]);
 
-  if (rows.length === 0 && !loading && !error) return null;
+  const hasAnyTierDrill =
+    grouped.tiers.some((t) => t.drills.length > 0) || grouped.uncategorized.length > 0;
+
+  if (rows.length === 0 && !loading && !error && format !== '8max') return null;
 
   return (
     <Box sx={{ mb: 1.5 }}>
@@ -348,7 +370,7 @@ export function TierProgressPanel({ rows, loading, error, onOpenHistory }: TierP
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Typography variant="subtitle2">Tier progress</Typography>
-          <GtoStudyTierHelp ariaLabel="What are study tiers?" />
+          <GtoStudyTierHelp format={format} ariaLabel="What are study tiers?" />
         </Box>
         <IconButton
           size="small"
@@ -366,6 +388,14 @@ export function TierProgressPanel({ rows, loading, error, onOpenHistory }: TierP
         ) : error ? (
           <Typography variant="body2" color="error">
             {error}
+          </Typography>
+        ) : format === '8max' && !hasAnyTierDrill ? (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: 'center', py: 2, px: 1 }}
+          >
+            No ring drills yet — add your first 8max drill to get started.
           </Typography>
         ) : rows.length === 0 ? (
           <Typography variant="body2" color="text.secondary">

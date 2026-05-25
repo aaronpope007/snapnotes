@@ -27,15 +27,21 @@ export interface GtoTierProgressRow {
   recentScores: number[];
 }
 
+function parseFormatQuery(req: Request): 'HU' | '8max' {
+  const q = typeof req.query.format === 'string' ? req.query.format.trim() : '';
+  return q === '8max' ? '8max' : 'HU';
+}
+
 router.get('/tier-progress', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
 
+    const format = parseFormatQuery(req);
     const resultCollName = GtoDrillResult.collection.collectionName;
 
     const rows = await GtoDrill.aggregate([
-      { $match: { userId, archived: { $ne: true } } },
+      { $match: { userId, archived: { $ne: true }, format } },
       { $sort: { name: 1 } },
       {
         $lookup: {
@@ -126,11 +132,25 @@ router.get('/tier-progress', async (req: Request, res: Response) => {
             ? String(row.latestDate)
             : null,
       recentScores: (
-        (row.recentScoreDocs as Array<{ score?: number }> | undefined) ?? []
+        (row.recentScoreDocs as Array<{ score?: number; handsPlayed?: number }> | undefined) ??
+        []
       )
-        .map((r) => r.score)
-        .filter((s): s is number => s != null && Number.isFinite(Number(s)))
-        .map((s) => Number(s)),
+        .map((r) => {
+          const score = r.score;
+          const hands = r.handsPlayed;
+          if (
+            score == null ||
+            hands == null ||
+            !Number.isFinite(Number(score)) ||
+            !Number.isFinite(Number(hands)) ||
+            Number(hands) < 1
+          ) {
+            return null;
+          }
+          const perHand = Number(score) / Number(hands);
+          return Number.isFinite(perHand) ? Math.round(perHand * 1000) / 1000 : null;
+        })
+        .filter((s): s is number => s != null),
     }));
 
     res.json(payload);

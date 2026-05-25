@@ -4,18 +4,22 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import Popover from '@mui/material/Popover';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import { GTO_STUDY_TIERS } from '../../constants/gtoStudyTiers';
+import { getTiersForFormat } from '../../utils/gtoTierProgress';
+import type { GtoFormat } from '../../types/gtoStudy';
 
 interface GtoStudyTierHelpProps {
+  format?: GtoFormat;
   size?: 'small' | 'medium';
   ariaLabel?: string;
 }
 
 export function GtoStudyTierHelp({
+  format = 'HU',
   size = 'small',
   ariaLabel = 'Study tier descriptions',
 }: GtoStudyTierHelpProps) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const tiers = getTiersForFormat(format);
 
   return (
     <>
@@ -42,7 +46,7 @@ export function GtoStudyTierHelp({
           Assign each drill to the tier that matches its spot. Works across any solver (Lucid, GTO
           Wizard, etc.).
         </Typography>
-        {GTO_STUDY_TIERS.map((t) => (
+        {tiers.map((t) => (
           <Box key={t.tier} sx={{ mb: 1.25 }}>
             <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
               {t.label}

@@ -25,9 +25,17 @@ export const GTO_STACK_OPTIONS: Record<GtoFormat, GtoStack[]> = {
 
 export const GTO_HAND_START_OPTIONS: GtoHandStart[] = ['Preflop', 'Postflop'];
 
-export const GTO_POT_TYPE_OPTIONS: GtoPotType[] = ['SRP', '3BP', '4BP', 'FoldedTo', 'Custom'];
+export const GTO_POT_TYPE_OPTIONS: GtoPotType[] = [
+  'Preflop',
+  'SRP',
+  '3BP',
+  '4BP',
+  'FoldedTo',
+  'Custom',
+];
 
 export const GTO_POT_TYPE_LABELS: Record<GtoPotType, string> = {
+  Preflop: 'Preflop',
   SRP: 'SRP',
   '3BP': '3BP',
   '4BP': '4BP',
@@ -52,7 +60,13 @@ export const GTO_8MAX_POSITIONS: Gto8maxPosition[] = [
   'BTN',
   'SB',
   'BB',
+  'SS',
 ];
+
+export function formatGtoPositionLabel(position: string, format: GtoFormat): string {
+  if (format === '8max' && position === 'SS') return 'SS (Straddle)';
+  return position;
+}
 
 export const GTO_ENDS_AFTER_LABELS: Record<GtoEndsAfter, string> = {
   FirstAction: 'First action',
@@ -65,8 +79,8 @@ export function getPositionsForFormat(format: GtoFormat): readonly string[] {
 }
 
 export function getPotTypesForDrill(format: GtoFormat, handStart: GtoHandStart): GtoPotType[] {
-  if (format === '8max' && handStart === 'Postflop') {
-    return GTO_POT_TYPE_OPTIONS.filter((p) => p !== 'FoldedTo');
+  if (handStart === 'Postflop') {
+    return GTO_POT_TYPE_OPTIONS.filter((p) => p !== 'Preflop' && (format !== '8max' || p !== 'FoldedTo'));
   }
   return GTO_POT_TYPE_OPTIONS;
 }
