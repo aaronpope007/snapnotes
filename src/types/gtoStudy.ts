@@ -16,6 +16,9 @@ export type GtoEndsAfter = 'FirstAction' | 'StreetEnd' | 'HandEnd';
 
 export type GtoSolver = 'Lucid' | 'GTO Wizard' | 'Solver Pro';
 
+/** Study curriculum tier (1–3). Omit or null = unassigned. */
+export type GtoStudyTier = 1 | 2 | 3;
+
 export type GtoStreetName = 'Preflop' | 'Flop' | 'Turn' | 'River';
 
 export interface GtoStreetAction {
@@ -54,6 +57,7 @@ export interface GtoDrill {
   villainPosition?: GtoPosition;
   endsAfter: GtoEndsAfter;
   solver: GtoSolver;
+  tier?: GtoStudyTier | null;
   customConfig?: GtoCustomConfig;
   createdAt: string;
   updatedAt: string;
@@ -72,6 +76,7 @@ export interface GtoDrillCreate {
   villainPosition?: GtoPosition;
   endsAfter: GtoEndsAfter;
   solver?: GtoSolver;
+  tier?: GtoStudyTier | null;
   customConfig?: GtoCustomConfig;
 }
 

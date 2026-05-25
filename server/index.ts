@@ -13,6 +13,7 @@ import withdrawalsRouter from './routes/withdrawals.js';
 import betClipboardSyncRouter from './routes/betClipboardSync.js';
 import gtoStudyRouter from './routes/gtoStudy.js';
 import gtoDrillsRouter from './routes/gtoDrills.js';
+import gtoTierProgressRouter from './routes/gtoTierProgress.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -31,6 +32,7 @@ app.use('/api/withdrawals', withdrawalsRouter);
 app.use('/api/bet-clipboard-sync', betClipboardSyncRouter);
 app.use('/api/gto-study', gtoStudyRouter);
 app.use('/api/gto-drills', gtoDrillsRouter);
+app.use('/api/gto', gtoTierProgressRouter);
 
 const start = async () => {
   const uri = process.env.MONGODB_URI;

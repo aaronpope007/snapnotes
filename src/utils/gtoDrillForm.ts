@@ -11,6 +11,7 @@ import type {
   GtoStack,
   GtoStreetAction,
   GtoStreetName,
+  GtoStudyTier,
 } from '../types/gtoStudy';
 import {
   getDefaultStreet,
@@ -30,6 +31,8 @@ export interface GtoDrillFormState {
   villainPosition: GtoPosition | '';
   endsAfter: GtoEndsAfter;
   solver: GtoSolver;
+  /** Empty string = unassigned. */
+  tier: GtoStudyTier | '';
   streetActions: GtoStreetAction[];
   customNotes: string;
 }
@@ -47,6 +50,7 @@ export function emptyDrillFormState(): GtoDrillFormState {
     villainPosition: '',
     endsAfter: 'HandEnd',
     solver: 'Lucid',
+    tier: '',
     streetActions: [{ street: 'Preflop', sizing: '' }],
     customNotes: '',
   };
@@ -79,6 +83,7 @@ export function drillToFormState(drill: GtoDrill): GtoDrillFormState {
         : ''),
     endsAfter: drill.endsAfter,
     solver: drill.solver,
+    tier: drill.tier ?? '',
     streetActions:
       drill.customConfig?.streetActions?.length
         ? drill.customConfig.streetActions.map((s) => ({ ...s }))
@@ -103,6 +108,7 @@ export function formStateToPayload(state: GtoDrillFormState): GtoDrillCreate {
         : undefined,
     endsAfter: state.endsAfter,
     solver: state.solver,
+    tier: state.tier === '' ? null : state.tier,
   };
   if (state.potType === 'Custom') {
     payload.customConfig = {

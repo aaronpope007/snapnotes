@@ -7,6 +7,7 @@ import {
   normalizeCustomConfig,
   normalizeDrillDescription,
   normalizeDrillStreet,
+  normalizeStudyTier,
   parseDate,
   type GtoDrillBodyFields,
 } from './gtoDrillValidation.js';
@@ -141,6 +142,7 @@ router.post('/', async (req: Request, res: Response) => {
           : undefined,
       endsAfter: body.endsAfter,
       solver: body.solver ?? 'Lucid',
+      tier: normalizeStudyTier(body.tier),
       customConfig: normalizeCustomConfig(potType, body.customConfig),
     });
     await drill.save();
@@ -178,6 +180,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
           : drill.villainPosition,
       endsAfter: body.endsAfter ?? drill.endsAfter,
       solver: body.solver ?? drill.solver,
+      tier: body.tier !== undefined ? body.tier : drill.tier,
       customConfig:
         body.customConfig !== undefined
           ? body.customConfig
@@ -211,6 +214,11 @@ router.patch('/:id', async (req: Request, res: Response) => {
     drill.heroPosition = merged.heroPosition!;
     drill.endsAfter = merged.endsAfter as 'FirstAction' | 'StreetEnd' | 'HandEnd';
     drill.solver = (merged.solver ?? 'Lucid') as 'Lucid' | 'GTO Wizard' | 'Solver Pro';
+    if (body.tier !== undefined) {
+      const t = normalizeStudyTier(body.tier);
+      if (t == null) drill.set('tier', undefined);
+      else drill.tier = t;
+    }
 
     if (merged.handStart === 'Postflop' && merged.villainPosition) {
       drill.villainPosition = merged.villainPosition;

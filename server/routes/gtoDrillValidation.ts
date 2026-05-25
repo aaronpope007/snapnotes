@@ -3,6 +3,7 @@ const EIGHT_MAX_POSITIONS = ['UTG', 'UTG1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 const POT_TYPES = ['SRP', '3BP', '4BP', 'FoldedTo', 'Custom'];
 const ENDS_AFTER = ['FirstAction', 'StreetEnd', 'HandEnd'];
 const SOLVERS = ['Lucid', 'GTO Wizard', 'Solver Pro'];
+const STUDY_TIERS = [1, 2, 3];
 const STREETS = ['Preflop', 'Flop', 'Turn', 'River'];
 
 const DESCRIPTION_MAX = 500;
@@ -19,6 +20,7 @@ export interface GtoDrillBodyFields {
   villainPosition?: string;
   endsAfter?: string;
   solver?: string;
+  tier?: number | null;
   customConfig?: {
     streetActions?: { street?: string; sizing?: string }[];
     notes?: string;
@@ -64,6 +66,9 @@ export function validateDrillFields(body: GtoDrillBodyFields, requireName = true
   if (!endsAfter || !ENDS_AFTER.includes(endsAfter)) return 'invalid endsAfter';
   if (!SOLVERS.includes(solver)) return 'invalid solver';
 
+  const tierErr = validateStudyTier(body.tier);
+  if (tierErr) return tierErr;
+
   if (potType === 'Custom') {
     const cfg = body.customConfig;
     if (!cfg || !Array.isArray(cfg.streetActions) || cfg.streetActions.length === 0) {
@@ -93,6 +98,23 @@ function validateDrillStreet(handStart: string, street?: string): string | null 
 }
 
 /** Default or normalize street for persistence. */
+export function validateStudyTier(tier: unknown): string | null {
+  if (tier == null || tier === '') return null;
+  const n = typeof tier === 'number' ? tier : Number.parseInt(String(tier), 10);
+  if (!Number.isFinite(n) || !STUDY_TIERS.includes(n)) {
+    return 'tier must be 1, 2, 3, or omitted';
+  }
+  return null;
+}
+
+/** Persist undefined when unassigned; otherwise 1–3. */
+export function normalizeStudyTier(tier: unknown): number | undefined {
+  if (tier == null || tier === '') return undefined;
+  const n = typeof tier === 'number' ? tier : Number.parseInt(String(tier), 10);
+  if (!Number.isFinite(n) || !STUDY_TIERS.includes(n)) return undefined;
+  return n;
+}
+
 export function normalizeDrillDescription(description?: string): string | undefined {
   const t = (description ?? '').trim().slice(0, DESCRIPTION_MAX);
   return t || undefined;

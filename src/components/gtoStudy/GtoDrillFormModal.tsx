@@ -42,6 +42,8 @@ import {
   type GtoDrillFormState,
 } from '../../utils/gtoDrillForm';
 import type { GtoDrill, GtoDrillCreate, GtoDrillUpdate } from '../../types/gtoStudy';
+import { GTO_STUDY_TIER_OPTIONS } from '../../constants/gtoStudyTiers';
+import { GtoStudyTierHelp } from './GtoStudyTierHelp';
 import type {
   GtoFormat,
   GtoHandStart,
@@ -50,6 +52,7 @@ import type {
   GtoSolver,
   GtoStack,
   GtoStreetName,
+  GtoStudyTier,
 } from '../../types/gtoStudy';
 
 interface GtoDrillFormModalProps {
@@ -415,6 +418,32 @@ export function GtoDrillFormModal({
                   ))}
                 </Select>
               </FormControl>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Study tier</InputLabel>
+                <Select
+                  label="Study tier"
+                  value={form.tier}
+                  onChange={(e) =>
+                    patch({
+                      tier: (e.target.value === '' ? '' : Number(e.target.value)) as GtoStudyTier | '',
+                    })
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Unassigned</em>
+                  </MenuItem>
+                  {GTO_STUDY_TIER_OPTIONS.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Box sx={{ pt: 1 }}>
+                <GtoStudyTierHelp />
+              </Box>
             </Box>
             <GtoDrillDescriptionSection
               value={form.description}

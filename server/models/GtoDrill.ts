@@ -50,6 +50,7 @@ const gtoDrillSchema = new mongoose.Schema(
       enum: ['Lucid', 'GTO Wizard', 'Solver Pro'],
       default: 'Lucid',
     },
+    tier: { type: Number, min: 1, max: 3 },
     customConfig: { type: customConfigSchema },
   },
   { timestamps: true }

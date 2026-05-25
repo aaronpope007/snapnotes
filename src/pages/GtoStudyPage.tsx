@@ -5,6 +5,7 @@ import { useUserName } from '../context/UserNameContext';
 import { useGtoDrills } from '../hooks/useGtoDrills';
 import { GtoStudyTabs } from '../components/gtoStudy/GtoStudyTabs';
 import { GtoDrillsTab } from '../components/gtoStudy/GtoDrillsTab';
+import { TierProgressPanel } from '../components/gtoStudy/TierProgressPanel';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { filterGtoDrills, emptyGtoDrillFacetFilters } from '../utils/gtoDrillFilter';
 
@@ -31,6 +32,14 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
     [hook.drills, filterQuery, facetFilters]
   );
 
+  const tierProgressRefreshKey = useMemo(
+    () =>
+      hook.drills
+        .map((d) => `${d._id}:${d.updatedAt}:${d.recentResultsSummary?.[0]?.date ?? ''}`)
+        .join('|'),
+    [hook.drills]
+  );
+
   return (
     <Box sx={{ width: '100%' }}>
       {!hook.selectedDrillId && (
@@ -53,6 +62,9 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
         </Typography>
       ) : (
         <ErrorBoundary>
+          {!hook.selectedDrillId && (
+            <TierProgressPanel userId={userName} refreshKey={tierProgressRefreshKey} />
+          )}
           <GtoDrillsTab
             hook={hook}
             listDrills={visibleDrills}

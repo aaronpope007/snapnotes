@@ -38,12 +38,16 @@ export function GtoDrillsTab({ hook, listDrills, onCopySuccess, onCopyError }: G
           {...drillFormCopyProps}
         />
         <GtoDrillResultModal
-          open={Boolean(hook.editResult)}
-          onClose={() => hook.setEditResult(null)}
+          open={Boolean(hook.logResultOpen || hook.editResult)}
+          onClose={() => {
+            hook.setLogResultOpen(false);
+            hook.setLogResultDrillId(null);
+            hook.setEditResult(null);
+          }}
           saving={hook.saving}
           drillName={hook.selectedDrill.name}
           result={hook.editResult?.result ?? null}
-          onSubmitCreate={async () => {}}
+          onSubmitCreate={(payload) => hook.handleCreateResult(hook.selectedDrill._id, payload)}
           onSubmitUpdate={(payload) =>
             hook.handleUpdateResult(
               hook.editResult!.drillId,
