@@ -6,6 +6,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Table from '@mui/material/Table';
@@ -14,7 +16,11 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import CircularProgress from '@mui/material/CircularProgress';
-import { fetchGtoDrillResults } from '../../api/gtoDrills';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { useConfirm } from '../../hooks/useConfirm';
+import { deleteGtoDrillResult, fetchGtoDrillResults } from '../../api/gtoDrills';
 import { GTO_POT_TYPE_LABELS, getDefaultStreet } from '../../constants/gtoStudy';
 import { GtoDrillEvChart } from './GtoDrillEvChart';
 import type { GtoDrill, GtoDrillResult, GtoPotType } from '../../types/gtoStudy';
@@ -81,6 +87,10 @@ interface DrillHistoryModalProps {
   drillSolvers?: Record<string, string>;
   onLogResult: (drill: DrillHistoryDrill) => void;
   onLoadError?: (msg: string) => void;
+  onDeleteSuccess?: (msg: string) => void;
+  onDeleteError?: (msg: string) => void;
+  onResultsChanged?: () => void;
+  onEditResult?: (result: GtoDrillResult) => void;
 }
 
 type HistoryTab = 'chart' | 'results';
@@ -93,11 +103,29 @@ export function DrillHistoryModal({
   drillSolvers,
   onLogResult,
   onLoadError,
+  onDeleteSuccess,
+  onDeleteError,
+  onResultsChanged,
+  onEditResult,
 }: DrillHistoryModalProps) {
   const [tab, setTab] = useState<HistoryTab>('chart');
   const [results, setResults] = useState<GtoDrillResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const {
+    confirmOpen: deleteConfirmOpen,
+    openConfirm: openDeleteConfirm,
+    closeConfirm: closeDeleteConfirm,
+    handleConfirm: handleDeleteConfirm,
+    confirmOptions: deleteConfirmOptions,
+  } = useConfirm({
+    title: 'Delete result?',
+    message: 'This result will be permanently removed.',
+    confirmText: 'Delete',
+    confirmDanger: true,
+  });
 
   const drillId = drill ? getHistoryDrillId(drill) : null;
   const solver =
@@ -146,6 +174,23 @@ export function DrillHistoryModal({
     () => [...results].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [results]
   );
+
+  const requestDeleteResult = (resultId: string) => {
+    openDeleteConfirm(async () => {
+      if (!drillId || !userId?.trim()) return;
+      setDeleting(true);
+      try {
+        await deleteGtoDrillResult(drillId, resultId, userId);
+        setResults((prev) => prev.filter((r) => r._id !== resultId));
+        onResultsChanged?.();
+        onDeleteSuccess?.('Result deleted');
+      } catch (err) {
+        onDeleteError?.(getApiErrorMessage(err, 'Failed to delete result'));
+      } finally {
+        setDeleting(false);
+      }
+    });
+  };
 
   if (!drill) return null;
 
@@ -218,6 +263,7 @@ export function DrillHistoryModal({
                 <TableCell align="right">Score/hand</TableCell>
                 <TableCell align="right">EV Diff</TableCell>
                 <TableCell>Notes</TableCell>
+                <TableCell align="center" sx={{ width: onEditResult ? 72 : 40 }} />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -233,6 +279,32 @@ export function DrillHistoryModal({
                   <TableCell sx={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {displayOrDash(result.notes?.trim() ?? '')}
                   </TableCell>
+                  <TableCell align="center" sx={{ width: onEditResult ? 72 : 40, px: 0.25, whiteSpace: 'nowrap' }}>
+                    {onEditResult && (
+                      <Tooltip title="Edit result">
+                        <IconButton
+                          size="small"
+                          aria-label="Edit result"
+                          disabled={deleting}
+                          onClick={() => onEditResult(result)}
+                        >
+                          <EditIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Delete result">
+                      <span>
+                        <IconButton
+                          size="small"
+                          aria-label="Delete result"
+                          disabled={deleting}
+                          onClick={() => requestDeleteResult(result._id)}
+                        >
+                          <DeleteIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -243,6 +315,13 @@ export function DrillHistoryModal({
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={closeDeleteConfirm}
+        onConfirm={handleDeleteConfirm}
+        {...deleteConfirmOptions}
+      />
     </Dialog>
   );
 }

@@ -315,6 +315,75 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
 // ─── Results ────────────────────────────────────────────────────────────────
 
+const RECENT_RESULTS_FEED_DEFAULT = 40;
+const RECENT_RESULTS_FEED_MAX = 100;
+
+function parseRecentResultsLimit(req: Request): number {
+  const raw = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : NaN;
+  if (!Number.isFinite(raw) || raw < 1) return RECENT_RESULTS_FEED_DEFAULT;
+  return Math.min(raw, RECENT_RESULTS_FEED_MAX);
+}
+
+/** Recent results across all drills (newest first), with drill name for history browsing. */
+router.get('/results/recent', async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(400).json({ error: 'userId query param required' });
+
+    const format = parseFormatQuery(req);
+    const limit = parseRecentResultsLimit(req);
+    const drillCollName = GtoDrill.collection.collectionName;
+
+    const pipeline: Record<string, unknown>[] = [
+      { $match: { userId } },
+      { $sort: { date: -1 } },
+      {
+        $lookup: {
+          from: drillCollName,
+          localField: 'drillId',
+          foreignField: '_id',
+          as: 'drill',
+        },
+      },
+      { $unwind: '$drill' },
+    ];
+
+    if (format) {
+      pipeline.push({ $match: { 'drill.format': format } });
+    }
+
+    pipeline.push(
+      { $limit: limit },
+      {
+        $project: {
+          _id: { $toString: '$_id' },
+          drillId: { $toString: '$drillId' },
+          userId: 1,
+          date: 1,
+          evLoss: 1,
+          handsPlayed: 1,
+          accuracy: 1,
+          bestActionRate: 1,
+          evDiff: 1,
+          score: 1,
+          notes: 1,
+          studySessionId: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          drillName: '$drill.name',
+          drillFormat: '$drill.format',
+          drillArchived: { $ifNull: ['$drill.archived', false] },
+        },
+      }
+    );
+
+    const rows = await GtoDrillResult.aggregate(pipeline);
+    res.json(rows);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch recent drill results' });
+  }
+});
+
 router.get('/:id/results', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);

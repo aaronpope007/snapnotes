@@ -7,6 +7,7 @@ import type {
   GtoDrillResultUpdate,
   GtoDrillUpdate,
   GtoFormat,
+  GtoRecentDrillResult,
 } from '../types/gtoStudy';
 
 const api = axios.create({
@@ -60,6 +61,22 @@ export async function updateGtoDrill(id: string, updates: GtoDrillUpdate): Promi
 
 export async function deleteGtoDrill(id: string): Promise<void> {
   await api.delete(`/gto-drills/${id}`);
+}
+
+export async function fetchRecentGtoDrillResults(
+  userId: string | null,
+  format?: GtoFormat,
+  limit = 40
+): Promise<GtoRecentDrillResult[]> {
+  if (!userId?.trim()) return [];
+  const { data } = await api.get<GtoRecentDrillResult[]>('/gto-drills/results/recent', {
+    params: {
+      userId: userId.trim(),
+      limit,
+      ...(format ? { format } : {}),
+    },
+  });
+  return data;
 }
 
 export async function fetchGtoDrillResults(

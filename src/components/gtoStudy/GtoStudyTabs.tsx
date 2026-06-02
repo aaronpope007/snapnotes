@@ -8,6 +8,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import HistoryIcon from '@mui/icons-material/History';
 import { useCompactMode } from '../../context/CompactModeContext';
 import { GtoDrillFacetFilters } from './GtoDrillFacetFilters';
 import {
@@ -27,6 +28,7 @@ interface GtoStudyTabsProps {
   facetFilterResetKey: number;
   onClearAllFilters: () => void;
   onLog: () => void;
+  onOpenRecent: () => void;
   onNewDrill: () => void;
   drillCount?: number;
   loading?: boolean;
@@ -42,6 +44,7 @@ export function GtoStudyTabs({
   facetFilterResetKey,
   onClearAllFilters,
   onLog,
+  onOpenRecent,
   onNewDrill,
   drillCount,
   loading = false,
@@ -123,6 +126,14 @@ export function GtoStudyTabs({
         </Typography>
       )}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0, ml: 'auto' }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<HistoryIcon sx={{ fontSize: '1rem !important' }} />}
+          onClick={onOpenRecent}
+        >
+          Recent
+        </Button>
         <Button variant="outlined" size="small" onClick={onNewDrill}>
           New Drill
         </Button>

@@ -151,22 +151,6 @@ export function GtoDrillsTab({
         }}
       />
 
-      <GtoDrillResultModal
-        open={Boolean(hook.editResult) && !hook.selectedDrill}
-        onClose={() => hook.setEditResult(null)}
-        saving={hook.saving}
-        drillName={hook.drills.find((d) => d._id === hook.editResult?.drillId)?.name ?? 'Drill'}
-        result={hook.editResult?.result ?? null}
-        onSubmitCreate={async () => {}}
-        onSubmitUpdate={(payload) =>
-          hook.handleUpdateResult(
-            hook.editResult!.drillId,
-            hook.editResult!.result._id,
-            payload
-          )
-        }
-      />
-
       <ConfirmDialog
         open={hook.deleteDrillConfirmOpen}
         onClose={hook.closeDeleteDrillConfirm}

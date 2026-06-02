@@ -12,12 +12,15 @@ import { DrillTodayCard } from '../components/gtoStudy/DrillTodayCard';
 import {
   DrillHistoryModal,
   getHistoryDrillId,
+  getHistoryDrillName,
   type DrillHistoryDrill,
 } from '../components/gtoStudy/DrillHistoryModal';
+import { RecentResultsModal } from '../components/gtoStudy/RecentResultsModal';
+import { GtoDrillResultModal } from '../components/gtoStudy/GtoDrillResultModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { filterGtoDrills, emptyGtoDrillFacetFilters } from '../utils/gtoDrillFilter';
 import { fetchGtoTierProgress } from '../api/gtoTierProgress';
-import type { GtoFormat } from '../types/gtoStudy';
+import type { GtoDrillResult, GtoFormat } from '../types/gtoStudy';
 import type { GtoTierProgressRow } from '../types/gtoTierProgress';
 
 interface GtoStudyPageProps {
@@ -37,6 +40,8 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
   const [tierLoading, setTierLoading] = useState(false);
   const [tierError, setTierError] = useState<string | null>(null);
   const [historyDrill, setHistoryDrill] = useState<DrillHistoryDrill | null>(null);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [editDrillNameHint, setEditDrillNameHint] = useState<string | null>(null);
 
   const handleClearAllFilters = () => {
     setFilterQuery('');
@@ -119,6 +124,59 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
     [handleLogResultById]
   );
 
+  const handleHistoryResultsChanged = useCallback(() => {
+    void hook.loadDrills({ silent: true });
+    void loadTierProgress();
+  }, [hook.loadDrills, loadTierProgress]);
+
+  const handleOpenRecent = useCallback(() => {
+    if (!userName?.trim()) {
+      onError?.('Enter your name to view recent results');
+      return;
+    }
+    setRecentOpen(true);
+  }, [userName, onError]);
+
+  const handleOpenHistoryByDrillId = useCallback(
+    (drillId: string) => {
+      const drill =
+        hook.drills.find((d) => d._id === drillId) ??
+        hook.archivedDrills.find((d) => d._id === drillId) ??
+        tierRows.find((r) => r.drillId === drillId);
+      if (drill) {
+        handleOpenHistory(drill);
+        return;
+      }
+      onError?.('Drill not found in the current list');
+    },
+    [hook.drills, hook.archivedDrills, tierRows, handleOpenHistory, onError]
+  );
+
+  const handleEditFromHistory = useCallback(
+    (result: GtoDrillResult) => {
+      if (!historyDrill) return;
+      setEditDrillNameHint(getHistoryDrillName(historyDrill));
+      hook.setEditResult({ drillId: getHistoryDrillId(historyDrill), result });
+    },
+    [historyDrill, hook]
+  );
+
+  const handleEditFromRecent = useCallback(
+    (drillId: string, result: GtoDrillResult, drillName: string) => {
+      setEditDrillNameHint(drillName);
+      hook.setEditResult({ drillId, result });
+    },
+    [hook]
+  );
+
+  const editDrillName =
+    editDrillNameHint ??
+    (hook.editResult != null
+      ? (hook.drills.find((d) => d._id === hook.editResult?.drillId)?.name ??
+        hook.archivedDrills.find((d) => d._id === hook.editResult?.drillId)?.name ??
+        'Drill')
+      : '');
+
   return (
     <Box sx={{ width: '100%' }}>
       {!hook.selectedDrillId && (
@@ -132,6 +190,7 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
           facetFilterResetKey={facetFilterResetKey}
           onClearAllFilters={handleClearAllFilters}
           onLog={() => hook.openLogResult()}
+          onOpenRecent={handleOpenRecent}
           onNewDrill={() => hook.openNewDrillForm()}
           drillCount={userName?.trim() ? visibleDrills.length : undefined}
           loading={listLoading}
@@ -182,6 +241,41 @@ export function GtoStudyPage({ onSuccess, onError }: GtoStudyPageProps) {
             drillSolvers={drillSolvers}
             onLogResult={handleHistoryLogResult}
             onLoadError={(msg) => onError?.(msg)}
+            onDeleteSuccess={(msg) => onSuccess?.(msg)}
+            onDeleteError={(msg) => onError?.(msg)}
+            onResultsChanged={handleHistoryResultsChanged}
+            onEditResult={handleEditFromHistory}
+          />
+          <RecentResultsModal
+            open={recentOpen}
+            onClose={() => setRecentOpen(false)}
+            userId={userName}
+            format={studyFormat}
+            refreshKey={tierProgressRefreshKey}
+            onEditResult={handleEditFromRecent}
+            onOpenDrillHistory={handleOpenHistoryByDrillId}
+            onLoadError={(msg) => onError?.(msg)}
+            onDeleteSuccess={(msg) => onSuccess?.(msg)}
+            onDeleteError={(msg) => onError?.(msg)}
+            onResultsChanged={handleHistoryResultsChanged}
+          />
+          <GtoDrillResultModal
+            open={Boolean(hook.editResult) && !hook.selectedDrill}
+            onClose={() => {
+              hook.setEditResult(null);
+              setEditDrillNameHint(null);
+            }}
+            saving={hook.saving}
+            drillName={editDrillName}
+            result={hook.editResult?.result ?? null}
+            onSubmitCreate={async () => {}}
+            onSubmitUpdate={(payload) =>
+              hook.handleUpdateResult(
+                hook.editResult!.drillId,
+                hook.editResult!.result._id,
+                payload
+              )
+            }
           />
           <GtoDrillsTab
             hook={hook}

@@ -103,6 +103,13 @@ export interface GtoDrillResult {
   updatedAt: string;
 }
 
+/** Result row from GET /gto-drills/results/recent (includes drill metadata). */
+export interface GtoRecentDrillResult extends GtoDrillResult {
+  drillName: string;
+  drillFormat: GtoFormat;
+  drillArchived?: boolean;
+}
+
 export interface GtoDrillResultCreate {
   date: string;
   evLoss?: number;
