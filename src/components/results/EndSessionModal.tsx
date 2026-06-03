@@ -45,6 +45,12 @@ function sanitizeHandNumberInput(val: string): string {
   return val.replace(/\D/g, '');
 }
 
+function toLocalDatetimeValue(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function EndSessionModal({
   open,
   onClose,
@@ -108,8 +114,12 @@ export function EndSessionModal({
       ? endHandNum - activeSession.startHandNumber
       : null;
 
+  const handsPerHour =
+    totalTimeHours > 0 && hands != null && hands > 0 ? Math.round(hands / totalTimeHours) : null;
+
   useEffect(() => {
     if (open) {
+      setStartTimeEditable(toLocalDatetimeValue(activeSession.startTime));
       setEndBankroll('');
       setStartBankroll(lastEndBankroll != null ? String(lastEndBankroll) : '');
       setEndingHandNumber('');
@@ -122,7 +132,7 @@ export function EndSessionModal({
       setTrackLeakOpen(false);
       setLeakTitle('');
     }
-  }, [open, lastEndBankroll]);
+  }, [open, lastEndBankroll, activeSession.startTime]);
 
   useEffect(() => {
     if (trackLeakOpen) setLeakTitle(notes.trim());
@@ -241,6 +251,7 @@ export function EndSessionModal({
           />
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             Time played: {totalTimeHours.toFixed(2)} hrs
+            {handsPerHour != null ? ` · ${handsPerHour.toLocaleString()} hands/hr` : ''}
           </Typography>
           {lastEndBankroll != null ? (
             <Typography variant="body2" color="text.secondary">
@@ -294,7 +305,11 @@ export function EndSessionModal({
             onChange={(e) => setEndingHandNumber(sanitizeHandNumberInput(e.target.value))}
             placeholder={String(activeSession.startHandNumber)}
             helperText={
-              hands != null ? `${hands.toLocaleString()} hands this session` : 'Optional. Your total hand count at session end.'
+              hands != null
+                ? `${hands.toLocaleString()} hands this session${
+                    handsPerHour != null ? ` · ${handsPerHour.toLocaleString()} hands/hr` : ''
+                  }`
+                : 'Optional. Your total hand count at session end.'
             }
             fullWidth
           />
