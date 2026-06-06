@@ -23,6 +23,7 @@ const sessionResultSchema = new mongoose.Schema(
       default: undefined,
     },
     stake: { type: Number, default: null },
+    stakes: { type: [Number], default: undefined },
     isRing: { type: Boolean, default: null },
     isHU: { type: Boolean, default: null },
     gameType: { type: String, enum: ['NLHE', 'PLO'], default: 'NLHE' },

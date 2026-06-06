@@ -63,6 +63,38 @@ function parsePauseIntervals(raw: unknown): Array<{ start: Date; end: Date }> | 
   return out.length > 0 ? out : undefined;
 }
 
+const ALLOWED_SESSION_STAKES = new Set([200, 400, 800, 1000, 2000]);
+
+function parseStakesField(raw: unknown): number[] | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (!Array.isArray(raw)) return undefined;
+  return [...new Set(
+    raw.filter((v): v is number => typeof v === 'number' && ALLOWED_SESSION_STAKES.has(v))
+  )].sort((a, b) => a - b);
+}
+
+function applySessionStakes(
+  session: { stake: number | null; set: (key: string, value: unknown) => void },
+  stakes: number[] | null | undefined,
+  legacyStake?: number | null
+): void {
+  if (stakes !== undefined) {
+    if (stakes == null || stakes.length === 0) {
+      session.stake = null;
+      session.set('stakes', undefined);
+      return;
+    }
+    session.set('stakes', stakes);
+    session.stake = stakes[0];
+    return;
+  }
+  if (legacyStake !== undefined) {
+    session.stake = legacyStake;
+    session.set('stakes', legacyStake != null ? [legacyStake] : undefined);
+  }
+}
+
 // GET /api/results?userId=...
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -93,6 +125,7 @@ router.post('/', async (req: Request, res: Response) => {
       startTime?: string | null;
       endTime?: string | null;
       stake?: number | null;
+      stakes?: number[] | null;
       isRing?: boolean | null;
       isHU?: boolean | null;
       gameType?: 'NLHE' | 'PLO';
@@ -114,6 +147,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     const pauseIntervals = parsePauseIntervals(body.pauseIntervals);
+    const parsedStakes = parseStakesField(body.stakes);
 
     const session = new SessionResult({
       userId,
@@ -128,13 +162,13 @@ router.post('/', async (req: Request, res: Response) => {
       startTime: body.startTime ? new Date(body.startTime) : null,
       endTime: body.endTime ? new Date(body.endTime) : null,
       ...(pauseIntervals != null ? { pauseIntervals } : {}),
-      stake: body.stake ?? null,
-      isRing: body.isRing ?? null,
-      isHU: body.isHU ?? null,
       gameType: body.gameType ?? 'NLHE',
       rating: body.rating && ['A', 'B', 'C', 'D', 'F'].includes(body.rating) ? body.rating : null,
       notes: body.notes ?? null,
+      isRing: body.isRing ?? null,
+      isHU: body.isHU ?? null,
     });
+    applySessionStakes(session, parsedStakes, body.stake ?? null);
     await session.save();
     res.status(201).json(session);
   } catch (err) {
@@ -255,6 +289,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       startTime?: string | null;
       endTime?: string | null;
       stake?: number | null;
+      stakes?: number[] | null;
       isRing?: boolean | null;
       isHU?: boolean | null;
       gameType?: 'NLHE' | 'PLO';
@@ -275,7 +310,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (body.endBankroll !== undefined) session.endBankroll = body.endBankroll;
     if (body.startTime !== undefined) session.startTime = body.startTime ? new Date(body.startTime) : null;
     if (body.endTime !== undefined) session.endTime = body.endTime ? new Date(body.endTime) : null;
-    if (body.stake !== undefined) session.stake = body.stake;
+    const parsedStakes = parseStakesField(body.stakes);
+    if (parsedStakes !== undefined || body.stake !== undefined) {
+      applySessionStakes(session, parsedStakes, body.stake);
+    }
     if (body.isRing !== undefined) session.isRing = body.isRing;
     if (body.isHU !== undefined) session.isHU = body.isHU;
     if (body.gameType !== undefined && ['NLHE', 'PLO'].includes(body.gameType)) {

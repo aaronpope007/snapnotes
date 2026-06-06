@@ -16,6 +16,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { SessionResult, SessionResultCreate } from '../../types/results';
 import { EditSessionModal } from './EditSessionModal';
 import { computeHandRangeStats, getLatestHandCounterEnd } from '../../utils/handRangeStats';
+import { formatSessionStakes } from '../../utils/sessionUtils';
 
 interface SessionsGridTabProps {
   sessions: SessionResult[];
@@ -313,12 +314,8 @@ export function SessionsGridTab({ sessions, allSessionsForBankroll, loading, onU
       {
         field: 'stake',
         headerName: 'Stake',
-        width: 75,
-        valueFormatter: (value) => {
-          const n = value as number | null;
-          if (n === null || n === undefined) return '—';
-          return String(n);
-        },
+        width: 95,
+        valueGetter: (_, row) => formatSessionStakes(row),
       },
       {
         field: 'gameType',

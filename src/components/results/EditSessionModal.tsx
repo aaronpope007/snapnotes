@@ -12,9 +12,11 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import type { SessionResult, SessionResultCreate, SessionRating } from '../../types/results';
-import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
+import { SESSION_RATING_OPTIONS } from '../../types/results';
+import { getSessionStakes } from '../../utils/sessionUtils';
 import { pauseOverlapMsWithinWindow, sumPauseIntervalsDurationMs } from '../../utils/sessionPause';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { SessionStakeCheckboxes } from './SessionStakeCheckboxes';
 import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 interface EditSessionModalProps {
@@ -34,7 +36,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
   const [hands, setHands] = useState<string>('');
   const [startBankroll, setStartBankroll] = useState<string>('');
   const [endBankroll, setEndBankroll] = useState<string>('');
-  const [stake, setStake] = useState<number | ''>('');
+  const [stakes, setStakes] = useState<number[]>([]);
   const [gameType, setGameType] = useState<'NLHE' | 'PLO'>('NLHE');
   const [rating, setRating] = useState<SessionRating | ''>('');
   const [isRing, setIsRing] = useState(false);
@@ -93,7 +95,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
       hands,
       startBankroll,
       endBankroll,
-      stake,
+      stakes,
       gameType,
       rating,
       isRing,
@@ -116,7 +118,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
         hands: session.hands != null ? String(session.hands) : '',
         startBankroll: session.startBankroll != null ? String(session.startBankroll) : '',
         endBankroll: session.endBankroll != null ? String(session.endBankroll) : '',
-        stake: session.stake ?? '',
+        stakes: getSessionStakes(session),
         gameType: session.gameType ?? 'NLHE',
         rating: session.rating ?? '',
         isRing: session.isRing ?? false,
@@ -133,7 +135,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
       setHands(next.hands);
       setStartBankroll(next.startBankroll);
       setEndBankroll(next.endBankroll);
-      setStake(next.stake as number | '');
+      setStakes(next.stakes);
       setGameType(next.gameType);
       setRating(next.rating as SessionRating | '');
       setIsRing(next.isRing);
@@ -203,7 +205,8 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
         dailyNet: !Number.isNaN(derivedDailyNet) ? Math.round(derivedDailyNet * 100) / 100 : null,
         startBankroll: startBankroll.trim() ? Number(startBankroll.replace(/[$,]/g, '')) : null,
         endBankroll: endBankroll.trim() ? Number(endBankroll.replace(/[$,]/g, '')) : null,
-        stake: stake === '' ? null : stake,
+        stakes: stakes.length > 0 ? stakes : null,
+        stake: stakes.length > 0 ? stakes[0] : null,
         gameType,
         rating: rating === '' ? null : rating,
         isRing: isRing || null,
@@ -323,21 +326,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
             }}
             fullWidth
           />
-          <TextField
-            select
-            label="Stake"
-            size="small"
-            value={stake === '' ? '' : stake}
-            onChange={(e) => setStake(e.target.value === '' ? '' : Number(e.target.value))}
-            fullWidth
-          >
-            <MenuItem value="">—</MenuItem>
-            {RESULTS_STAKE_OPTIONS.map((s) => (
-              <MenuItem key={s} value={s}>
-                {s}
-              </MenuItem>
-            ))}
-          </TextField>
+          <SessionStakeCheckboxes value={stakes} onChange={setStakes} />
           <TextField
             select
             label="Game"

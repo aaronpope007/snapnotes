@@ -21,6 +21,7 @@ import {
   type PokerInsights,
 } from '../../utils/calculatePokerInsights';
 import type { SessionResult } from '../../types/results';
+import { getSessionStakes } from '../../utils/sessionUtils';
 
 interface FunFactsBentoProps {
   sessions: SessionResult[];
@@ -37,8 +38,7 @@ interface FunFactsBentoProps {
 function getPrimaryStake(sessions: SessionResult[]): number {
   const counts = new Map<number, number>();
   for (const s of sessions) {
-    const stake = s.stake ?? 0;
-    if (stake > 0) {
+    for (const stake of getSessionStakes(s)) {
       counts.set(stake, (counts.get(stake) ?? 0) + 1);
     }
   }

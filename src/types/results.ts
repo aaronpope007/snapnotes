@@ -27,6 +27,7 @@ export interface SessionResult {
   endTime: string | null;
   pauseIntervals?: SessionPauseInterval[] | null;
   stake: number | null;
+  stakes?: number[] | null;
   isRing: boolean | null;
   isHU: boolean | null;
   gameType: SessionGameType;
@@ -49,6 +50,7 @@ export interface SessionResultCreate {
   endTime?: string | null;
   pauseIntervals?: SessionPauseInterval[] | null;
   stake?: number | null;
+  stakes?: number[] | null;
   isRing?: boolean | null;
   isHU?: boolean | null;
   gameType?: SessionGameType;

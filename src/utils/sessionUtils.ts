@@ -1,4 +1,32 @@
 import type { SessionResult } from '../types/results';
+import { RESULTS_STAKE_OPTIONS } from '../types/results';
+
+const ALLOWED_SESSION_STAKES = new Set<number>(RESULTS_STAKE_OPTIONS);
+
+/** Stakes for a session (supports legacy single `stake` field). */
+export function getSessionStakes(session: Pick<SessionResult, 'stake' | 'stakes'>): number[] {
+  if (session.stakes && session.stakes.length > 0) {
+    return [...session.stakes].sort((a, b) => a - b);
+  }
+  if (session.stake != null) return [session.stake];
+  return [];
+}
+
+export function formatSessionStakes(session: Pick<SessionResult, 'stake' | 'stakes'>): string {
+  const stakes = getSessionStakes(session);
+  return stakes.length > 0 ? stakes.join(', ') : '—';
+}
+
+export function toggleSessionStake(current: number[], stake: number): number[] {
+  if (!ALLOWED_SESSION_STAKES.has(stake)) return current;
+  return current.includes(stake)
+    ? current.filter((s) => s !== stake)
+    : [...current, stake].sort((a, b) => a - b);
+}
+
+export function normalizeSessionStakes(stakes: number[]): number[] {
+  return [...new Set(stakes.filter((s) => ALLOWED_SESSION_STAKES.has(s)))].sort((a, b) => a - b);
+}
 
 /**
  * Get session net from explicit account start/end when both present, else dailyNet.

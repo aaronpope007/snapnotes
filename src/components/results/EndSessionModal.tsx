@@ -12,11 +12,12 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
 import type { SessionResultCreate, SessionRating } from '../../types/results';
-import { RESULTS_STAKE_OPTIONS, SESSION_RATING_OPTIONS } from '../../types/results';
+import { SESSION_RATING_OPTIONS } from '../../types/results';
 import type { ActiveSession } from '../../utils/activeSession';
 import { finalizePauseIntervalsForEnd } from '../../utils/activeSession';
 import { getPlayingHoursFromWallAndPauses } from '../../utils/sessionPause';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { SessionStakeCheckboxes } from './SessionStakeCheckboxes';
 import { useDirtyFormClose } from '../../hooks/useDirtyFormClose';
 
 interface EndSessionModalProps {
@@ -65,7 +66,7 @@ export function EndSessionModal({
   const [startBankroll, setStartBankroll] = useState('');
   const [startTimeEditable, setStartTimeEditable] = useState('');
   const [endingHandNumber, setEndingHandNumber] = useState('');
-  const [stake, setStake] = useState<number | ''>('');
+  const [stakes, setStakes] = useState<number[]>([]);
   const [rating, setRating] = useState<SessionRating | ''>('');
   const [isRing, setIsRing] = useState(false);
   const [isHU, setIsHU] = useState(false);
@@ -123,7 +124,7 @@ export function EndSessionModal({
       setEndBankroll('');
       setStartBankroll(lastEndBankroll != null ? String(lastEndBankroll) : '');
       setEndingHandNumber('');
-      setStake('');
+      setStakes([]);
       setRating('');
       setIsRing(false);
       setIsHU(false);
@@ -141,7 +142,7 @@ export function EndSessionModal({
   const isDirty =
     endBankroll.trim() !== '' ||
     endingHandNumber.trim() !== '' ||
-    stake !== '' ||
+    stakes.length > 0 ||
     rating !== '' ||
     isRing ||
     isHU ||
@@ -196,7 +197,8 @@ export function EndSessionModal({
         handsEndedAt: endHandNum != null && !Number.isNaN(endHandNum) ? endHandNum : undefined,
         dailyNet: dailyNet ?? undefined,
         endBankroll: endBankrollNum,
-        stake: stake === '' ? undefined : stake,
+        stakes: stakes.length > 0 ? stakes : undefined,
+        stake: stakes.length > 0 ? stakes[0] : undefined,
         rating: rating as SessionRating,
         isRing: isRing || undefined,
         isHU: isHU || undefined,
@@ -221,7 +223,7 @@ export function EndSessionModal({
     activeSession,
     closedPauseIntervals,
     endIso,
-    stake,
+    stakes,
     isRing,
     isHU,
     gameType,
@@ -330,22 +332,8 @@ export function EndSessionModal({
               </MenuItem>
             ))}
           </TextField>
+          <SessionStakeCheckboxes value={stakes} onChange={setStakes} />
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-            <TextField
-              select
-              label="Stake"
-              size="small"
-              value={stake === '' ? '' : stake}
-              onChange={(e) => setStake(e.target.value === '' ? '' : Number(e.target.value) || '')}
-              sx={{ minWidth: 90 }}
-            >
-              <MenuItem value="">—</MenuItem>
-              {RESULTS_STAKE_OPTIONS.map((s) => (
-                <MenuItem key={s} value={s}>
-                  {s}
-                </MenuItem>
-              ))}
-            </TextField>
             <TextField
               select
               label="Game"
