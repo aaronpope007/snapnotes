@@ -8,9 +8,19 @@ import {
   normalizeDrillDescription,
   normalizeDrillStreet,
   normalizeStudyTier,
+  normalizeSolver,
   parseDate,
   type GtoDrillBodyFields,
 } from './gtoDrillValidation.js';
+
+function withNormalizedSolver<T extends { solver?: string }>(drill: T): T {
+  if (!drill.solver) return drill;
+  return { ...drill, solver: normalizeSolver(drill.solver) };
+}
+
+function withNormalizedSolverList<T extends { solver?: string }>(drills: T[]): T[] {
+  return drills.map(withNormalizedSolver);
+}
 
 const router = Router();
 
@@ -141,7 +151,7 @@ router.get('/archived', async (req: Request, res: Response) => {
       withFormatFilter(archivedDrillsMatch(userId), format),
       wantsRecentResultsSummary(req)
     );
-    res.json(drills);
+    res.json(withNormalizedSolverList(drills));
   } catch {
     res.status(500).json({ error: 'Failed to fetch archived GTO drills' });
   }
@@ -158,7 +168,7 @@ router.get('/', async (req: Request, res: Response) => {
       withFormatFilter(activeDrillsMatch(userId), format),
       wantsRecentResultsSummary(req)
     );
-    res.json(drills);
+    res.json(withNormalizedSolverList(drills));
   } catch {
     res.status(500).json({ error: 'Failed to fetch GTO drills' });
   }
@@ -195,12 +205,12 @@ router.post('/', async (req: Request, res: Response) => {
           ? body.villainPosition.trim()
           : undefined,
       endsAfter: body.endsAfter,
-      solver: body.solver ?? 'Lucid',
+      solver: normalizeSolver(body.solver),
       tier: normalizeStudyTier(body.tier),
       customConfig: normalizeCustomConfig(potType, body.customConfig),
     });
     await drill.save();
-    res.status(201).json(drill);
+    res.status(201).json(withNormalizedSolver(drill.toObject()));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create GTO drill';
     res.status(400).json({ error: message });
@@ -273,7 +283,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       | 'Custom';
     drill.heroPosition = merged.heroPosition!;
     drill.endsAfter = merged.endsAfter as 'FirstAction' | 'StreetEnd' | 'HandEnd';
-    drill.solver = (merged.solver ?? 'Lucid') as 'Lucid' | 'GTO Wizard' | 'Solver Pro';
+    drill.solver = normalizeSolver(merged.solver ?? drill.solver);
     if (body.tier !== undefined) {
       const t = normalizeStudyTier(body.tier);
       if (t == null) drill.set('tier', undefined);
@@ -295,7 +305,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     }
 
     await drill.save();
-    res.json(drill);
+    res.json(withNormalizedSolver(drill.toObject()));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to update GTO drill';
     res.status(400).json({ error: message });

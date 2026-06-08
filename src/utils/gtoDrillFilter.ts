@@ -1,4 +1,4 @@
-import { getDefaultStreet } from '../constants/gtoStudy';
+import { getDefaultStreet, normalizeGtoSolver } from '../constants/gtoStudy';
 import type {
   GtoDrill,
   GtoEndsAfter,
@@ -114,8 +114,8 @@ function tokenMatchesAtom(t: string, drill: GtoDrill): boolean {
     return true;
   }
   if (
-    drill.solver === 'Solver Pro' &&
-    (t === 'solver' || t === 'pro' || t === 'solverpro' || t === 'solver-pro')
+    (drill.solver === 'Other' || drill.solver === 'Solver Pro') &&
+    (t === 'other' || t === 'solver' || t === 'pro' || t === 'solverpro' || t === 'solver-pro')
   ) {
     return true;
   }
@@ -166,7 +166,7 @@ export function applyGtoDrillFacetFilters(
       return false;
     }
     if (!matchesFacetList(facets.endsAfter, drill.endsAfter)) return false;
-    if (!matchesFacetList(facets.solver, drill.solver)) return false;
+    if (!matchesFacetList(facets.solver, normalizeGtoSolver(drill.solver))) return false;
     return true;
   });
 }

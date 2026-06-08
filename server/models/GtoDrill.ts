@@ -47,7 +47,7 @@ const gtoDrillSchema = new mongoose.Schema(
     solver: {
       type: String,
       required: true,
-      enum: ['Lucid', 'GTO Wizard', 'Solver Pro'],
+      enum: ['Lucid', 'GTO Wizard', 'Other', 'Solver Pro'],
       default: 'Lucid',
     },
     tier: { type: Number, min: 1, max: 3 },

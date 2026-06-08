@@ -45,7 +45,14 @@ export const GTO_POT_TYPE_LABELS: Record<GtoPotType, string> = {
 
 export const GTO_ENDS_AFTER_OPTIONS: GtoEndsAfter[] = ['FirstAction', 'StreetEnd', 'HandEnd'];
 
-export const GTO_SOLVER_OPTIONS: GtoSolver[] = ['Lucid', 'GTO Wizard', 'Solver Pro'];
+export const GTO_SOLVER_OPTIONS: GtoSolver[] = ['Lucid', 'GTO Wizard', 'Other'];
+
+/** Map legacy stored value to current solver label. */
+export function normalizeGtoSolver(solver: string | undefined): GtoSolver {
+  if (solver === 'Solver Pro') return 'Other';
+  if (solver === 'Lucid' || solver === 'GTO Wizard' || solver === 'Other') return solver;
+  return 'Lucid';
+}
 
 export const GTO_STREET_OPTIONS: GtoStreetName[] = ['Preflop', 'Flop', 'Turn', 'River'];
 

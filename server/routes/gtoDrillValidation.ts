@@ -2,7 +2,16 @@ const HU_POSITIONS = ['SB', 'BB'];
 const EIGHT_MAX_POSITIONS = ['UTG', 'UTG1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB', 'SS'];
 const POT_TYPES = ['Preflop', 'SRP', '3BP', '4BP', 'FoldedTo', 'Custom'];
 const ENDS_AFTER = ['FirstAction', 'StreetEnd', 'HandEnd'];
-const SOLVERS = ['Lucid', 'GTO Wizard', 'Solver Pro'];
+const SOLVERS = ['Lucid', 'GTO Wizard', 'Other'] as const;
+const LEGACY_SOLVERS = [...SOLVERS, 'Solver Pro'] as const;
+
+export function normalizeSolver(solver: string | undefined): (typeof SOLVERS)[number] {
+  if (solver === 'Solver Pro') return 'Other';
+  if (solver && SOLVERS.includes(solver as (typeof SOLVERS)[number])) {
+    return solver as (typeof SOLVERS)[number];
+  }
+  return 'Lucid';
+}
 const STUDY_TIERS = [1, 2, 3];
 const STREETS = ['Preflop', 'Flop', 'Turn', 'River'];
 
@@ -65,7 +74,7 @@ export function validateDrillFields(body: GtoDrillBodyFields, requireName = true
     if (!positions.includes(villainPosition)) return 'invalid villainPosition for format';
   }
   if (!endsAfter || !ENDS_AFTER.includes(endsAfter)) return 'invalid endsAfter';
-  if (!SOLVERS.includes(solver)) return 'invalid solver';
+  if (!LEGACY_SOLVERS.includes(solver as (typeof LEGACY_SOLVERS)[number])) return 'invalid solver';
 
   const tierErr = validateStudyTier(body.tier);
   if (tierErr) return tierErr;
