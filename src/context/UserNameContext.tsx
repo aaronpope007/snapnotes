@@ -76,7 +76,7 @@ export function UserNameProvider({ children }: UserNameProviderProps) {
     if (storedName) {
       setUserNameState(storedName);
       if (storedPassword) setUserPasswordState(storedPassword);
-      void registerReviewer(storedName);
+      void registerReviewer(storedName).catch(() => {});
     } else {
       setPromptOpen(true);
     }
@@ -90,7 +90,7 @@ export function UserNameProvider({ children }: UserNameProviderProps) {
       setUserPasswordState(null);
       localStorage.removeItem(STORAGE_KEY_PASSWORD);
       setPromptOpen(false);
-      void registerReviewer(trimmed);
+      void registerReviewer(trimmed).catch(() => {});
     }
   }, []);
 
@@ -102,7 +102,7 @@ export function UserNameProvider({ children }: UserNameProviderProps) {
       setUserNameState(trimmed);
       setUserPasswordState(password);
       setPromptOpen(false);
-      void registerReviewer(trimmed);
+      void registerReviewer(trimmed).catch(() => {});
     }
   }, []);
 
