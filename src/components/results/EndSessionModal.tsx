@@ -255,24 +255,6 @@ export function EndSessionModal({
             Time played: {totalTimeHours.toFixed(2)} hrs
             {handsPerHour != null ? ` · ${handsPerHour.toLocaleString()} hands/hr` : ''}
           </Typography>
-          {lastEndBankroll != null ? (
-            <Typography variant="body2" color="text.secondary">
-              Start bankroll (from last session): ${lastEndBankroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Typography>
-          ) : (
-            <TextField
-              label="Start bankroll"
-              size="small"
-              value={startBankroll}
-              onChange={(e) => setStartBankroll(sanitizeBankrollInput(e.target.value))}
-              placeholder="0.00"
-              InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
-              }}
-              fullWidth
-              helperText="First session? Enter bankroll at start."
-            />
-          )}
           <TextField
             label="End bankroll"
             size="small"
@@ -315,6 +297,24 @@ export function EndSessionModal({
             }
             fullWidth
           />
+          {lastEndBankroll != null ? (
+            <Typography variant="body2" color="text.secondary">
+              Start bankroll (from last session): ${lastEndBankroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Typography>
+          ) : (
+            <TextField
+              label="Start bankroll"
+              size="small"
+              value={startBankroll}
+              onChange={(e) => setStartBankroll(sanitizeBankrollInput(e.target.value))}
+              placeholder="0.00"
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
+              fullWidth
+              helperText="First session? Enter bankroll at start."
+            />
+          )}
           <TextField
             select
             label="How did you play?"
