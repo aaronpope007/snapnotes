@@ -255,6 +255,24 @@ export function EndSessionModal({
             Time played: {totalTimeHours.toFixed(2)} hrs
             {handsPerHour != null ? ` · ${handsPerHour.toLocaleString()} hands/hr` : ''}
           </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Starting hand number: {activeSession.startHandNumber.toLocaleString()}
+          </Typography>
+          <TextField
+            label="Ending hand number"
+            size="small"
+            value={endingHandNumber}
+            onChange={(e) => setEndingHandNumber(sanitizeHandNumberInput(e.target.value))}
+            placeholder={String(activeSession.startHandNumber)}
+            helperText={
+              hands != null
+                ? `${hands.toLocaleString()} hands this session${
+                    handsPerHour != null ? ` · ${handsPerHour.toLocaleString()} hands/hr` : ''
+                  }`
+                : 'Optional. Your total hand count at session end.'
+            }
+            fullWidth
+          />
           <TextField
             label="End bankroll"
             size="small"
@@ -279,24 +297,6 @@ export function EndSessionModal({
               )}
             </Box>
           )}
-          <Typography variant="body2" color="text.secondary">
-            Starting hand number: {activeSession.startHandNumber.toLocaleString()}
-          </Typography>
-          <TextField
-            label="Ending hand number"
-            size="small"
-            value={endingHandNumber}
-            onChange={(e) => setEndingHandNumber(sanitizeHandNumberInput(e.target.value))}
-            placeholder={String(activeSession.startHandNumber)}
-            helperText={
-              hands != null
-                ? `${hands.toLocaleString()} hands this session${
-                    handsPerHour != null ? ` · ${handsPerHour.toLocaleString()} hands/hr` : ''
-                  }`
-                : 'Optional. Your total hand count at session end.'
-            }
-            fullWidth
-          />
           {lastEndBankroll != null ? (
             <Typography variant="body2" color="text.secondary">
               Start bankroll (from last session): ${lastEndBankroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
