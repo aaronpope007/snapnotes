@@ -1,5 +1,5 @@
-const HU_POSITIONS = ['SB', 'BB'];
-const EIGHT_MAX_POSITIONS = ['UTG', 'UTG1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB', 'SS'];
+const HU_POSITIONS = ['All', 'SB', 'BB'];
+const EIGHT_MAX_POSITIONS = ['All', 'UTG', 'UTG1', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB', 'SS'];
 const POT_TYPES = ['Preflop', 'SRP', '3BP', '4BP', 'FoldedTo', 'Custom'];
 const ENDS_AFTER = ['FirstAction', 'StreetEnd', 'HandEnd'];
 const SOLVERS = ['Lucid', 'GTO Wizard', 'Other'] as const;

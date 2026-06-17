@@ -99,6 +99,7 @@ function tokenMatchesAtom(t: string, drill: GtoDrill): boolean {
 
   // Hero position (lowercase token → enum)
   const hp = drill.heroPosition;
+  if ((t === 'all' || t === 'allpositions') && hp === 'All') return true;
   if (t === 'sb' && hp === 'SB') return true;
   if (t === 'bb' && hp === 'BB') return true;
   if (t === 'btn' && hp === 'BTN') return true;

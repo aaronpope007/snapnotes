@@ -6,9 +6,9 @@ export type GtoHandStart = 'Preflop' | 'Postflop';
 
 export type GtoPotType = 'Preflop' | 'SRP' | '3BP' | '4BP' | 'FoldedTo' | 'Custom';
 
-export type GtoHuPosition = 'SB' | 'BB';
+export type GtoHuPosition = 'All' | 'SB' | 'BB';
 
-export type Gto8maxPosition = 'UTG' | 'UTG1' | 'LJ' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB' | 'SS';
+export type Gto8maxPosition = 'All' | 'UTG' | 'UTG1' | 'LJ' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB' | 'SS';
 
 export type GtoPosition = GtoHuPosition | Gto8maxPosition;
 

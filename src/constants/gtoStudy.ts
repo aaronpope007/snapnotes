@@ -56,9 +56,10 @@ export function normalizeGtoSolver(solver: string | undefined): GtoSolver {
 
 export const GTO_STREET_OPTIONS: GtoStreetName[] = ['Preflop', 'Flop', 'Turn', 'River'];
 
-export const GTO_HU_POSITIONS: GtoHuPosition[] = ['SB', 'BB'];
+export const GTO_HU_POSITIONS: GtoHuPosition[] = ['All', 'SB', 'BB'];
 
 export const GTO_8MAX_POSITIONS: Gto8maxPosition[] = [
+  'All',
   'UTG',
   'UTG1',
   'LJ',
@@ -70,7 +71,12 @@ export const GTO_8MAX_POSITIONS: Gto8maxPosition[] = [
   'SS',
 ];
 
+export function isAllPosition(pos: string): pos is 'All' {
+  return pos === 'All';
+}
+
 export function formatGtoPositionLabel(position: string, format: GtoFormat): string {
+  if (position === 'All') return 'All';
   if (format === '8max' && position === 'SS') return 'SS (Straddle)';
   return position;
 }
@@ -122,6 +128,21 @@ export function syncHuPostflopPositions(
   villain: GtoPosition | '',
   changed: 'hero' | 'villain'
 ): { heroPosition: GtoHuPosition; villainPosition: GtoHuPosition } {
+  if (isAllPosition(hero) || isAllPosition(villain)) {
+    const heroPos: GtoHuPosition = isAllPosition(hero)
+      ? 'All'
+      : isHuPosition(hero)
+        ? hero
+        : 'SB';
+    const villainPos: GtoHuPosition = isAllPosition(villain)
+      ? 'All'
+      : isHuPosition(villain)
+        ? villain
+        : isAllPosition(heroPos)
+          ? 'BB'
+          : getHuOppositePosition(heroPos);
+    return { heroPosition: heroPos, villainPosition: villainPos };
+  }
   if (changed === 'villain' && isHuPosition(villain)) {
     return {
       heroPosition: getHuOppositePosition(villain),

@@ -9,6 +9,7 @@ import {
   GTO_ENDS_AFTER_OPTIONS,
   GTO_FORMAT_LABELS,
   GTO_HAND_START_OPTIONS,
+  GTO_HU_POSITIONS,
   GTO_POT_TYPE_LABELS,
   GTO_POT_TYPE_OPTIONS,
   GTO_SOLVER_OPTIONS,
@@ -32,6 +33,10 @@ interface FacetGroup {
   label: string;
   options: { value: string; label: string }[];
 }
+
+const FACET_POSITION_OPTIONS = [...new Set([...GTO_8MAX_POSITIONS, ...GTO_HU_POSITIONS])].map(
+  (p) => ({ value: p, label: p })
+);
 
 const FACET_GROUPS: FacetGroup[] = [
   {
@@ -71,12 +76,12 @@ const FACET_GROUPS: FacetGroup[] = [
   {
     key: 'heroPosition',
     label: 'Hero',
-    options: GTO_8MAX_POSITIONS.map((p) => ({ value: p, label: p })),
+    options: FACET_POSITION_OPTIONS,
   },
   {
     key: 'villainPosition',
     label: 'Villain',
-    options: GTO_8MAX_POSITIONS.map((p) => ({ value: p, label: p })),
+    options: FACET_POSITION_OPTIONS,
   },
   {
     key: 'endsAfter',

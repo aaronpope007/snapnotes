@@ -155,6 +155,7 @@ export function GtoDrillFormModal({
       return;
     }
     if (form.format !== 'HU') return;
+    if (form.heroPosition === 'All' || form.villainPosition === 'All') return;
     setForm((prev) => {
       const synced = syncHuPostflopPositions(prev.heroPosition, prev.villainPosition, 'hero');
       if (
@@ -203,6 +204,7 @@ export function GtoDrillFormModal({
     setForm((prev) => {
       const next = { ...prev, ...updates };
       if (next.format !== 'HU' || next.handStart !== 'Postflop') return next;
+      if (next.heroPosition === 'All' || next.villainPosition === 'All') return next;
       if ('heroPosition' in updates && !('villainPosition' in updates)) {
         return {
           ...next,
