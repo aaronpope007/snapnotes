@@ -174,14 +174,14 @@ export function TempNoteModal({
   return (
     <>
     <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Temp note</DialogTitle>
+      <DialogTitle>Add hand for review</DialogTitle>
       <DialogContent>
         <TextField
           fullWidth
           multiline
           minRows={8}
           maxRows={16}
-          placeholder="Type notes here... Paste into player notes or hand history. Nothing is saved."
+          placeholder="Type hand notes here... Add for review, append to a player, or copy."
           value={text}
           onChange={(e) => setText(e.target.value)}
           variant="outlined"

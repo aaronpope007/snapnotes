@@ -55,7 +55,6 @@ import { MDFPanel } from './components/MDFPanel';
 import { FoldEquityPanel } from './components/FoldEquityPanel';
 import { GeoPanel } from './components/GeoPanel';
 import { RngButton } from './components/RngButton';
-import { BetClipboardPopover } from './components/BetClipboardPopover';
 import { TopNotificationBar } from './components/TopNotificationBar';
 import { TempNoteModal } from './components/TempNoteModal';
 import { useCompactMode, useSetCompactMode } from './context/CompactModeContext';
@@ -790,13 +789,12 @@ export default function App() {
         <IconButton
           size="medium"
           onClick={() => setTempNoteOpen(true)}
-          aria-label="Temp note"
-          title="Temp note (scratchpad, nothing saved)"
+          aria-label="Add hand for review"
+          title="Add hand for review"
           sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
         >
           <NoteAddIcon />
         </IconButton>
-        <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
         {!showSessionInProgress && userName?.trim() && (
           <Button
             size="small"
@@ -1173,13 +1171,12 @@ export default function App() {
                 <IconButton
                   size="medium"
                   onClick={() => setTempNoteOpen(true)}
-                  aria-label="Temp note"
-                  title="Temp note (scratchpad, nothing saved)"
+                  aria-label="Add hand for review"
+                  title="Add hand for review"
                   sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
                 >
                   <NoteAddIcon />
                 </IconButton>
-                <BetClipboardPopover onSuccess={showSuccess} onError={showError} />
                 {!showSessionInProgress && userName?.trim() && (
                   <Button
                     size="small"
@@ -1428,8 +1425,8 @@ export default function App() {
                 <IconButton
                   size="medium"
                   onClick={() => setTempNoteOpen(true)}
-                  aria-label="Temp note"
-                  title="Temp note (scratchpad, nothing saved)"
+                  aria-label="Add hand for review"
+                  title="Add hand for review"
                   sx={{ '& .MuiSvgIcon-root': { fontSize: '1.75rem' } }}
                 >
                   <NoteAddIcon />
