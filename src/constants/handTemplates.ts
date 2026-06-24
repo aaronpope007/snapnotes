@@ -1,6 +1,6 @@
-/** Quick hand templates for notes. Use `x` in backticks for card placeholders. */
+/** Quick hand templates for notes. Use [x] for card placeholders. */
 
-export const HAND_TEMPLATE_PFR = `hero opens \`x\` \`x\` in the 
+export const HAND_TEMPLATE_PFR = `hero opens [x] [x] in the 
 villain calls in 
 flop 
 
@@ -9,7 +9,7 @@ turn
 river 
 `;
 
-export const HAND_TEMPLATE_VS_PFR = `villain opens \`x\` \`x\` from the 
+export const HAND_TEMPLATE_VS_PFR = `villain opens [x] [x] from the 
 hero 
 flop 
 

@@ -2,7 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { parseNoteTokens, getUsedCardShorthands } from './cardParser';
 
 describe('parseNoteTokens', () => {
-  it('parses `kd` as single card (backtick syntax)', () => {
+  it('parses [7d] as single card (bracket syntax)', () => {
+    const tokens = parseNoteTokens('[7d]');
+    expect(tokens).toEqual([
+      { type: 'card', rank: '7', suit: 'd', backdoor: false },
+    ]);
+  });
+
+  it('parses [7d][6d] as two cards', () => {
+    const tokens = parseNoteTokens('[7d][6d] limp/call');
+    expect(tokens).toEqual([
+      { type: 'card', rank: '7', suit: 'd', backdoor: false },
+      { type: 'card', rank: '6', suit: 'd', backdoor: false },
+      { type: 'text', value: ' limp/call' },
+    ]);
+  });
+
+  it('parses `kd` as single card (legacy backtick syntax)', () => {
     const tokens = parseNoteTokens('`kd`');
     expect(tokens).toEqual([
       { type: 'card', rank: 'K', suit: 'd', backdoor: false },

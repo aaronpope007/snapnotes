@@ -48,6 +48,7 @@ import { MergePlayerDialog } from './components/MergePlayerDialog';
 import { RestoreBackupConfirmDialog } from './components/RestoreBackupConfirmDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { useConfirm } from './hooks/useConfirm';
+import { useDirtyFormClose } from './hooks/useDirtyFormClose';
 import { ChangeNameDialog } from './components/ChangeNameDialog';
 import { ImprovementNotesDialog } from './components/ImprovementNotesDialog';
 import { DefaultStakesDialog } from './components/DefaultStakesDialog';
@@ -130,6 +131,7 @@ export default function App() {
   const [resetSessionTrigger, setResetSessionTrigger] = useState(0);
   const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [selected, setSelected] = useState<Player | null>(null);
+  const [playerNotesDirty, setPlayerNotesDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [addInitialUsername, setAddInitialUsername] = useState<string>('');
@@ -212,6 +214,27 @@ export default function App() {
     handleConfirm: handleResetSessionConfirm,
     confirmOptions: resetSessionConfirmOptions,
   } = useConfirm();
+
+  const {
+    confirmOpen: leavePlayerConfirmOpen,
+    requestClose: requestLeavePlayer,
+    closeConfirm: closeLeavePlayerConfirm,
+    handleConfirm: handleConfirmLeavePlayer,
+    confirmOptions: leavePlayerConfirmOptions,
+  } = useDirtyFormClose({
+    message: 'You have an unsaved note. Discard it?',
+  });
+
+  useEffect(() => {
+    setPlayerNotesDirty(false);
+  }, [selected?._id]);
+
+  const leavePlayerView = useCallback(
+    (action: () => void) => {
+      requestLeavePlayer(playerNotesDirty, action);
+    },
+    [playerNotesDirty, requestLeavePlayer]
+  );
 
   const [startingSession, setStartingSession] = useState(false);
   const handleStartSession = useCallback(async () => {
@@ -352,22 +375,30 @@ export default function App() {
   }, [loadPlayers]);
 
   const handleSelectPlayer = useCallback(async (p: PlayerListItem) => {
-    try {
-      setShowHandsToReview(false);
-      setShowLearning(false);
-      setShowGtoStudy(false);
-      setShowResults(false);
-      const full = await fetchPlayer(p._id);
-      setSelected(full);
-      setRecentlyViewedIds((prev) => {
-        const next = [p._id, ...prev.filter((id) => id !== p._id)].slice(0, 30);
-        try { localStorage.setItem('snapnotes_recently_viewed_ids', JSON.stringify(next)); } catch { /* ignore */ }
-        return next;
-      });
-    } catch (err) {
-      showError(getApiErrorMessage(err, 'Failed to load player'));
+    const doSelect = async () => {
+      try {
+        setShowHandsToReview(false);
+        setShowLearning(false);
+        setShowGtoStudy(false);
+        setShowResults(false);
+        const full = await fetchPlayer(p._id);
+        setSelected(full);
+        setRecentlyViewedIds((prev) => {
+          const next = [p._id, ...prev.filter((id) => id !== p._id)].slice(0, 30);
+          try { localStorage.setItem('snapnotes_recently_viewed_ids', JSON.stringify(next)); } catch { /* ignore */ }
+          return next;
+        });
+      } catch (err) {
+        showError(getApiErrorMessage(err, 'Failed to load player'));
+      }
+    };
+
+    if (selected?._id && selected._id !== p._id && playerNotesDirty) {
+      requestLeavePlayer(() => void doSelect());
+      return;
     }
-  }, [showError]);
+    await doSelect();
+  }, [selected, playerNotesDirty, requestLeavePlayer, showError]);
 
   const handleAddHandFromTempNote = async (
     handText: string,
@@ -1547,7 +1578,8 @@ export default function App() {
                   onUpdate={handleUpdatePlayer}
                   onDelete={handleDeletePlayer}
                   onMergeClick={() => setMergeDialogOpen(true)}
-                  onClose={() => setSelected(null)}
+                  onClose={() => leavePlayerView(() => setSelected(null))}
+                  onNotesDirtyChange={setPlayerNotesDirty}
                   horizontal={horizontal}
                 />
               </Box>
@@ -1668,6 +1700,13 @@ export default function App() {
         onClose={closeResetSessionConfirm}
         onConfirm={handleResetSessionConfirm}
         {...resetSessionConfirmOptions}
+      />
+
+      <ConfirmDialog
+        open={leavePlayerConfirmOpen}
+        onClose={closeLeavePlayerConfirm}
+        onConfirm={handleConfirmLeavePlayer}
+        {...leavePlayerConfirmOptions}
       />
 
       <RestoreBackupConfirmDialog

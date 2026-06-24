@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, memo } from 'react';
 import Box from '@mui/material/Box';
 import { useConfirm } from '../hooks/useConfirm';
+import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 import { ConfirmDialog } from './ConfirmDialog';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -14,6 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { RichNoteRenderer } from './RichNoteRenderer';
 import { useCompactMode } from '../context/CompactModeContext';
 import { AppendNote } from './AppendNote';
+import { NoteWithCardPicker } from './NoteWithCardPicker';
 import { HAND_TEMPLATES } from '../constants/handTemplates';
 import type { NoteEntry } from '../types';
 
@@ -24,6 +25,7 @@ interface NotesSectionProps {
   onDeleteNote?: (index: number) => Promise<void>;
   userName: string | null;
   saving?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function formatDate(iso: string): string {
@@ -47,6 +49,7 @@ interface NoteRowProps {
   onCloseEdit: () => void;
   onDeleteNote?: (index: number) => Promise<void>;
   openDeleteConfirm: (onConfirm: () => void, options: { title: string; message: string; confirmText: string; confirmDanger: boolean }) => void;
+  onEditingDirtyChange?: (dirty: boolean) => void;
 }
 
 const NoteRow = memo(function NoteRow({
@@ -61,11 +64,29 @@ const NoteRow = memo(function NoteRow({
   onCloseEdit,
   onDeleteNote,
   openDeleteConfirm,
+  onEditingDirtyChange,
 }: NoteRowProps) {
   const [localValue, setLocalValue] = useState(entry.text);
+  const {
+    confirmOpen: cancelEditConfirmOpen,
+    closeConfirm: closeCancelEditConfirm,
+    handleConfirm: handleConfirmCancelEdit,
+    confirmOptions: cancelEditConfirmOptions,
+    requestClose: requestCancelEdit,
+  } = useDirtyFormClose({
+    message: 'You have unsaved changes to this note. Discard them?',
+  });
+
   useEffect(() => {
     if (isEditing) setLocalValue(entry.text);
   }, [isEditing, entry.text]);
+
+  const isDirty = isEditing && localValue !== entry.text;
+
+  useEffect(() => {
+    if (isEditing) onEditingDirtyChange?.(isDirty);
+    else onEditingDirtyChange?.(false);
+  }, [isEditing, isDirty, onEditingDirtyChange]);
 
   const handleSave = useCallback(async () => {
     if (onEditNote && userName && localValue.trim() !== entry.text) {
@@ -74,7 +95,15 @@ const NoteRow = memo(function NoteRow({
     onCloseEdit();
   }, [index, localValue, entry.text, userName, onEditNote, onCloseEdit]);
 
+  const handleCancelEdit = useCallback(() => {
+    requestCancelEdit(isDirty, () => {
+      setLocalValue(entry.text);
+      onCloseEdit();
+    });
+  }, [isDirty, entry.text, onCloseEdit, requestCancelEdit]);
+
   return (
+    <>
     <Box
       sx={{
         display: 'flex',
@@ -101,16 +130,11 @@ const NoteRow = memo(function NoteRow({
         </Typography>
         {isEditing ? (
           <Box sx={{ pl: 0.5 }}>
-            <TextField
-              multiline
-              minRows={2}
-              fullWidth
-              size="small"
+            <NoteWithCardPicker
               value={localValue}
-              onChange={(e) => setLocalValue(e.target.value)}
+              onChange={setLocalValue}
               disabled={saving}
               autoFocus
-              sx={{ fontSize: '0.9rem' }}
             />
             <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
               {HAND_TEMPLATES.map((t) => (
@@ -137,7 +161,7 @@ const NoteRow = memo(function NoteRow({
               </Button>
               <Button
                 size="small"
-                onClick={onCloseEdit}
+                onClick={handleCancelEdit}
               >
                 Cancel
               </Button>
@@ -193,6 +217,13 @@ const NoteRow = memo(function NoteRow({
         </Box>
       )}
     </Box>
+    <ConfirmDialog
+      open={cancelEditConfirmOpen}
+      onClose={closeCancelEditConfirm}
+      onConfirm={handleConfirmCancelEdit}
+      {...cancelEditConfirmOptions}
+    />
+    </>
   );
 });
 
@@ -203,10 +234,17 @@ export function NotesSection({
   onDeleteNote,
   userName,
   saving = false,
+  onDirtyChange,
 }: NotesSectionProps) {
   const compact = useCompactMode();
   const [expanded, setExpanded] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [appendDirty, setAppendDirty] = useState(false);
+  const [editingDirty, setEditingDirty] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(appendDirty || editingDirty);
+  }, [appendDirty, editingDirty, onDirtyChange]);
 
   const {
     confirmOpen: deleteNoteConfirmOpen,
@@ -259,6 +297,7 @@ export function NotesSection({
               <Box sx={{ mt: 1 }}>
                 <AppendNote
                   onAppend={(text) => onAppendNote(text, userName)}
+                  onDirtyChange={setAppendDirty}
                 />
               </Box>
             ) : null}
@@ -279,12 +318,14 @@ export function NotesSection({
                 onCloseEdit={() => setEditingIndex(null)}
                 onDeleteNote={onDeleteNote}
                 openDeleteConfirm={openDeleteNoteConfirm}
+                onEditingDirtyChange={editingIndex === i ? setEditingDirty : undefined}
               />
             ))}
             {userName ? (
               <Box sx={{ mt: 1 }}>
                 <AppendNote
                   onAppend={(text) => onAppendNote(text, userName)}
+                  onDirtyChange={setAppendDirty}
                 />
               </Box>
             ) : null}

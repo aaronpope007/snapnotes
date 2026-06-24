@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -25,6 +25,9 @@ import {
 import type { PlayerTypeKey, PlayerCreate, NoteEntry } from '../types';
 import { STAKE_VALUES, GAME_TYPE_OPTIONS, FORMAT_OPTIONS, ORIGIN_OPTIONS } from '../types';
 import { toNoteOneLiner } from '../utils/noteUtils';
+import { HandHistoryCardPicker } from './HandHistoryCardPicker';
+import { NoteComposer, type NoteComposerHandle } from './NoteComposer';
+import { getUsedCardShorthands, getUsedUnknownCardCount } from '../utils/cardParser';
 
 interface AddPlayerFormOptionsProps {
   playerType: PlayerTypeKey;
@@ -161,6 +164,7 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
   const [origin, setOrigin] = useState('WPT Gold');
   const [rawNote, setRawNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const noteComposerRef = useRef<NoteComposerHandle>(null);
   const {
     confirmOpen,
     closeConfirm,
@@ -264,44 +268,58 @@ export function AddPlayerModal({ open, onClose, onSubmit, initialUsername }: Add
 
   return (
     <>
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add New Player</DialogTitle>
       <DialogContent>
-        <TextField
-          autoFocus
-          fullWidth
-          label="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (username.trim() && !loading) handleSubmit();
-            }
-          }}
-          margin="normal"
-        />
-        <AddPlayerFormOptions
-          playerType={playerType}
-          onPlayerTypeChange={setPlayerType}
-          gameTypes={gameTypes}
-          onGameTypeToggle={handleGameTypeToggle}
-          formats={formats}
-          onFormatToggle={handleFormatToggle}
-          stakesSeenAt={stakesSeenAt}
-          onStakeToggle={handleStakeToggle}
-          origin={origin}
-          onOriginChange={setOrigin}
-        />
-        <TextField
-          fullWidth
-          label="Initial notes"
-          multiline
-          minRows={3}
-          value={rawNote}
-          onChange={(e) => setRawNote(e.target.value)}
-          margin="normal"
-        />
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (username.trim() && !loading) handleSubmit();
+                }
+              }}
+              margin="normal"
+            />
+            <AddPlayerFormOptions
+              playerType={playerType}
+              onPlayerTypeChange={setPlayerType}
+              gameTypes={gameTypes}
+              onGameTypeToggle={handleGameTypeToggle}
+              formats={formats}
+              onFormatToggle={handleFormatToggle}
+              stakesSeenAt={stakesSeenAt}
+              onStakeToggle={handleStakeToggle}
+              origin={origin}
+              onOriginChange={setOrigin}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, mb: 0.5, fontWeight: 500 }}>
+              Initial notes
+            </Typography>
+            <NoteComposer
+              ref={noteComposerRef}
+              value={rawNote}
+              onChange={setRawNote}
+              placeholder="Type a note or click a card on the right…"
+              minHeight={72}
+            />
+          </Box>
+          <HandHistoryCardPicker
+            variant="cardsOnly"
+            layout="sidebar"
+            onInsertCard={(s) => noteComposerRef.current?.insertCard(s)}
+            onInsertText={(t) => noteComposerRef.current?.insertText(t)}
+            onRemoveCard={(s) => noteComposerRef.current?.removeCard(s)}
+            usedShorthands={getUsedCardShorthands(rawNote)}
+            usedUnknownCardCount={getUsedUnknownCardCount(rawNote)}
+          />
+        </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>

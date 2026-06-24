@@ -12,6 +12,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { HAND_TEMPLATES } from '../constants/handTemplates';
 import { useConfirm } from '../hooks/useConfirm';
 import { getUsedCardShorthands, getUsedUnknownCardCount } from '../utils/cardParser';
+import { formatCardToken, cardTokenNeedles } from '../utils/cardFormat';
 
 const DEFAULT_CONTENT_LABEL = 'Content';
 const DEFAULT_PLACEHOLDER = 'Paste hand history… Click a card on the right to insert at cursor';
@@ -111,11 +112,11 @@ export function HandHistoryFormContent({
   );
 
   const insertIntoContent = useCallback(
-    (shorthand: string, wrapBackticks: boolean) => {
+    (shorthand: string, asCard: boolean) => {
       const { start } = contentSelectionRef.current;
       const before = content.slice(0, start);
       const after = content.slice(start);
-      const inserted = wrapBackticks ? `\`${shorthand}\`` : shorthand;
+      const inserted = asCard ? formatCardToken(shorthand) : shorthand;
       const next = before + inserted + after;
       onContentChange(next);
       const newPos = start + inserted.length;
@@ -129,12 +130,12 @@ export function HandHistoryFormContent({
   );
 
   const insertIntoSpoiler = useCallback(
-    (shorthand: string, wrapBackticks: boolean) => {
+    (shorthand: string, asCard: boolean) => {
       if (!onSpoilerChange) return;
       const { start } = spoilerSelectionRef.current;
       const before = spoilerValue.slice(0, start);
       const after = spoilerValue.slice(start);
-      const inserted = wrapBackticks ? `\`${shorthand}\`` : shorthand;
+      const inserted = asCard ? formatCardToken(shorthand) : shorthand;
       const next = before + inserted + after;
       onSpoilerChange(next);
       const newPos = start + inserted.length;
@@ -171,7 +172,7 @@ export function HandHistoryFormContent({
 
   const removeCardFromContent = useCallback(
     (shorthand: string) => {
-      const needles = [`\`${shorthand}\``, `'${shorthand}'`];
+      const needles = cardTokenNeedles(shorthand);
       const findBest = (str: string, cursor: number): { index: number; len: number } | null => {
         let best: { index: number; len: number } | null = null;
         let bestDist = Infinity;

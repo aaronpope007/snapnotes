@@ -41,10 +41,11 @@ interface PlayerCardProps {
   onDelete: (id: string) => Promise<void>;
   onMergeClick: () => void;
   onClose: () => void;
+  onNotesDirtyChange?: (dirty: boolean) => void;
   horizontal?: boolean;
 }
 
-export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, onClose, horizontal = false }: PlayerCardProps) {
+export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, onClose, onNotesDirtyChange, horizontal = false }: PlayerCardProps) {
   const userName = useUserName();
   const compact = useCompactMode();
   const leaksVisible = useLeaksVisibility();
@@ -346,6 +347,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
               onDeleteNote={handleDeleteNote}
               userName={userName}
               saving={saving}
+              onDirtyChange={onNotesDirtyChange}
             />
           </>
         ) : (
@@ -443,6 +445,7 @@ export function PlayerCard({ player, players, onUpdate, onDelete, onMergeClick, 
           onDeleteNote={handleDeleteNote}
           userName={userName}
           saving={saving}
+          onDirtyChange={onNotesDirtyChange}
         />
 
         <Box sx={{ mt: compact ? 1 : 2, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5 }}>

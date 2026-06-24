@@ -41,6 +41,7 @@ function CardButton({
       type="button"
       disabled={used && !canRemove}
       onClick={handleClick}
+      onMouseDown={(e) => e.preventDefault()}
       sx={{
         display: 'inline-flex',
         border: 'none',
@@ -69,6 +70,10 @@ export interface HandHistoryCardPickerProps {
   usedUnknownCardCount?: number;
   /** When provided, clicking a used card removes one instance from content instead of being disabled. */
   onRemoveCard?: (shorthand: string) => void;
+  /** 'full' shows bet-size shortcuts and calculators; 'cardsOnly' shows just the card grid. */
+  variant?: 'full' | 'cardsOnly';
+  /** 'sidebar' for hand-history forms; 'inline' stacks below the input in narrow layouts. */
+  layout?: 'sidebar' | 'inline';
 }
 
 const UNKNOWN_CARD_SLOTS = 4;
@@ -94,6 +99,8 @@ export function HandHistoryCardPicker({
   usedShorthands,
   usedUnknownCardCount = 0,
   onRemoveCard,
+  variant = 'full',
+  layout = 'sidebar',
 }: HandHistoryCardPickerProps) {
   const calcVisibility = useCalculatorVisibility();
   const [customPsbPercent, setCustomPsbPercent] = useState<string>('');
@@ -124,15 +131,19 @@ export function HandHistoryCardPicker({
     closeEdit();
   };
 
+  const isInline = layout === 'inline';
+
   return (
     <Box
       sx={{
         flexShrink: 0,
-        width: 220,
-        maxHeight: '60vh',
-        overflowY: 'auto',
-        pl: 1,
-        borderLeft: '1px solid',
+        width: isInline ? '100%' : 220,
+        maxHeight: isInline ? undefined : '60vh',
+        overflowY: isInline ? undefined : 'auto',
+        pl: isInline ? 0 : 1,
+        pt: isInline ? 1 : 0,
+        borderLeft: isInline ? 'none' : '1px solid',
+        borderTop: isInline ? '1px solid' : 'none',
         borderColor: 'divider',
       }}
     >
@@ -186,6 +197,7 @@ export function HandHistoryCardPicker({
           })}
         </Box>
       </Box>
+      {variant === 'full' && (
       <Box
         sx={{
           display: 'flex',
@@ -273,7 +285,9 @@ export function HandHistoryCardPicker({
           bx
         </Button>
       </Box>
+      )}
 
+      {variant === 'full' && (
       <Popover
         open={Boolean(editAnchor)}
         anchorEl={editAnchor}
@@ -318,6 +332,7 @@ export function HandHistoryCardPicker({
           </Box>
         </Box>
       </Popover>
+      )}
     </Box>
   );
 }

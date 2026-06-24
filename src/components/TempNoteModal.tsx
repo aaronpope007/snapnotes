@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { NoteWithCardPicker } from './NoteWithCardPicker';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useDirtyFormClose } from '../hooks/useDirtyFormClose';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -176,16 +177,11 @@ export function TempNoteModal({
     <Dialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>Add hand for review</DialogTitle>
       <DialogContent>
-        <TextField
-          fullWidth
-          multiline
-          minRows={8}
-          maxRows={16}
-          placeholder="Type hand notes here... Add for review, append to a player, or copy."
+        <NoteWithCardPicker
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          variant="outlined"
-          sx={{ mt: 0.5 }}
+          onChange={setText}
+          placeholder="Type hand notes here... Add for review, append to a player, or copy."
+          minRows={6}
         />
         {(onAddHandForReview || onAppendAndAddHand) && userName && (
           <Box sx={{ mt: 2 }}>
