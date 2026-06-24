@@ -344,9 +344,19 @@ router.get('/results/recent', async (req: Request, res: Response) => {
     const limit = parseRecentResultsLimit(req);
     const drillCollName = GtoDrill.collection.collectionName;
 
+    const drillFilter: Record<string, unknown> = { userId };
+    if (format) drillFilter.format = format;
+    const drillIds = await GtoDrill.distinct('_id', drillFilter);
+
+    if (drillIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
     const pipeline: Record<string, unknown>[] = [
-      { $match: { userId } },
+      { $match: { userId, drillId: { $in: drillIds } } },
       { $sort: { date: -1 } },
+      { $limit: limit },
       {
         $lookup: {
           from: drillCollName,
@@ -356,14 +366,6 @@ router.get('/results/recent', async (req: Request, res: Response) => {
         },
       },
       { $unwind: '$drill' },
-    ];
-
-    if (format) {
-      pipeline.push({ $match: { 'drill.format': format } });
-    }
-
-    pipeline.push(
-      { $limit: limit },
       {
         $project: {
           _id: { $toString: '$_id' },
@@ -384,8 +386,8 @@ router.get('/results/recent', async (req: Request, res: Response) => {
           drillFormat: '$drill.format',
           drillArchived: { $ifNull: ['$drill.archived', false] },
         },
-      }
-    );
+      },
+    ];
 
     const rows = await GtoDrillResult.aggregate(pipeline);
     res.json(rows);

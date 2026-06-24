@@ -55,9 +55,19 @@ router.get('/tier-progress', async (req: Request, res: Response) => {
                 },
               },
             },
-            { $sort: { date: -1 } },
+            {
+              $facet: {
+                recent: [{ $sort: { date: -1 } }, { $limit: 5 }],
+                total: [{ $count: 'count' }],
+              },
+            },
           ],
-          as: 'results',
+          as: 'resultMeta',
+        },
+      },
+      {
+        $addFields: {
+          resultFacet: { $arrayElemAt: ['$resultMeta', 0] },
         },
       },
       {
@@ -75,9 +85,11 @@ router.get('/tier-progress', async (req: Request, res: Response) => {
           endsAfter: 1,
           stack: 1,
           tier: 1,
-          timesLogged: { $size: '$results' },
-          latestResult: { $arrayElemAt: ['$results', 0] },
-          recentScoreDocs: { $slice: ['$results', 5] },
+          timesLogged: {
+            $ifNull: [{ $arrayElemAt: ['$resultFacet.total.count', 0] }, 0],
+          },
+          latestResult: { $arrayElemAt: ['$resultFacet.recent', 0] },
+          recentScoreDocs: '$resultFacet.recent',
         },
       },
       {

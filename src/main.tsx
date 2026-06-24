@@ -13,6 +13,7 @@ import { LearningVisibilityProvider } from './context/LearningVisibilityContext'
 import { ResultsVisibilityProvider } from './context/ResultsVisibilityContext';
 import { GtoStudyVisibilityProvider } from './context/GtoStudyVisibilityContext';
 import { LeaksVisibilityProvider } from './context/LeaksVisibilityContext';
+import { OpenHandsForMeProvider } from './context/OpenHandsForMeContext';
 import App from './App.tsx';
 import './index.css';
 
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeWrapper>
         <CssBaseline />
         <UserNameProvider>
+        <OpenHandsForMeProvider>
         <CompactModeProvider>
           <HorizontalModeProvider>
             <CalculatorVisibilityProvider>
@@ -45,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
             </CalculatorVisibilityProvider>
           </HorizontalModeProvider>
         </CompactModeProvider>
+        </OpenHandsForMeProvider>
       </UserNameProvider>
       </ThemeWrapper>
     </DarkModeProvider>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDirtyFormClose } from './useDirtyFormClose';
+import { useOpenHandsForMe } from '../context/OpenHandsForMeContext';
 import { avgRating, commentKey } from '../utils/handReviewUtils';
 import {
   fetchHandsToReview,
@@ -32,6 +33,7 @@ export function useHandsToReview({
   onSuccess,
   onError,
 }: UseHandsToReviewOptions) {
+  const { refresh: refreshOpenHands } = useOpenHandsForMe();
   const [hands, setHands] = useState<HandToReview[]>([]);
   const [reviewersList, setReviewersList] = useState<string[]>([]);
   const [filter, setFilter] = useState<HandReviewFilterTab>('open');
@@ -86,6 +88,10 @@ export function useHandsToReview({
     confirmOptions: discardConfirmOptions,
     requestClose: requestDiscardClose,
   } = useDirtyFormClose();
+
+  const refreshSummary = useCallback(() => {
+    void refreshOpenHands();
+  }, [refreshOpenHands]);
 
   const loadHands = useCallback(async () => {
     setLoading(true);
@@ -206,6 +212,7 @@ export function useHandsToReview({
       setAddIsPrivate(false);
       setAddTaggedReviewers([]);
       setExpandedId(created._id);
+      refreshSummary();
       onSuccess?.('Hand added for review');
     } catch {
       onError?.('Failed to add hand');
@@ -219,6 +226,7 @@ export function useHandsToReview({
       const nextStatus = hand.status === 'archived' ? 'open' : 'archived';
       const updated = await updateHandToReview(hand._id, { status: nextStatus });
       setHands((prev) => prev.map((h) => (h._id === hand._id ? updated : h)));
+      refreshSummary();
       onSuccess?.(nextStatus === 'archived' ? 'Hand archived' : 'Hand unarchived');
     } catch {
       onError?.('Failed to update hand');
@@ -231,6 +239,7 @@ export function useHandsToReview({
       setHands((prev) => prev.filter((h) => h._id !== id));
       if (expandedId === id) setExpandedId(null);
       if (editHand?._id === id) setEditHand(null);
+      refreshSummary();
       onSuccess?.('Hand deleted');
     } catch {
       onError?.('Failed to delete hand');
@@ -450,6 +459,7 @@ export function useHandsToReview({
       setHands((prev) =>
         prev.map((h) => (h._id === handId ? { ...updated, reviewedBy } : h))
       );
+      refreshSummary();
       onSuccess?.('Marked as reviewed');
     } catch {
       onError?.('Failed to mark as reviewed');

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { dedupeRequest } from '../utils/dedupeRequest';
 import type {
   Leak,
   LeakCreate,
@@ -79,10 +80,12 @@ export async function deleteMentalGameEntry(id: string): Promise<void> {
 
 // Due for review
 export async function fetchDueLeaks(userId: string | null): Promise<Leak[]> {
-  const params: Record<string, string> = {};
-  if (userId?.trim()) params.userId = userId.trim();
-  const { data } = await api.get<Leak[]>('/learning/due', { params });
-  return data;
+  const trimmed = userId?.trim();
+  if (!trimmed) return [];
+  return dedupeRequest(`due-leaks:${trimmed}`, async () => {
+    const { data } = await api.get<Leak[]>('/learning/due', { params: { userId: trimmed } });
+    return data;
+  });
 }
 
 // Study to-do list

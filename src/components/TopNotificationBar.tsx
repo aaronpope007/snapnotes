@@ -5,8 +5,7 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
 import RateReviewIcon from '@mui/icons-material/RateReview';
-import { fetchHandsToReview } from '../api/handsToReview';
-import { useUserName } from '../context/UserNameContext';
+import { useOpenHandsForMe } from '../context/OpenHandsForMeContext';
 import { useCompactMode } from '../context/CompactModeContext';
 
 const STORAGE_KEY = 'snapnotes_topbar_dismissed_date';
@@ -30,9 +29,8 @@ interface TopNotificationBarProps {
 }
 
 export function TopNotificationBar({ onReviewClick }: TopNotificationBarProps) {
-  const userName = useUserName();
+  const { forMeCount } = useOpenHandsForMe();
   const compact = useCompactMode();
-  const [forMeCount, setForMeCount] = useState(0);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(wasDismissedToday());
 
@@ -45,29 +43,6 @@ export function TopNotificationBar({ onReviewClick }: TopNotificationBarProps) {
     }, 60 * 1000); // check every minute
     return () => clearInterval(interval);
   }, [dismissed, forMeCount]);
-
-  useEffect(() => {
-    if (!userName?.trim()) {
-      setForMeCount(0);
-      return;
-    }
-    let cancelled = false;
-    fetchHandsToReview('open', userName)
-      .then((hands) => {
-        if (cancelled) return;
-        const count = hands.filter(
-          (h) =>
-            (h.taggedReviewerNames ?? []).includes(userName) &&
-            !(h.reviewedBy ?? []).includes(userName) &&
-            h.status !== 'archived'
-        ).length;
-        setForMeCount(count);
-      })
-      .catch(() => {
-        if (!cancelled) setForMeCount(0);
-      });
-    return () => { cancelled = true; };
-  }, [userName]);
 
   useEffect(() => {
     setVisible(forMeCount > 0 && !dismissed);

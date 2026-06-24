@@ -77,7 +77,7 @@ import {
   mergePlayers,
 } from './api/players';
 import { exportBackup, restoreBackup, type BackupPayload } from './api/backup';
-import { createHandToReview, fetchHandsToReview } from './api/handsToReview';
+import { createHandToReview } from './api/handsToReview';
 import { fetchReviewers } from './api/reviewers';
 import { getApiErrorMessage } from './utils/apiError';
 import { toNoteOneLiner } from './utils/noteUtils';
@@ -92,6 +92,8 @@ import {
 } from './utils/activeSession';
 import { getMostRecentSession } from './utils/sessionUtils';
 import { SessionDurationLabel } from './components/SessionDurationLabel';
+import { useOpenHandsForMe } from './context/OpenHandsForMeContext';
+import { handsForMeToastMessage } from './utils/handsForMe';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
 
 /** Fixed height for Add Player / Hands to Review / Learning / Results nav buttons. Do not change. */
@@ -125,6 +127,8 @@ export default function App() {
   const darkMode = useDarkMode();
   const setDarkMode = useSetDarkMode();
   const { getAuthHeader, userName } = useUserCredentials();
+  const { forMeCount, loading: openHandsLoading, refresh: refreshOpenHands } = useOpenHandsForMe();
+  const handsToastShownRef = useRef(false);
   const [activeSessionTick, setActiveSessionTick] = useState(0);
   const activeSession = useMemo(() => getActiveSession(), [activeSessionTick]);
   const showSessionInProgress = !!activeSession && activeSession.userId === userName?.trim();
@@ -331,44 +335,32 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!userName?.trim()) return;
-    let cancelled = false;
-    fetchHandsToReview('open', userName)
-      .then((hands) => {
-        if (cancelled) return;
-        const forMeCount = hands.filter(
-          (h) =>
-            (h.taggedReviewerNames ?? []).includes(userName) &&
-            !(h.reviewedBy ?? []).includes(userName) &&
-            h.status !== 'archived'
-        ).length;
-        const message =
-          forMeCount === 0
-            ? 'Hey, nice job, no hands to review'
-            : forMeCount >= 5
-              ? `Hey slacker, there are ${forMeCount} hands to review, get to it.`
-              : `Hey pal, there are ${forMeCount} hand${forMeCount !== 1 ? 's' : ''} to review.`;
-        setHandsToReviewLoadToast({
-          open: true,
-          message,
-          severity: forMeCount === 0 ? 'success' : 'error',
-        });
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    if (!userName?.trim() || openHandsLoading || handsToastShownRef.current) return;
+    handsToastShownRef.current = true;
+    const { message, severity } = handsForMeToastMessage(forMeCount);
+    setHandsToReviewLoadToast({ open: true, message, severity });
+  }, [userName, forMeCount, openHandsLoading]);
+
+  useEffect(() => {
+    handsToastShownRef.current = false;
   }, [userName]);
 
   // Daily background refresh when app stays open (catches updates from other users)
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
+  const selectPlayerRequestId = useRef(0);
   useEffect(() => {
     const interval = setInterval(() => {
       void loadPlayers({ silent: true });
       const id = selectedRef.current?._id;
       if (id) {
-        fetchPlayer(id).then(setSelected).catch(() => {});
+        const requestId = ++selectPlayerRequestId.current;
+        fetchPlayer(id)
+          .then((full) => {
+            if (requestId !== selectPlayerRequestId.current) return;
+            setSelected(full);
+          })
+          .catch(() => {});
       }
     }, 24 * 60 * 60 * 1000);
     return () => clearInterval(interval);
@@ -376,12 +368,14 @@ export default function App() {
 
   const handleSelectPlayer = useCallback(async (p: PlayerListItem) => {
     const doSelect = async () => {
+      const requestId = ++selectPlayerRequestId.current;
       try {
         setShowHandsToReview(false);
         setShowLearning(false);
         setShowGtoStudy(false);
         setShowResults(false);
         const full = await fetchPlayer(p._id);
+        if (requestId !== selectPlayerRequestId.current) return;
         setSelected(full);
         setRecentlyViewedIds((prev) => {
           const next = [p._id, ...prev.filter((id) => id !== p._id)].slice(0, 30);
@@ -389,12 +383,13 @@ export default function App() {
           return next;
         });
       } catch (err) {
+        if (requestId !== selectPlayerRequestId.current) return;
         showError(getApiErrorMessage(err, 'Failed to load player'));
       }
     };
 
     if (selected?._id && selected._id !== p._id && playerNotesDirty) {
-      requestLeavePlayer(() => void doSelect());
+      requestLeavePlayer(playerNotesDirty, () => void doSelect());
       return;
     }
     await doSelect();
@@ -424,6 +419,7 @@ export default function App() {
       setShowResults(false);
       setSelected(null);
       showSuccess('Hand added for review');
+      void refreshOpenHands();
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to add hand for review'));
       throw err;

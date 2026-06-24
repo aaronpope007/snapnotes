@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Player } from '../models/Player.js';
-import { assertCanUseClaimedName } from '../utils/claimedAuth.js';
+import { ClaimedUser } from '../models/ClaimedUser.js';
+import { assertCanUseClaimedName, parseBasicAuth, verifyClaimedUser } from '../utils/claimedAuth.js';
 
 const router = Router();
 
@@ -83,6 +84,111 @@ function normalizeStakesAndFormats(doc: Record<string, unknown>): { stakesSeenAt
   return { stakesSeenAt: [], formats: [] };
 }
 
+function usernameKey(username: string): string {
+  return username.trim().toLowerCase();
+}
+
+type ImportPlayerRow = {
+  username: string;
+  playerType: string;
+  gameTypes?: string[];
+  stakesSeenAt?: number[];
+  formats?: string[];
+  notes: Array<{ text: string; addedBy: string; addedAt: string; source?: string }>;
+  exploits: string[];
+  importedBy: string;
+};
+
+interface MergedPlayerFields {
+  username: string;
+  playerType: string;
+  notes: Array<{ text: string; addedBy: string; addedAt: Date; source?: string }>;
+  exploits: string[];
+  gameTypes: string[];
+  stakesSeenAt: number[];
+  formats: string[];
+}
+
+function mergeImportRow(
+  base: MergedPlayerFields | null,
+  p: ImportPlayerRow
+): MergedPlayerFields {
+  const importNotes = (p.notes || []).map((n) => ({
+    text: n.text,
+    addedBy: n.addedBy,
+    addedAt: n.addedAt ? new Date(n.addedAt) : new Date(),
+    source: n.source || undefined,
+  }));
+  const importGameTypes = p.gameTypes || [];
+  const importStakes = p.stakesSeenAt || [];
+  const importFormats = p.formats || ['Ring'];
+
+  if (!base) {
+    return {
+      username: p.username,
+      playerType: p.playerType || 'unknown',
+      notes: importNotes,
+      exploits: p.exploits || [],
+      gameTypes: importGameTypes,
+      stakesSeenAt: importStakes,
+      formats: importFormats,
+    };
+  }
+
+  const migratedNotes = base.notes;
+  const existingCores = getNoteCores(migratedNotes);
+  const newImportNotes = importNotes.filter((n) => {
+    const core = getNoteCore(n.text);
+    if (!core) return true;
+    if (existingCores.has(core)) return false;
+    existingCores.add(core);
+    return true;
+  });
+
+  return {
+    username: base.username,
+    playerType: base.playerType,
+    notes: [...migratedNotes, ...newImportNotes],
+    exploits: [...new Set([...base.exploits, ...(p.exploits || [])])],
+    gameTypes: [...new Set([...base.gameTypes, ...importGameTypes])],
+    stakesSeenAt: [...new Set([...base.stakesSeenAt, ...importStakes])].sort((a, b) => a - b),
+    formats: [...new Set([...base.formats, ...importFormats])],
+  };
+}
+
+async function assertCanUseClaimedNamesForImport(
+  imported: ImportPlayerRow[],
+  req: Request,
+  res: Response
+): Promise<boolean> {
+  const names = [...new Set(imported.map((p) => p.username.trim()).filter(Boolean))];
+  if (names.length === 0) return true;
+
+  const claimed = await ClaimedUser.find({ name: { $in: names } })
+    .collation({ locale: 'en', strength: 2 })
+    .select('name')
+    .lean();
+
+  if (claimed.length === 0) return true;
+
+  const claimedKeys = new Set(claimed.map((row) => usernameKey(String(row.name))));
+  const creds = parseBasicAuth(req);
+  const verified = creds ? await verifyClaimedUser(creds.name, creds.password) : null;
+  const verifiedKey = verified ? usernameKey(verified.name) : null;
+
+  for (const p of imported) {
+    const key = usernameKey(p.username);
+    if (!claimedKeys.has(key)) continue;
+    if (verifiedKey !== key) {
+      res.status(403).json({
+        error: 'This name is claimed. You must log in as this user (name + password) to use it.',
+      });
+      return false;
+    }
+  }
+  return true;
+}
+
 // GET /api/players — return list (?touchedBy=username to filter to players with notes/comments from that user)
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -118,84 +224,100 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /api/players/import — bulk import (must be before /:id)
 router.post('/import', async (req: Request, res: Response) => {
   try {
-    const { players: imported } = req.body as {
-      players: Array<{
-        username: string;
-        playerType: string;
-        gameTypes?: string[];
-        stakesSeenAt?: number[];
-        formats?: string[];
-        notes: Array<{ text: string; addedBy: string; addedAt: string; source?: string }>;
-        exploits: string[];
-        importedBy: string;
-      }>;
-    };
+    const { players: imported } = req.body as { players: ImportPlayerRow[] };
 
     if (!Array.isArray(imported) || imported.length === 0) {
       return res.status(400).json({ error: 'Invalid import data' });
     }
 
-    const results = { created: 0, updated: 0 };
+    const canUse = await assertCanUseClaimedNamesForImport(imported, req, res);
+    if (!canUse) return;
 
+    const usernames = imported.map((p) => p.username.trim()).filter(Boolean);
+    const existingPlayers = await Player.find({ username: { $in: usernames } }).collation({
+      locale: 'en',
+      strength: 2,
+    });
+    const existingByKey = new Map<string, (typeof existingPlayers)[0]>();
+    for (const doc of existingPlayers) {
+      existingByKey.set(usernameKey(doc.username), doc);
+    }
+
+    const mergedByKey = new Map<string, MergedPlayerFields>();
     for (const p of imported) {
-      const canUse = await assertCanUseClaimedName(p.username, req, res);
-      if (!canUse) return;
-      const existing = await Player.findOne({ username: p.username }).collation({
-        locale: 'en',
-        strength: 2,
-      });
+      const key = usernameKey(p.username);
+      const prior = mergedByKey.get(key);
+      const existingDoc = existingByKey.get(key);
+      const base: MergedPlayerFields | null =
+        prior ??
+        (existingDoc
+          ? (() => {
+              const existingObj = existingDoc.toObject() as Record<string, unknown>;
+              return {
+                username: existingDoc.username,
+                playerType: existingDoc.playerType,
+                notes: migrateLegacyNotes(
+                  existingObj as Parameters<typeof migrateLegacyNotes>[0]
+                ).map((n) => ({
+                  text: n.text,
+                  addedBy: n.addedBy,
+                  addedAt: n.addedAt instanceof Date ? n.addedAt : new Date(n.addedAt),
+                  source: n.source,
+                })),
+                exploits: existingDoc.exploits || [],
+                gameTypes: (existingDoc.gameTypes as string[]) || [],
+                ...normalizeStakesAndFormats(existingObj),
+              };
+            })()
+          : null);
+      mergedByKey.set(key, mergeImportRow(base, p));
+    }
 
-      const importNotes = (p.notes || []).map((n) => ({
-        text: n.text,
-        addedBy: n.addedBy,
-        addedAt: n.addedAt ? new Date(n.addedAt) : new Date(),
-        source: n.source || undefined,
-      }));
+    const results = { created: 0, updated: 0 };
+    const ops: Array<
+      | { insertOne: { document: Record<string, unknown> } }
+      | { updateOne: { filter: { _id: unknown }; update: Record<string, unknown> } }
+    > = [];
 
-      const importGameTypes = p.gameTypes || [];
-      const importStakes = p.stakesSeenAt || [];
-      const importFormats = p.formats || ['Ring'];
-
-      if (existing) {
-        const existingDoc = existing.toObject() as Record<string, unknown>;
-        const migratedNotes = migrateLegacyNotes(existingDoc);
-        const existingCores = getNoteCores(migratedNotes);
-        const newImportNotes = importNotes.filter((n) => {
-          const core = getNoteCore(n.text);
-          if (!core) return true;
-          if (existingCores.has(core)) return false;
-          existingCores.add(core); // avoid duplicates within import batch
-          return true;
-        });
-        const mergedNotes = [...migratedNotes, ...newImportNotes];
-        const mergedExploits = [...new Set([...(existing.exploits || []), ...(p.exploits || [])])];
-        const existingGameTypes = Array.isArray(existingDoc.gameTypes) ? (existingDoc.gameTypes as string[]) : [];
-        const mergedGameTypes = [...new Set([...existingGameTypes, ...importGameTypes])];
-        const { stakesSeenAt: existingStakes, formats: existingFormats } = normalizeStakesAndFormats(existingDoc);
-        const mergedStakes = [...new Set([...existingStakes, ...importStakes])].sort((a, b) => a - b);
-        const mergedFormats = [...new Set([...existingFormats, ...importFormats])];
-
-        await Player.findByIdAndUpdate(existing._id, {
-          notes: mergedNotes,
-          exploits: mergedExploits,
-          gameTypes: mergedGameTypes,
-          stakesSeenAt: mergedStakes,
-          formats: mergedFormats,
-          $unset: { stakeNotes: 1, rawNote: 1, stakesWithFormat: 1 },
+    for (const [key, merged] of mergedByKey) {
+      const existingDoc = existingByKey.get(key);
+      if (existingDoc) {
+        ops.push({
+          updateOne: {
+            filter: { _id: existingDoc._id },
+            update: {
+              $set: {
+                notes: merged.notes,
+                exploits: merged.exploits,
+                gameTypes: merged.gameTypes,
+                stakesSeenAt: merged.stakesSeenAt,
+                formats: merged.formats,
+              },
+              $unset: { stakeNotes: 1, rawNote: 1, stakesWithFormat: 1 },
+            },
+          },
         });
         results.updated++;
       } else {
-        await new Player({
-          username: p.username,
-          playerType: p.playerType || 'unknown',
-          gameTypes: importGameTypes,
-          stakesSeenAt: importStakes,
-          formats: importFormats,
-          notes: importNotes,
-          exploits: p.exploits || [],
-        }).save();
+        ops.push({
+          insertOne: {
+            document: {
+              username: merged.username,
+              playerType: merged.playerType,
+              notes: merged.notes,
+              exploits: merged.exploits,
+              gameTypes: merged.gameTypes,
+              stakesSeenAt: merged.stakesSeenAt,
+              formats: merged.formats,
+            },
+          },
+        });
         results.created++;
       }
+    }
+
+    if (ops.length > 0) {
+      await Player.bulkWrite(ops, { ordered: false });
     }
 
     res.json(results);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useUserName } from '../context/UserNameContext';
@@ -6,7 +6,6 @@ import { useLeaks } from '../hooks/useLeaks';
 import { useMentalGame } from '../hooks/useMentalGame';
 import { useDueReviews } from '../hooks/useDueReviews';
 import { useStudyTodos } from '../hooks/useStudyTodos';
-import { fetchDueLeaks } from '../api/learning';
 import { LearningTabs, type LearningTabValue } from '../components/learning/LearningTabs';
 import { LeaksTab } from '../components/learning/LeaksTab';
 import { MentalTab } from '../components/learning/MentalTab';
@@ -22,46 +21,24 @@ interface LearningPageProps {
 export function LearningPage({ onSuccess, onError }: LearningPageProps) {
   const userName = useUserName();
   const [activeTab, setActiveTab] = useState<LearningTabValue>('leaks');
-  const [dueCount, setDueCount] = useState(0);
   const [addLeakInitialText, setAddLeakInitialText] = useState<string | null>(null);
 
-  const loadDueCount = useCallback(async () => {
-    if (!userName?.trim()) {
-      setDueCount(0);
-      return;
-    }
-    try {
-      const list = await fetchDueLeaks(userName);
-      setDueCount(list?.length ?? 0);
-    } catch {
-      setDueCount(0);
-    }
-  }, [userName]);
+  const due = useDueReviews({ userId: userName, onSuccess, onError });
+  const { loadDue, dueLeaks } = due;
 
   const handleLeakSuccess = useCallback(
     (msg: string) => {
       onSuccess?.(msg);
-      void loadDueCount();
+      void loadDue();
     },
-    [onSuccess, loadDueCount]
-  );
-
-  const handleDueSuccess = useCallback(
-    (msg: string) => {
-      onSuccess?.(msg);
-      void loadDueCount();
-    },
-    [onSuccess, loadDueCount]
+    [onSuccess, loadDue]
   );
 
   const leaks = useLeaks({ userId: userName, onSuccess: handleLeakSuccess, onError });
   const mental = useMentalGame({ userId: userName, onSuccess, onError });
-  const due = useDueReviews({ userId: userName, onSuccess: handleDueSuccess, onError });
   const studyTodos = useStudyTodos({ userId: userName, onSuccess, onError });
 
-  useEffect(() => {
-    void loadDueCount();
-  }, [loadDueCount, due.dueLeaks.length]);
+  const dueCount = dueLeaks.length;
 
   return (
     <Box sx={{ width: '100%', maxWidth: 480 }}>

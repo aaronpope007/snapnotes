@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { dedupeRequest } from '../utils/dedupeRequest';
 import type {
   GtoDrill,
   GtoDrillCreate,
@@ -19,30 +20,38 @@ export async function fetchGtoDrills(
   userId: string | null,
   format?: GtoFormat
 ): Promise<GtoDrill[]> {
-  if (!userId?.trim()) return [];
-  const { data } = await api.get<GtoDrill[]>('/gto-drills', {
-    params: {
-      userId: userId.trim(),
-      recentResults: true,
-      ...(format ? { format } : {}),
-    },
+  const trimmed = userId?.trim();
+  if (!trimmed) return [];
+  const formatKey = format ?? 'all';
+  return dedupeRequest(`gto-drills:${trimmed}:${formatKey}`, async () => {
+    const { data } = await api.get<GtoDrill[]>('/gto-drills', {
+      params: {
+        userId: trimmed,
+        recentResults: true,
+        ...(format ? { format } : {}),
+      },
+    });
+    return data;
   });
-  return data;
 }
 
 export async function fetchArchivedGtoDrills(
   userId: string | null,
   format?: GtoFormat
 ): Promise<GtoDrill[]> {
-  if (!userId?.trim()) return [];
-  const { data } = await api.get<GtoDrill[]>('/gto-drills/archived', {
-    params: {
-      userId: userId.trim(),
-      recentResults: true,
-      ...(format ? { format } : {}),
-    },
+  const trimmed = userId?.trim();
+  if (!trimmed) return [];
+  const formatKey = format ?? 'all';
+  return dedupeRequest(`gto-drills-archived:${trimmed}:${formatKey}`, async () => {
+    const { data } = await api.get<GtoDrill[]>('/gto-drills/archived', {
+      params: {
+        userId: trimmed,
+        recentResults: true,
+        ...(format ? { format } : {}),
+      },
+    });
+    return data;
   });
-  return data;
 }
 
 

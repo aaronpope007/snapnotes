@@ -145,10 +145,6 @@ export function useGtoDrills({ userId, format, onSuccess, onError }: UseGtoDrill
   );
 
   useEffect(() => {
-    void loadDrills();
-  }, [loadDrills]);
-
-  useEffect(() => {
     if (selectedDrillId) {
       void loadDetailResults(selectedDrillId);
     } else {
