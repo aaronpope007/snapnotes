@@ -94,7 +94,7 @@ function isSyntheticDisplayIndex(displayIndex: number, state: DisplayNoteState):
 function resolveFocusAfterInsert(
   result: { focusTextIndex: number; focusOffset: number },
   nextStored: NoteSegment[],
-  prevState: DisplayNoteState
+  _prevState: DisplayNoteState
 ): InsertContext {
   const nextState = displayStateForEditing(nextStored);
   const { focusTextIndex, focusOffset } = result;

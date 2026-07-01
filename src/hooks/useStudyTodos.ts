@@ -6,35 +6,42 @@ import {
   deleteStudyTodo,
 } from '../api/learning';
 import { getApiErrorMessage } from '../utils/apiError';
+import { useAbortSignalRef, useMountedRef, isAbortError } from './useMountedRef';
 import type { StudyTodo } from '../types/learning';
 
 export interface UseStudyTodosOptions {
   userId: string | null;
+  enabled?: boolean;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
 }
 
-export function useStudyTodos({ userId, onSuccess, onError }: UseStudyTodosOptions) {
+export function useStudyTodos({ userId, enabled = true, onSuccess, onError }: UseStudyTodosOptions) {
+  const mounted = useMountedRef();
+  const nextSignal = useAbortSignalRef();
   const [todos, setTodos] = useState<StudyTodo[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadTodos = useCallback(async () => {
-    if (!userId?.trim()) {
+    if (!enabled || !userId?.trim()) {
       setTodos([]);
       setLoading(false);
       return;
     }
+    const signal = nextSignal();
     setLoading(true);
     try {
-      const data = await fetchStudyTodos(userId);
+      const data = await fetchStudyTodos(userId, { signal });
+      if (!mounted.current || signal.aborted) return;
       setTodos(data ?? []);
     } catch (err) {
+      if (isAbortError(err) || !mounted.current) return;
       setTodos([]);
       onError?.(getApiErrorMessage(err, 'Failed to load study todos'));
     } finally {
-      setLoading(false);
+      if (mounted.current && !signal.aborted) setLoading(false);
     }
-  }, [userId, onError]);
+  }, [enabled, userId, onError, mounted, nextSignal]);
 
   useEffect(() => {
     void loadTodos();

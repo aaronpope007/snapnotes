@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry, HandHistoryEntry } from '../types';
+import type { FetchOptions } from './fetchOptions';
 
 const api = axios.create({
   baseURL: '/api',
@@ -13,8 +14,8 @@ export async function fetchPlayers(options?: { touchedBy?: string | null }): Pro
   return data;
 }
 
-export async function fetchPlayer(id: string): Promise<Player> {
-  const { data } = await api.get<Player>(`/players/${id}`);
+export async function fetchPlayer(id: string, options?: FetchOptions): Promise<Player> {
+  const { data } = await api.get<Player>(`/players/${id}`, { signal: options?.signal });
   return data;
 }
 

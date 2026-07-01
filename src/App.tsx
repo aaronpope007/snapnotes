@@ -92,6 +92,7 @@ import {
 } from './utils/activeSession';
 import { getMostRecentSession } from './utils/sessionUtils';
 import { SessionDurationLabel } from './components/SessionDurationLabel';
+import { isAbortError } from './hooks/useMountedRef';
 import { useOpenHandsForMe } from './context/OpenHandsForMeContext';
 import { handsForMeToastMessage } from './utils/handsForMe';
 import type { Player, PlayerListItem, PlayerCreate, ImportPlayer, NoteEntry } from './types';
@@ -185,6 +186,13 @@ export default function App() {
     } catch { return []; }
   });
   const searchBarRef = useRef<HTMLInputElement>(null);
+  const selectPlayerAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      selectPlayerAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem('snapnotes_my_recent', String(myRecent)); } catch { /* ignore */ }
@@ -348,17 +356,17 @@ export default function App() {
   // Daily background refresh when app stays open (catches updates from other users)
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
-  const selectPlayerRequestId = useRef(0);
   useEffect(() => {
     const interval = setInterval(() => {
       void loadPlayers({ silent: true });
       const id = selectedRef.current?._id;
       if (id) {
-        const requestId = ++selectPlayerRequestId.current;
-        fetchPlayer(id)
+        const controller = new AbortController();
+        fetchPlayer(id, { signal: controller.signal })
           .then((full) => {
-            if (requestId !== selectPlayerRequestId.current) return;
-            setSelected(full);
+            if (!controller.signal.aborted && selectedRef.current?._id === id) {
+              setSelected(full);
+            }
           })
           .catch(() => {});
       }
@@ -368,14 +376,16 @@ export default function App() {
 
   const handleSelectPlayer = useCallback(async (p: PlayerListItem) => {
     const doSelect = async () => {
-      const requestId = ++selectPlayerRequestId.current;
+      selectPlayerAbortRef.current?.abort();
+      const controller = new AbortController();
+      selectPlayerAbortRef.current = controller;
       try {
         setShowHandsToReview(false);
         setShowLearning(false);
         setShowGtoStudy(false);
         setShowResults(false);
-        const full = await fetchPlayer(p._id);
-        if (requestId !== selectPlayerRequestId.current) return;
+        const full = await fetchPlayer(p._id, { signal: controller.signal });
+        if (controller.signal.aborted) return;
         setSelected(full);
         setRecentlyViewedIds((prev) => {
           const next = [p._id, ...prev.filter((id) => id !== p._id)].slice(0, 30);
@@ -383,7 +393,7 @@ export default function App() {
           return next;
         });
       } catch (err) {
-        if (requestId !== selectPlayerRequestId.current) return;
+        if (isAbortError(err) || controller.signal.aborted) return;
         showError(getApiErrorMessage(err, 'Failed to load player'));
       }
     };

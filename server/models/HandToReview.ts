@@ -52,5 +52,7 @@ const handToReviewSchema = new mongoose.Schema(
 );
 
 handToReviewSchema.index({ status: 1, createdAt: -1 });
+handToReviewSchema.index({ createdBy: 1 });
+handToReviewSchema.index({ isPrivate: 1, createdBy: 1, status: 1 });
 
 export const HandToReview = mongoose.model('HandToReview', handToReviewSchema);

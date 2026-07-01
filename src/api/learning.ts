@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { dedupeRequest } from '../utils/dedupeRequest';
+import type { FetchOptions } from './fetchOptions';
 import type {
   Leak,
   LeakCreate,
@@ -18,13 +19,14 @@ const api = axios.create({
 export async function fetchLeaks(
   userId: string | null,
   status?: LeakStatus,
-  playerId?: string | null
+  playerId?: string | null,
+  options?: FetchOptions
 ): Promise<Leak[]> {
   const params: Record<string, string> = {};
   if (userId?.trim()) params.userId = userId.trim();
   if (status) params.status = status;
   if (playerId?.trim()) params.playerId = playerId.trim();
-  const { data } = await api.get<Leak[]>('/learning/leaks', { params });
+  const { data } = await api.get<Leak[]>('/learning/leaks', { params, signal: options?.signal });
   return data;
 }
 
@@ -59,10 +61,16 @@ export async function advanceLeakReview(id: string, stillFixed: boolean): Promis
 }
 
 // Mental Game
-export async function fetchMentalGameEntries(userId: string | null): Promise<MentalGameEntry[]> {
+export async function fetchMentalGameEntries(
+  userId: string | null,
+  options?: FetchOptions
+): Promise<MentalGameEntry[]> {
   const params: Record<string, string> = {};
   if (userId?.trim()) params.userId = userId.trim();
-  const { data } = await api.get<MentalGameEntry[]>('/learning/mental', { params });
+  const { data } = await api.get<MentalGameEntry[]>('/learning/mental', {
+    params,
+    signal: options?.signal,
+  });
   return data;
 }
 
@@ -79,9 +87,16 @@ export async function deleteMentalGameEntry(id: string): Promise<void> {
 }
 
 // Due for review
-export async function fetchDueLeaks(userId: string | null): Promise<Leak[]> {
+export async function fetchDueLeaks(userId: string | null, options?: FetchOptions): Promise<Leak[]> {
   const trimmed = userId?.trim();
   if (!trimmed) return [];
+  if (options?.signal) {
+    const { data } = await api.get<Leak[]>('/learning/due', {
+      params: { userId: trimmed },
+      signal: options.signal,
+    });
+    return data;
+  }
   return dedupeRequest(`due-leaks:${trimmed}`, async () => {
     const { data } = await api.get<Leak[]>('/learning/due', { params: { userId: trimmed } });
     return data;
@@ -89,10 +104,16 @@ export async function fetchDueLeaks(userId: string | null): Promise<Leak[]> {
 }
 
 // Study to-do list
-export async function fetchStudyTodos(userId: string | null): Promise<StudyTodo[]> {
+export async function fetchStudyTodos(
+  userId: string | null,
+  options?: FetchOptions
+): Promise<StudyTodo[]> {
   const params: Record<string, string> = {};
   if (userId?.trim()) params.userId = userId.trim();
-  const { data } = await api.get<StudyTodo[]>('/learning/study-todos', { params });
+  const { data } = await api.get<StudyTodo[]>('/learning/study-todos', {
+    params,
+    signal: options?.signal,
+  });
   return data;
 }
 

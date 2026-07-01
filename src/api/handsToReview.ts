@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { HandToReview, HandToReviewCreate, HandToReviewStatus } from '../types';
+import { DEFAULT_FETCH_LIMIT, type FetchOptions } from './fetchOptions';
 
 const api = axios.create({
   baseURL: '/api',
@@ -8,12 +9,19 @@ const api = axios.create({
 
 export async function fetchHandsToReview(
   status?: HandToReviewStatus,
-  createdBy?: string | null
+  createdBy?: string | null,
+  options?: FetchOptions
 ): Promise<HandToReview[]> {
-  const params: Record<string, string> = {};
+  const params: Record<string, string | number> = {
+    limit: options?.limit ?? DEFAULT_FETCH_LIMIT,
+  };
+  if (options?.skip != null) params.skip = options.skip;
   if (status) params.status = status;
   if (createdBy?.trim()) params.createdBy = createdBy.trim();
-  const { data } = await api.get<HandToReview[]>('/hands-to-review', { params });
+  const { data } = await api.get<HandToReview[]>('/hands-to-review', {
+    params,
+    signal: options?.signal,
+  });
   return data;
 }
 

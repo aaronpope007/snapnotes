@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import mongoose from 'mongoose';
+import mongoose, { type PipelineStage } from 'mongoose';
 import { GtoDrill } from '../models/GtoDrill.js';
 import { GtoDrillResult } from '../models/GtoDrillResult.js';
 import {
@@ -12,6 +12,7 @@ import {
   parseDate,
   type GtoDrillBodyFields,
 } from './gtoDrillValidation.js';
+import { parseListPagination } from '../utils/pagination.js';
 
 function withNormalizedSolver<T extends { solver?: string }>(drill: T): T {
   if (!drill.solver) return drill;
@@ -103,7 +104,7 @@ async function listDrillsForUser(
 
   const resultCollName = GtoDrillResult.collection.collectionName;
 
-  const pipeline = [
+  const pipeline: PipelineStage[] = [
     { $match: match },
     { $sort: { updatedAt: -1 } },
     {
@@ -233,7 +234,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
       format: body.format ?? drill.format,
       stack: body.stack ?? drill.stack,
       handStart: body.handStart ?? drill.handStart,
-      street: body.street ?? drill.street,
+      street: body.street ?? drill.street ?? undefined,
       potType: body.potType ?? drill.potType,
       heroPosition: body.heroPosition ?? drill.heroPosition,
       villainPosition:
@@ -241,7 +242,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
           ? body.villainPosition === null
             ? undefined
             : body.villainPosition
-          : drill.villainPosition,
+          : drill.villainPosition ?? undefined,
       endsAfter: body.endsAfter ?? drill.endsAfter,
       solver: body.solver ?? drill.solver,
       tier: body.tier !== undefined ? body.tier : drill.tier,
@@ -272,7 +273,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     drill.handStart = merged.handStart as 'Preflop' | 'Postflop';
     drill.street = normalizeDrillStreet(
       merged.handStart as string,
-      merged.street ?? drill.street
+      merged.street ?? drill.street ?? undefined
     ) as 'Preflop' | 'Flop' | 'Turn' | 'River';
     drill.potType = merged.potType as
       | 'Preflop'
@@ -353,7 +354,7 @@ router.get('/results/recent', async (req: Request, res: Response) => {
       return;
     }
 
-    const pipeline: Record<string, unknown>[] = [
+    const pipeline: PipelineStage[] = [
       { $match: { userId, drillId: { $in: drillIds } } },
       { $sort: { date: -1 } },
       { $limit: limit },
@@ -402,8 +403,11 @@ router.get('/:id/results', async (req: Request, res: Response) => {
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
     const drill = await getDrillForUser(req.params.id, userId);
     if (!drill) return res.status(404).json({ error: 'GTO drill not found' });
+    const { limit, skip } = parseListPagination(req);
     const results = await GtoDrillResult.find({ drillId: drill._id, userId })
       .sort({ date: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
     res.json(results);
   } catch {

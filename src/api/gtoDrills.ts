@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { dedupeRequest } from '../utils/dedupeRequest';
+import { DEFAULT_FETCH_LIMIT, type FetchOptions } from './fetchOptions';
 import type {
   GtoDrill,
   GtoDrillCreate,
@@ -90,11 +91,18 @@ export async function fetchRecentGtoDrillResults(
 
 export async function fetchGtoDrillResults(
   drillId: string,
-  userId: string | null
+  userId: string | null,
+  options?: FetchOptions
 ): Promise<GtoDrillResult[]> {
   if (!userId?.trim()) return [];
+  const params: Record<string, string | number> = {
+    userId: userId.trim(),
+    limit: options?.limit ?? DEFAULT_FETCH_LIMIT,
+  };
+  if (options?.skip != null) params.skip = options.skip;
   const { data } = await api.get<GtoDrillResult[]>(`/gto-drills/${drillId}/results`, {
-    params: { userId: userId.trim() },
+    params,
+    signal: options?.signal,
   });
   return data;
 }

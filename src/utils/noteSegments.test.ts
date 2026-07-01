@@ -6,8 +6,6 @@ import {
   insertCardInTextSegment,
   insertTextAt,
   removeCardNear,
-  needsTrailingTextField,
-  displaySegmentsForEditing,
   displayStateForEditing,
 } from './noteSegments';
 

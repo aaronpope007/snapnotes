@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDirtyFormClose } from './useDirtyFormClose';
 import { useOpenHandsForMe } from '../context/OpenHandsForMeContext';
+import { useAbortSignalRef, useMountedRef, isAbortError } from './useMountedRef';
 import { avgRating, commentKey } from '../utils/handReviewUtils';
 import {
   fetchHandsToReview,
@@ -34,6 +35,8 @@ export function useHandsToReview({
   onError,
 }: UseHandsToReviewOptions) {
   const { refresh: refreshOpenHands } = useOpenHandsForMe();
+  const mounted = useMountedRef();
+  const nextSignal = useAbortSignalRef();
   const [hands, setHands] = useState<HandToReview[]>([]);
   const [reviewersList, setReviewersList] = useState<string[]>([]);
   const [filter, setFilter] = useState<HandReviewFilterTab>('open');
@@ -94,6 +97,7 @@ export function useHandsToReview({
   }, [refreshOpenHands]);
 
   const loadHands = useCallback(async () => {
+    const signal = nextSignal();
     setLoading(true);
     try {
       const status: HandToReviewStatus | undefined =
@@ -101,15 +105,17 @@ export function useHandsToReview({
         : filter === 'my-open-private' ? 'open'
         : filter === 'my-archived-private' ? 'archived'
         : (filter as HandToReviewStatus);
-      const data = await fetchHandsToReview(status, userName ?? undefined);
+      const data = await fetchHandsToReview(status, userName ?? undefined, { signal });
+      if (!mounted.current || signal.aborted) return;
       setHands(data);
     } catch (err) {
+      if (isAbortError(err) || !mounted.current) return;
       setHands([]);
       onError?.(getApiErrorMessage(err, 'Failed to load hands to review'));
     } finally {
-      setLoading(false);
+      if (mounted.current && !signal.aborted) setLoading(false);
     }
-  }, [filter, userName, onError]);
+  }, [filter, userName, onError, mounted, nextSignal]);
 
   useEffect(() => {
     loadHands();

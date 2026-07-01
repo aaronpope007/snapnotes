@@ -83,9 +83,16 @@ export function ResultsPage({ onSuccess, onError, onActiveSessionChange, hasActi
     void loadSessions();
   }, [loadSessions]);
 
+  const needsWithdrawals =
+    view === 'summary' || (view === 'all' && activeTab === 'withdrawals');
+
   useEffect(() => {
+    if (!needsWithdrawals) {
+      setWithdrawalsLoading(false);
+      return;
+    }
     void loadWithdrawals();
-  }, [loadWithdrawals]);
+  }, [needsWithdrawals, loadWithdrawals]);
 
   const handleAddSession = useCallback(
     async (payload: SessionResultCreate) => {

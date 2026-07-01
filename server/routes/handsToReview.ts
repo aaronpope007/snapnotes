@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { HandToReview } from '../models/HandToReview.js';
 import { DEFAULT_HAND_TITLE } from '../constants.js';
+import { parseListPagination } from '../utils/pagination.js';
 
 const router = Router();
 
@@ -16,8 +17,11 @@ router.get('/', async (req: Request, res: Response) => {
     } else {
       filter.isPrivate = { $ne: true };
     }
+    const { limit, skip } = parseListPagination(req);
     const hands = await HandToReview.find(filter)
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
     res.json(hands);
   } catch (err) {
@@ -156,22 +160,28 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     if (body.rateHand?.userName) {
       const { starRating, spicyRating, userName } = body.rateHand;
-      const starRatings = [...(hand.starRatings || [])];
-      const spicyRatings = [...(hand.spicyRatings || [])];
+      let starRatings: { user: string; rating: number }[] = (hand.starRatings ?? []).map((r) => ({
+        user: r.user,
+        rating: r.rating,
+      }));
+      let spicyRatings: { user: string; rating: number }[] = (hand.spicyRatings ?? []).map((r) => ({
+        user: r.user,
+        rating: r.rating,
+      }));
 
       if (typeof starRating === 'number' && starRating >= 0 && starRating <= 10) {
-        const existing = starRatings.findIndex((r: { user: string }) => r.user === userName);
+        const existing = starRatings.findIndex((r) => r.user === userName);
         const entry = { user: userName, rating: starRating };
         if (existing >= 0) starRatings[existing] = entry;
-        else starRatings.push(entry);
-        hand.starRatings = starRatings;
+        else starRatings = [...starRatings, entry];
+        hand.set('starRatings', starRatings);
       }
       if (typeof spicyRating === 'number' && spicyRating >= 0 && spicyRating <= 5) {
-        const existing = spicyRatings.findIndex((r: { user: string }) => r.user === userName);
+        const existing = spicyRatings.findIndex((r) => r.user === userName);
         const entry = { user: userName, rating: spicyRating };
         if (existing >= 0) spicyRatings[existing] = entry;
-        else spicyRatings.push(entry);
-        hand.spicyRatings = spicyRatings;
+        else spicyRatings = [...spicyRatings, entry];
+        hand.set('spicyRatings', spicyRatings);
       }
       await hand.save();
       return res.json(hand);
@@ -194,7 +204,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       body.updateComment.commentIndex < (hand.comments?.length ?? 0)
     ) {
       const { commentIndex, text, editedBy, authorOnly } = body.updateComment;
-      const comment = hand.comments[commentIndex] as Record<string, unknown>;
+      const comment = hand.comments[commentIndex];
       if (text?.trim() != null && editedBy) {
         comment.text = text.trim();
         comment.editedAt = new Date();

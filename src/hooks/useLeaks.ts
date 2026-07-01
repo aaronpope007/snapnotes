@@ -6,15 +6,19 @@ import {
   deleteLeak,
 } from '../api/learning';
 import { getApiErrorMessage } from '../utils/apiError';
+import { useAbortSignalRef, useMountedRef, isAbortError } from './useMountedRef';
 import type { Leak, LeakCreate, LeakStatus } from '../types/learning';
 
 export interface UseLeaksOptions {
   userId: string | null;
+  enabled?: boolean;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
 }
 
-export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
+export function useLeaks({ userId, enabled = true, onSuccess, onError }: UseLeaksOptions) {
+  const mounted = useMountedRef();
+  const nextSignal = useAbortSignalRef();
   const [leaks, setLeaks] = useState<Leak[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<LeakStatus | 'all'>('all');
@@ -26,23 +30,26 @@ export function useLeaks({ userId, onSuccess, onError }: UseLeaksOptions) {
   const [saving, setSaving] = useState(false);
 
   const loadLeaks = useCallback(async () => {
-    if (!userId?.trim()) {
+    if (!enabled || !userId?.trim()) {
       setLeaks([]);
       setLoading(false);
       return;
     }
+    const signal = nextSignal();
     setLoading(true);
     try {
       const status = filterStatus === 'all' ? undefined : filterStatus;
-      const data = await fetchLeaks(userId, status, filterPlayerId);
+      const data = await fetchLeaks(userId, status, filterPlayerId, { signal });
+      if (!mounted.current || signal.aborted) return;
       setLeaks(data ?? []);
     } catch (err) {
+      if (isAbortError(err) || !mounted.current) return;
       setLeaks([]);
       onError?.(getApiErrorMessage(err, 'Failed to load leaks'));
     } finally {
-      setLoading(false);
+      if (mounted.current && !signal.aborted) setLoading(false);
     }
-  }, [userId, filterStatus, filterPlayerId, onError]);
+  }, [enabled, userId, filterStatus, filterPlayerId, onError, mounted, nextSignal]);
 
   useEffect(() => {
     void loadLeaks();

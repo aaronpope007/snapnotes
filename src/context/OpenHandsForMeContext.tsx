@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { fetchHandsToReview } from '../api/handsToReview';
 import { useUserName } from './UserNameContext';
-import { dedupeRequest } from '../utils/dedupeRequest';
+import { useAbortSignalRef, useMountedRef, isAbortError } from '../hooks/useMountedRef';
 import { countHandsForMe } from '../utils/handsForMe';
 import type { HandToReview } from '../types';
 
@@ -24,6 +24,8 @@ const OpenHandsForMeContext = createContext<OpenHandsForMeContextValue | null>(n
 
 export function OpenHandsForMeProvider({ children }: { children: ReactNode }) {
   const userName = useUserName();
+  const mounted = useMountedRef();
+  const nextSignal = useAbortSignalRef();
   const [openHands, setOpenHands] = useState<HandToReview[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -33,18 +35,19 @@ export function OpenHandsForMeProvider({ children }: { children: ReactNode }) {
       setOpenHands([]);
       return;
     }
+    const signal = nextSignal();
     setLoading(true);
     try {
-      const data = await dedupeRequest(`hands:open:${name}`, () =>
-        fetchHandsToReview('open', name)
-      );
+      const data = await fetchHandsToReview('open', name, { signal });
+      if (!mounted.current || signal.aborted) return;
       setOpenHands(data);
-    } catch {
+    } catch (err) {
+      if (isAbortError(err) || !mounted.current) return;
       setOpenHands([]);
     } finally {
-      setLoading(false);
+      if (mounted.current && !signal.aborted) setLoading(false);
     }
-  }, [userName]);
+  }, [userName, mounted, nextSignal]);
 
   useEffect(() => {
     void refresh();

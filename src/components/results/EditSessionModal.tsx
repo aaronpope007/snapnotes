@@ -78,7 +78,7 @@ export function EditSessionModal({ open, onClose, session, onSave }: EditSession
         hands,
         startBankroll,
         endBankroll,
-        stake,
+        stake: stakes,
         gameType,
         rating,
         isRing,

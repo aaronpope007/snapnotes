@@ -1,36 +1,43 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchDueLeaks, advanceLeakReview } from '../api/learning';
 import { getApiErrorMessage } from '../utils/apiError';
+import { useAbortSignalRef, useMountedRef, isAbortError } from './useMountedRef';
 import type { Leak } from '../types/learning';
 
 export interface UseDueReviewsOptions {
   userId: string | null;
+  enabled?: boolean;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
 }
 
-export function useDueReviews({ userId, onSuccess, onError }: UseDueReviewsOptions) {
+export function useDueReviews({ userId, enabled = true, onSuccess, onError }: UseDueReviewsOptions) {
+  const mounted = useMountedRef();
+  const nextSignal = useAbortSignalRef();
   const [dueLeaks, setDueLeaks] = useState<Leak[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   const loadDue = useCallback(async () => {
-    if (!userId?.trim()) {
+    if (!enabled || !userId?.trim()) {
       setDueLeaks([]);
       setLoading(false);
       return;
     }
+    const signal = nextSignal();
     setLoading(true);
     try {
-      const data = await fetchDueLeaks(userId);
+      const data = await fetchDueLeaks(userId, { signal });
+      if (!mounted.current || signal.aborted) return;
       setDueLeaks(data ?? []);
     } catch (err) {
+      if (isAbortError(err) || !mounted.current) return;
       setDueLeaks([]);
       onError?.(getApiErrorMessage(err, 'Failed to load due reviews'));
     } finally {
-      setLoading(false);
+      if (mounted.current && !signal.aborted) setLoading(false);
     }
-  }, [userId, onError]);
+  }, [enabled, userId, onError, mounted, nextSignal]);
 
   useEffect(() => {
     void loadDue();

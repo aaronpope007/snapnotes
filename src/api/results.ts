@@ -1,15 +1,25 @@
 import axios from 'axios';
 import type { SessionResult, SessionResultCreate, SessionUploadRow, Withdrawal, WithdrawalCreate } from '../types/results';
+import { DEFAULT_FETCH_LIMIT, type FetchOptions } from './fetchOptions';
 
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
-export async function fetchSessionResults(userId: string | null): Promise<SessionResult[]> {
+export async function fetchSessionResults(
+  userId: string | null,
+  options?: FetchOptions
+): Promise<SessionResult[]> {
   if (!userId?.trim()) return [];
+  const params: Record<string, string | number> = {
+    userId: userId.trim(),
+    limit: options?.limit ?? DEFAULT_FETCH_LIMIT,
+  };
+  if (options?.skip != null) params.skip = options.skip;
   const { data } = await api.get<SessionResult[]>('/results', {
-    params: { userId: userId.trim() },
+    params,
+    signal: options?.signal,
   });
   return data;
 }

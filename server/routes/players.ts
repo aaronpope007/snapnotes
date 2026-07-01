@@ -261,7 +261,7 @@ router.post('/import', async (req: Request, res: Response) => {
                 ).map((n) => ({
                   text: n.text,
                   addedBy: n.addedBy,
-                  addedAt: n.addedAt instanceof Date ? n.addedAt : new Date(n.addedAt),
+                  addedAt: new Date(n.addedAt),
                   source: n.source,
                 })),
                 exploits: existingDoc.exploits || [],

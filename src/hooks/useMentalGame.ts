@@ -5,37 +5,44 @@ import {
   deleteMentalGameEntry,
 } from '../api/learning';
 import { getApiErrorMessage } from '../utils/apiError';
+import { useAbortSignalRef, useMountedRef, isAbortError } from './useMountedRef';
 import type { MentalGameEntry, MentalGameEntryCreate } from '../types/learning';
 
 export interface UseMentalGameOptions {
   userId: string | null;
+  enabled?: boolean;
   onSuccess?: (msg: string) => void;
   onError?: (msg: string) => void;
 }
 
-export function useMentalGame({ userId, onSuccess, onError }: UseMentalGameOptions) {
+export function useMentalGame({ userId, enabled = true, onSuccess, onError }: UseMentalGameOptions) {
+  const mounted = useMountedRef();
+  const nextSignal = useAbortSignalRef();
   const [entries, setEntries] = useState<MentalGameEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadEntries = useCallback(async () => {
-    if (!userId?.trim()) {
+    if (!enabled || !userId?.trim()) {
       setEntries([]);
       setLoading(false);
       return;
     }
+    const signal = nextSignal();
     setLoading(true);
     try {
-      const data = await fetchMentalGameEntries(userId);
+      const data = await fetchMentalGameEntries(userId, { signal });
+      if (!mounted.current || signal.aborted) return;
       setEntries(data ?? []);
     } catch (err) {
+      if (isAbortError(err) || !mounted.current) return;
       setEntries([]);
       onError?.(getApiErrorMessage(err, 'Failed to load mental game entries'));
     } finally {
-      setLoading(false);
+      if (mounted.current && !signal.aborted) setLoading(false);
     }
-  }, [userId, onError]);
+  }, [enabled, userId, onError, mounted, nextSignal]);
 
   useEffect(() => {
     void loadEntries();

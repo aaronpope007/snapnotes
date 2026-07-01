@@ -34,9 +34,24 @@ export function LearningPage({ onSuccess, onError }: LearningPageProps) {
     [onSuccess, loadDue]
   );
 
-  const leaks = useLeaks({ userId: userName, onSuccess: handleLeakSuccess, onError });
-  const mental = useMentalGame({ userId: userName, onSuccess, onError });
-  const studyTodos = useStudyTodos({ userId: userName, onSuccess, onError });
+  const leaks = useLeaks({
+    userId: userName,
+    enabled: activeTab === 'leaks',
+    onSuccess: handleLeakSuccess,
+    onError,
+  });
+  const mental = useMentalGame({
+    userId: userName,
+    enabled: activeTab === 'mental',
+    onSuccess,
+    onError,
+  });
+  const studyTodos = useStudyTodos({
+    userId: userName,
+    enabled: activeTab === 'todo',
+    onSuccess,
+    onError,
+  });
 
   const dueCount = dueLeaks.length;
 

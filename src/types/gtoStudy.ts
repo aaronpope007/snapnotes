@@ -14,7 +14,7 @@ export type GtoPosition = GtoHuPosition | Gto8maxPosition;
 
 export type GtoEndsAfter = 'FirstAction' | 'StreetEnd' | 'HandEnd';
 
-export type GtoSolver = 'Lucid' | 'GTO Wizard' | 'Other';
+export type GtoSolver = 'Lucid' | 'GTO Wizard' | 'Other' | 'Solver Pro';
 
 /** Study curriculum tier (1–3). Omit or null = unassigned. */
 export type GtoStudyTier = 1 | 2 | 3;

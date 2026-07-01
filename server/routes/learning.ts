@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { Leak } from '../models/Leak.js';
+import { Leak, LEAK_CATEGORIES } from '../models/Leak.js';
 import { MentalGameEntry } from '../models/MentalGameEntry.js';
 import { StudyTodo } from '../models/StudyTodo.js';
 
@@ -93,7 +93,9 @@ router.patch('/leaks/:id', async (req: Request, res: Response) => {
     };
     if (body.title !== undefined) leak.title = body.title.trim() || 'Untitled leak';
     if (body.description !== undefined) leak.description = body.description.trim();
-    if (body.category !== undefined) leak.category = body.category as string;
+    if (body.category !== undefined && (LEAK_CATEGORIES as readonly string[]).includes(body.category)) {
+      leak.category = body.category as (typeof LEAK_CATEGORIES)[number];
+    }
     if (body.status !== undefined && ['identified', 'working', 'resolved'].includes(body.status)) {
       const wasResolved = leak.status === 'resolved';
       leak.status = body.status;
@@ -115,11 +117,14 @@ router.patch('/leaks/:id', async (req: Request, res: Response) => {
       );
     }
     if (Array.isArray(body.notes)) {
-      leak.notes = body.notes.map((n) => ({
-        _id: n._id ?? new mongoose.Types.ObjectId(),
-        content: (n.content ?? '').trim(),
-        createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
-      }));
+      leak.set(
+        'notes',
+        body.notes.map((n) => ({
+          _id: n._id ? new mongoose.Types.ObjectId(n._id) : new mongoose.Types.ObjectId(),
+          content: (n.content ?? '').trim(),
+          createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
+        }))
+      );
     }
     await leak.save();
     res.json(leak);

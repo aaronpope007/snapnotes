@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from './useConfirm';
+import { useAbortSignalRef, useMountedRef, isAbortError } from './useMountedRef';
 import {
   fetchGtoDrills,
   fetchArchivedGtoDrills,
@@ -33,6 +34,8 @@ export interface UseGtoDrillsOptions {
 export type GtoDetailTab = 'chart' | 'results';
 
 export function useGtoDrills({ userId, format, onSuccess, onError }: UseGtoDrillsOptions) {
+  const mounted = useMountedRef();
+  const nextSignal = useAbortSignalRef();
   const [drills, setDrills] = useState<GtoDrill[]>([]);
   const [archivedDrills, setArchivedDrills] = useState<GtoDrill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,18 +133,21 @@ export function useGtoDrills({ userId, format, onSuccess, onError }: UseGtoDrill
         setDetailResults([]);
         return;
       }
+      const signal = nextSignal();
       setDetailLoading(true);
       try {
-        const data = await fetchGtoDrillResults(drillId, userId);
+        const data = await fetchGtoDrillResults(drillId, userId, { signal });
+        if (!mounted.current || signal.aborted) return;
         setDetailResults(data ?? []);
       } catch (err) {
+        if (isAbortError(err) || !mounted.current) return;
         setDetailResults([]);
         onError?.(getApiErrorMessage(err, 'Failed to load drill results'));
       } finally {
-        setDetailLoading(false);
+        if (mounted.current && !signal.aborted) setDetailLoading(false);
       }
     },
-    [userId, onError]
+    [userId, onError, mounted, nextSignal]
   );
 
   useEffect(() => {
@@ -374,6 +380,12 @@ export function useGtoDrills({ userId, format, onSuccess, onError }: UseGtoDrill
     [openDeleteResultConfirm, userId, selectedDrillId, onSuccess, onError, loadDrills]
   );
 
+  const closeResultModal = useCallback(() => {
+    setLogResultOpen(false);
+    setLogResultDrillId(null);
+    setEditResult(null);
+  }, []);
+
   return {
     drills,
     archivedDrills,
@@ -409,6 +421,7 @@ export function useGtoDrills({ userId, format, onSuccess, onError }: UseGtoDrill
     setLogResultOpen,
     logResultDrillId,
     openLogResult,
+    closeResultModal,
     handleCreateResult,
     editResult,
     setEditResult,

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { SessionResult } from '../models/SessionResult.js';
+import { parseListPagination } from '../utils/pagination.js';
 
 const router = Router();
 
@@ -75,7 +76,7 @@ function parseStakesField(raw: unknown): number[] | null | undefined {
 }
 
 function applySessionStakes(
-  session: { stake: number | null; set: (key: string, value: unknown) => void },
+  session: { stake?: number | null | undefined; set: (key: string, value: unknown) => void },
   stakes: number[] | null | undefined,
   legacyStake?: number | null
 ): void {
@@ -100,8 +101,11 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
+    const { limit, skip } = parseListPagination(req);
     const sessions = await SessionResult.find({ userId })
       .sort({ date: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
     res.json(sessions);
   } catch (err) {

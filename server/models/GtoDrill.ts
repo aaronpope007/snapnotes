@@ -58,5 +58,6 @@ const gtoDrillSchema = new mongoose.Schema(
 );
 
 gtoDrillSchema.index({ userId: 1, updatedAt: -1 });
+gtoDrillSchema.index({ userId: 1, archived: 1, format: 1 });
 
 export const GtoDrill = mongoose.model('GtoDrill', gtoDrillSchema);
