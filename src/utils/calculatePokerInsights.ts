@@ -23,6 +23,8 @@ export interface PokerInsights {
   currentBreakevenStretch: { hands: number; days: number } | null;
   /** Top 3 biggest downswings (by dollar amount). `ongoing` when still below peak (no recovery yet). */
   topDownswings: { amount: number; hands: number; dateEnded: string; ongoing?: boolean }[];
+  /** Current downswing (when below peak), null if not in one */
+  currentDownswing: { amount: number; hands: number } | null;
   /** Top 3 biggest upswings (by dollar amount) */
   topUpswings: { amount: number; hands: number; dateEnded: string }[];
   /** Biggest upswing from valley to peak */
@@ -321,6 +323,7 @@ export function calculatePokerInsights(
   }
 
   let currentBreakevenStretch: { hands: number; days: number } | null = null;
+  let currentDownswing: { amount: number; hands: number } | null = null;
   if (inStretch && sorted.length > 0) {
     const stretchHands = cumulativeHands - stretchStartCumHands;
     const stretchDays = stretchSessionDates.size;
@@ -338,6 +341,7 @@ export function calculatePokerInsights(
       biggestDownswingAmount = drop;
       biggestDownswingHands = downswingHands;
     }
+    currentDownswing = { amount: drop, hands: downswingHands };
     const lastDate = sorted[sorted.length - 1].date;
     allDownswings.push({ amount: drop, hands: downswingHands, dateEnded: lastDate, ongoing: true });
     const rise = cumulativeNet - downswingValley;
@@ -660,6 +664,7 @@ export function calculatePokerInsights(
     topBreakevenStretches,
     currentBreakevenStretch,
     topDownswings,
+    currentDownswing,
     topUpswings,
     biggestUpswing: biggestUpswingAmount,
     biggestUpswingHands: biggestUpswingHands,

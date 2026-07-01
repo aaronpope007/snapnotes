@@ -228,7 +228,7 @@ export function FunFactsBento({
               ))}
           </Paper>
         )}
-        {insights.topDownswings.length > 0 && (
+        {(insights.topDownswings.length > 0 || insights.currentDownswing) && (
           <Paper
             variant="outlined"
             sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}
@@ -238,15 +238,25 @@ export function FunFactsBento({
                 <TrendingDownIcon sx={{ fontSize: 20 }} />
               </Box>
               <Typography variant="caption" color="text.secondary">
-                Top 3 longest downswings
+                {insights.currentDownswing ? 'Current & top 3 downswings' : 'Top 3 longest downswings'}
               </Typography>
             </Box>
-            {insights.topDownswings.map((r, i) => (
-              <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
-                {formatDownswing(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}
-                {r.ongoing ? ' · current' : r.dateEnded ? ` · ended ${formatDateForDisplay(r.dateEnded)}` : ''}
+            {insights.currentDownswing && (
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'error.main' }}>
+                Current: {formatDownswing(insights.currentDownswing.amount)}
+                {insights.currentDownswing.hands > 0
+                  ? ` over ${insights.currentDownswing.hands.toLocaleString()} hands`
+                  : ''}
               </Typography>
-            ))}
+            )}
+            {insights.topDownswings
+              .filter((r) => !r.ongoing)
+              .map((r, i) => (
+                <Typography key={i} variant="body2" sx={{ fontWeight: 500, color: 'error.main' }}>
+                  {formatDownswing(r.amount)}{r.hands > 0 ? ` over ${r.hands.toLocaleString()} hands` : ''}
+                  {r.dateEnded ? ` · ended ${formatDateForDisplay(r.dateEnded)}` : ''}
+                </Typography>
+              ))}
           </Paper>
         )}
         {insights.topUpswings.length > 0 && (
