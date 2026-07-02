@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 /** Tracks whether the component is still mounted. */
@@ -23,12 +23,12 @@ export function useAbortSignalRef() {
     };
   }, []);
 
-  const nextSignal = () => {
+  const nextSignal = useCallback(() => {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
     return controller.signal;
-  };
+  }, []);
 
   return nextSignal;
 }
